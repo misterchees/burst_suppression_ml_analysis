@@ -23,7 +23,7 @@ classdef BIS_bumpSearch < handle
 
         % Plottet eine BIS_Matrix. Name ist derjenige in der Struktur
         function plotBISMatrix(obj, name)
-            matrixToPlot = obj.data.(name);
+            matrixToPlot = obj.data.bisMatrices.(name);
             
             % Werte der Spalten (Spaltennamen sollten entsprechend gesetzt sein)
             time = matrixToPlot.Time;
@@ -44,11 +44,15 @@ classdef BIS_bumpSearch < handle
             xlabel('Zeit (Sekunden)');
             ylabel('BIS Werte');
             
-            % Titel (Name der Matrix in der Struktur)
-            title(name);
+            % Titel - Name der Matrix in der Struktur. Text as written, da
+            % sonst Unterstriche zu Subscript werden
+            title(name, 'Interpreter', 'none');
             
-            % Legende hinzufügen (mit den Spaltennamen)
-            legend('BIS', 'BIS_SR');
+            % Legende hinzufügen mit den Spaltennamen. Interpreter hier
+            % wieder um Text nicht als Latex zu interpretieren
+            lgd = legend('BIS', 'BIS_SR');
+            lgd.Interpreter = "none";
+
             
             % Gitter hinzufügen (optional)
             grid on;
@@ -62,7 +66,18 @@ classdef BIS_bumpSearch < handle
             % TODO
         end
     
-        function obj = readCSVinFolder(obj,lowerLimit,upperLimit)
+
+        % Einlesen der Metadaten zum VitalDB Datensatz
+        function obj = readMetadata(obj, metadataFolderPath)
+            tempPath = obj.folderPath; % Pfad in temp Variable für später speichern
+            obj.folderPath = metadataFolderPath; % Pfad ersetzen mit metadata Ordner
+            readSingleFile(obj, 'metadata_vitaldb', 'metadata') % Metadata auslesen und in Feld metadata speichern
+            obj.folderPath = tempPath; % Pfad wieder zurücksetzen
+        end
+
+
+
+        function obj = readBisCsvInFolder(obj,lowerLimit,upperLimit)
             % Alle CSV-Dateien im Ordner finden
             csvFiles = dir(fullfile(obj.folderPath, '*.csv'));
             
@@ -88,13 +103,16 @@ classdef BIS_bumpSearch < handle
                 tempFileName = csvFiles(i).name;
 
                 % Nutze Hilfsfunktion
-                readSingleFile(obj,tempFileName);
+                readSingleFile(obj, tempFileName, 'bisMatrices');
             end
         end
+
     
-        % Einzelnes File einlesen. Erwartet wird Name mitsamt Datentyp.
+        % Einzelnes File einlesen. 
+        % @fileName: Erwartet wird Name mitsamt Datentyp.
         % Also example.txt statt nur example
-        function obj = readSingleFile(obj, fileName)
+        % @fieldToSave: Name des Feldes in data
+        function obj = readSingleFile(obj, fileName, fieldToSave)
 
             % Dateipfad der CSV-Datei
             fullFilePath = fullfile(obj.folderPath, fileName);
@@ -106,10 +124,13 @@ classdef BIS_bumpSearch < handle
             [~, fileName, ~] = fileparts(fileName);
 
             % Felder müssen immer mit Buchstaben beginnen
-            fileName = "BIS_ID_" + string(fileName);
+            structFileName = "BIS_ID_" + string(fileName);
+
+            % Ausgabe
+            disp("File: " + fileName + " wird gespeichert als: " + structFileName);
                 
             % Speichern der Daten in der Struktur
-            obj.data.(fileName) = tempData;
+            obj.data.(fieldToSave).(structFileName) = tempData;
         end
 
     end
