@@ -22,11 +22,20 @@ for i = range
      end
 end
 
-%% 
+%% Plotte eine Range an Daten
 for i = 1:10
     % Gibt mit Sicherheit eine elegantere Methode als hier, um einen char
     % string mit einer Number als bestandteil zu generieren
     fullName = strcat("BIS_ID_" + i);
     fullNameChar = convertStringsToChars(fullName);
-    bumpSearcherBIS.plotBISMatrix(fullNameChar);
+    bumpSearcherBIS.plotBISandFilteredBIS(fullNameChar,'filteredWithFixedThreshold');
+end
+
+%% Suche mit fixem Grenzwert
+for i = 1:10
+    % Gibt mit Sicherheit eine elegantere Methode als hier, um einen char
+    % string mit einer Number als bestandteil zu generieren
+    fullName = strcat("BIS_ID_" + i);
+    fullNameChar = convertStringsToChars(fullName);
+    bumpSearcherBIS = bumpSearcherBIS.searchWithFixedThreshold(fullNameChar, 'BIS_BIS');
 end
