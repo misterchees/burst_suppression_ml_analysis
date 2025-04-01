@@ -1,16 +1,16 @@
 
 % Variablen
 mataDataFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\';
-range = 1:100;
-MatricesField = 'bisMatrices';
-filteredMatricesField = 'filteredWithFixedThreshold';
-BIS_col_name = 'BIS_BIS';
-BIS_SR_col_name = 'BIS_SR';
-MAC_col_name = 'Primus_MAC';
-BIS_threshold = 70;
-MAC_threshold = 0.5;
-min_BIS_episodeTimeInSeconds = 5;
-refractoryTimeInSeconds = 5;
+range = 1:6338; % Anzahl an MAC-Dateien
+MatricesField = 'bisMatrices'; % Feldname BIS-Tabellen
+filteredMatricesField = 'filteredWithFixedThreshold'; % Feldname nur nach BIS threshold gefilterte Tabellen
+BIS_col_name = 'BIS_BIS'; % Spalte für BIS-Werte
+BIS_SR_col_name = 'BIS_SR'; % Spalte für SuppRate
+MAC_col_name = 'Primus_MAC'; % Spalte für MAC-Werte
+BIS_threshold = 70; % Untergrenze BIS
+MAC_threshold = 0.5; % Untergrenze MAC
+min_BIS_episodeTimeInSeconds = 5; % Mindestzeit für mutmaßliche BS-Episoden
+refractoryTimeInSeconds = 5; % Mindestzeit zw. zwei unterschiedlichen mutmaßlichen BS-Episoden
 
 %% Initialisierung und Metadaten einlesen
 bumpSearcherBIS = BIS_bumpSearch();

@@ -204,6 +204,47 @@ classdef BIS_bumpSearch < handle
             end
         end
 
+        function obj = generateSummaryTables(obj, resultsField)
+            episodeList = [];
+            timeList = [];
+            
+            fields = fieldnames(obj.data.(resultsField));
+            for i = 1:length(fields)
+                if startsWith(fields{i}, 'result_')
+                    resultNum = str2double(extractAfter(fields{i}, 'result_'));
+                    resultStruct = obj.data.(resultsField).(fields{i});
+                    
+                    if ~isempty(resultStruct.Episodes)
+                        tempTable = resultStruct.Episodes;
+                        tempTable.ResultID = repmat(resultNum, height(tempTable), 1);
+                        episodeList = [episodeList; tempTable];
+                        
+                        timeList = [timeList; table(resultNum, resultStruct.FirstValidTime, resultStruct.LastValidTime, ...
+                                    'VariableNames', {'ResultID', 'FirstValidTime', 'LastValidTime'})];
+                    end
+                end
+            end
+            
+            obj.data.(resultsField).Summary_Episodes = episodeList;
+            obj.data.(resultsField).Summary_GlobalTimes = timeList;
+        end
+
+        function saveTableAsCSV(data, tablePath, saveFolder)
+            tableRef = data;
+            pathParts = strsplit(tablePath, '.');
+            for i = 1:length(pathParts)
+                tableRef = tableRef.(pathParts{i});
+            end
+            
+            if istable(tableRef)
+                savePath = fullfile(saveFolder, [pathParts{end}, '.csv']);
+                writetable(tableRef, savePath);
+            else
+                error('Der angegebene Pfad führt nicht zu einer Tabelle.');
+            end
+        end
+
+
         % Einlesen der Metadaten zum VitalDB Datensatz
         function obj = readMetadata(obj, metadataFolderPath)
             tempPath = obj.folderPath; % Pfad in temp Variable für später speichern
