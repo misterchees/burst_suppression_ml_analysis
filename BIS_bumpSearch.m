@@ -4,7 +4,7 @@
 classdef BIS_bumpSearch < handle
 
     properties
-        folderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\vitaldb_csvprocessed\';
+        folderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\vitaldb_csvprocessed_BIS_BIS_SR\';
         data = struct; % Datenstruktur mit allen relevanten Daten
     end
 
@@ -22,74 +22,6 @@ classdef BIS_bumpSearch < handle
         end
 
         
-        % % Plottet mehrere Matrizen übereinander. Ist noch net ausgereift
-        % function plotBISDataDynamic(obj, tableName)
-        %     % Überprüfen, ob die Haupttabelle in data.bismatrices existiert
-        %     if ~isfield(obj.data.bisMatrices, tableName)
-        %         error('Die Tabelle "%s" existiert nicht in data.bismatrices.', tableName);
-        %     end
-        % 
-        %     % Listen aller Tabellen in data, die berücksichtigt werden sollen
-        %     tableCategories = fieldnames(obj.data); 
-        % 
-        %     % Farben generieren
-        %     colors = lines(10); % Bis zu 10 verschiedene Farben für unterschiedliche Spalten
-        %     colorMap = containers.Map(); % Map für konsistente Farbzuweisung pro Spaltenname
-        % 
-        %     % **Figur initialisieren**
-        %     figure; hold on;
-        % 
-        %     % Time sollte für alle identisch sein und kommt deshalb hart
-        %     % aus der derzeitigen Table in bisMatrices
-        %     time = obj.data.bisMatrices.(tableName).Time;
-        % 
-        %     % Durch alle Tabellenarten in data iterieren
-        %     for categoryIdx = 1:length(tableCategories)
-        %         categoryName = tableCategories{categoryIdx}; % Name der Kategorie, z.B. 'bismatrices'
-        % 
-        %         % Prüfen, ob die Tabelle in dieser Kategorie existiert
-        %         if isfield(obj.data.(categoryName), tableName)
-        %             currentTable = obj.data.(categoryName).(tableName);
-        % 
-        %             % Sicherstellen, dass die Tabelle eine 'Time'-Spalte hat
-        %             if ~ismember('Time', currentTable.Properties.VariableNames)
-        %                 warning('Tabelle "%s" in "%s" hat keine Time-Spalte und wird übersprungen.', tableName, categoryName);
-        %                 continue;
-        %             end
-        % 
-        %             % Zeit-Vektor extrahieren
-        %             % time = currentTable.Time; 
-        % 
-        %             % Alle Spalten außer 'Time' extrahieren
-        %             variableNames = setdiff(currentTable.Properties.VariableNames, {'Time'}, 'stable');
-        % 
-        %             % Daten plotten
-        %             for i = 1:length(variableNames)
-        %                 varName = variableNames{i};
-        % 
-        %                 % Prüfen, ob bereits eine Farbe für diese Variable zugewiesen wurde
-        %                 if ~isKey(colorMap, varName)
-        %                     colorMap(varName) = colors(mod(length(colorMap), size(colors, 1)) + 1, :);
-        %                 end
-        % 
-        %                 % Plotten mit zugewiesener Farbe
-        %                 plot(time, currentTable.(varName), 'Color', colorMap(varName), ...
-        %                      'LineWidth', 1.5, 'DisplayName', sprintf('%s aus %s', varName, categoryName));
-        %             end
-        %         end
-        %     end
-        % 
-        %     % Achsentitel und Legende
-        %     xlabel('Zeit (s)');
-        %     ylabel('Wert');
-        %     title(sprintf('BIS Daten für %s aus allen Tabellen', tableName));
-        %     legend show;
-        %     grid on;
-        % 
-        %     hold off;
-        % end
-
-
         % Plottet normale und entsprechende gefilterte Tabelle
         % übereinander.
         % @tablename: Der Name der Tabelle in data.bisMatrices 
@@ -152,8 +84,6 @@ classdef BIS_bumpSearch < handle
                 
                 hold off;
         end
-
-
 
 
         % Filtert alle Zeilen aus der übergebenen Matrix, die in der

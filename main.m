@@ -1,8 +1,10 @@
 
 % Variablen
 mataDataFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\';
+macConcentrationsFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\vitaldb_csv_anesthesia_mac';
 range = 1:200;
-matricesField = 'bisMatrices';
+MatricesField = 'bisMatrices';
+filteredMatricesField = 'filteredWithFixedThreshold';
 
 % Initialisierung und Metadaten einlesen
 bumpSearcherBIS = BIS_bumpSearch();
@@ -14,7 +16,7 @@ for i = range
      
      % Fehlerbehandlung
      try
-        bumpSearcherBIS = bumpSearcherBIS.readSingleFile(fileAsString, matricesField);
+        bumpSearcherBIS = bumpSearcherBIS.readSingleFile(fileAsString, MatricesField);
      catch error
          
          disp("Beim Versuch die Datei '" + fileAsString + ...
@@ -28,7 +30,7 @@ for i = 1:10
     % string mit einer Number als bestandteil zu generieren
     fullName = strcat("BIS_ID_" + i);
     fullNameChar = convertStringsToChars(fullName);
-    bumpSearcherBIS.plotBISandFilteredBIS(fullNameChar,'filteredWithFixedThreshold');
+    bumpSearcherBIS.plotBISandFilteredBIS(fullNameChar,filteredMatricesField);
 end
 
 %% Suche mit fixem Grenzwert
