@@ -1,10 +1,12 @@
 % Suche in BIS Werten nach signifikanten Ausschlägen nach
-% oben (bumps)
+% oben (bumps). Erweitert darum, zu korrelieren mit MAC Werten,
+% um zu ermitteln wie oft und wo der BIS versagt hat (also Wachheit
+% angezeigt, aber Anästhetikum Konzentration viel zu hoch dafür...)
 
 classdef BIS_bumpSearch < handle
 
     properties
-        folderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\vitaldb_csvprocessed_BIS_BIS_SR\';
+        folderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\vitaldb_csvprocessed_BIS_BIS_SR_MAC\';
         data = struct; % Datenstruktur mit allen relevanten Daten
     end
 
@@ -111,7 +113,96 @@ classdef BIS_bumpSearch < handle
             matrixToSearch{invalidRows, :} = NaN;
             obj.data.filteredWithFixedThreshold.(filteredTableName) = matrixToSearch;
         end
-    
+
+        % Sucht in Tabelle 'tableName' in Spalte 'col1' nach BIS Episoden 
+        % mit mindestlänge 'minDuration', bei denen der Grenzwert 'threshold1'
+        % überschritten wird und gleichzeitig über die ganze Zeit in Spalte 'col2'
+        % der Grenzwert 'threshold2' überschritten wird. Falls zwischen
+        % Episoden die 'minRefractoryTime' unterschritten wird, werden die
+        % Episoden geflaggt, um zu zeigen, dass da wohl was net stimmt...
+        function obj = detectEpisodes(obj, tableName, col1, col2, threshold1, threshold2, minDuration, minRefractoryTime)
+            % Zugriff auf die Tabelle
+            bisTable = obj.data.bisMatrices.(tableName);
+            
+            % Spalten extrahieren
+            time = bisTable.Time;
+            col1Data = bisTable.(col1);
+            col2Data = bisTable.(col2);
+            
+            % Ersten und letzten gültigen Wert bestimmen
+            validIdx = find(~isnan(col1Data) & col1Data ~= 0, 1, 'first');
+            firstTime = time(validIdx);
+            validIdx = find(~isnan(col1Data) & col1Data ~= 0, 1, 'last');
+            lastTime = time(validIdx);
+            
+            % NaN-Werte in col2 durch lineare Interpolation ersetzen
+            nanIdx = isnan(col2Data);
+            validX = time(~nanIdx);
+            validY = col2Data(~nanIdx);
+            col2Data(nanIdx) = interp1(validX, validY, time(nanIdx), 'linear', 'extrap');
+            
+            % Episoden identifizieren
+            aboveThreshold1 = col1Data > threshold1; % Erzeuge logischen Vektor ob Grenzwert überschritten
+            episodeStart = []; 
+            episodeEnd = [];
+            flagged = [];
+            inEpisode = false;
+            startIdx = 0;
+
+            % gehe bis zur Zeile vor dem minimalen Zeitraum
+            for i = 1:length(time) - minDuration
+                % Suche mit EpisodenMarker und logischem vektor
+                % 'aboveThreshold1' nach Beginn einer Episode
+                if ~inEpisode && all(aboveThreshold1(i:i+minDuration-1))
+                    if all(col2Data(i:i+minDuration-1) > threshold2)
+                        inEpisode = true;
+                        startIdx = i;
+                    end
+                % Suche Ende der Episode und speichere Anfang und Ende ab
+                elseif inEpisode && ~aboveThreshold1(i)
+                    inEpisode = false;
+                    episodeStart = [episodeStart; time(startIdx)];
+                    episodeEnd = [episodeEnd; time(i-1)];
+                end
+            end
+            
+            % Refraktärzeit überprüfen
+            flagged = false(size(episodeStart));
+            % Flagging von Anfang der einen und Ende der anderen Episode
+            % sorgt dafür, dass die ganze Episode im Output markiert wird
+            for j = 2:length(episodeStart)
+                if (episodeStart(j) - episodeEnd(j-1)) < minRefractoryTime
+                    flagged(j-1) = true;
+                    flagged(j) = true;
+                end
+            end
+            
+            % Fließkommazahl für Feldnamen anpassen
+            threshold2_str = strrep(sprintf('%.6f', threshold2), '.', '');
+            resultName = sprintf('result_%d_%s_%d_%d', threshold1, threshold2_str, minDuration, minRefractoryTime);
+            resultName = matlab.lang.makeValidName(resultName);
+
+            % Ergebnisse speichern
+            episodeTable = table(episodeStart, episodeEnd, flagged, 'VariableNames', {'Start', 'End', 'Flagged'});
+            obj.data.(resultName).(['result_' extractAfter(tableName, 'BIS_ID_')])... 
+                = struct('Episodes', episodeTable, 'FirstValidTime', firstTime, 'LastValidTime', lastTime);
+        end
+
+        % Detect Episodes über eine Range an Tabellen
+        function obj = detectEpisodesInRange(obj, range, col1, col2, threshold1, threshold2, minDuration, minRefractoryTime)
+            for i = range
+                fullTableName = strcat("BIS_ID_" + i);
+                fullTableNameChar = convertStringsToChars(fullTableName);
+
+                try
+                    detectEpisodes(obj, fullTableNameChar, col1, col2, threshold1, threshold2, minDuration, minRefractoryTime)
+                catch error
+                    errorMessage = strcat('Für die Funktion detectEpisodes ist für Datei ', fullTableNameChar, ...
+                    ' folgender Fehler aufgetaucht: ', error.message);
+                    warning(errorMessage);
+                end
+            end
+        end
 
         % Einlesen der Metadaten zum VitalDB Datensatz
         function obj = readMetadata(obj, metadataFolderPath)
