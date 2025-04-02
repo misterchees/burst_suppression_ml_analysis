@@ -204,44 +204,74 @@ classdef BIS_bumpSearch < handle
             end
         end
 
+        % Erzeugt aus allen einzelnen Tabellen in den result-Feldern des
+        % übergebenen Feldes eine Summary Tabelle. Außerdem noch eine
+        % zweite Tabelle mit dem ersten und letzten Ausschlag pro result 
         function obj = generateSummaryTables(obj, resultsField)
+            % Summary-Array initialisieren
             episodeList = [];
             timeList = [];
             
             fields = fieldnames(obj.data.(resultsField));
             for i = 1:length(fields)
-                if startsWith(fields{i}, 'result_')
-                    resultNum = str2double(extractAfter(fields{i}, 'result_'));
-                    resultStruct = obj.data.(resultsField).(fields{i});
+                if startsWith(fields{i}, 'result_') % Alle result_X Felder auswerten
+                    resultNum = str2double(extractAfter(fields{i}, 'result_')); % Patientennummer extrahieren
+                    resultStruct = obj.data.(resultsField).(fields{i}); % result Feld abspeichern zum damit weiterarbeiten
                     
+                    % Falls Episoden vorhanden, werden diese dem Summary
+                    % Array hinzugefügt und auch die Anfangs- und Endzeiten
+                    % der Aufzeichnung in timeList abgespeichert
                     if ~isempty(resultStruct.Episodes)
                         tempTable = resultStruct.Episodes;
-                        tempTable.ResultID = repmat(resultNum, height(tempTable), 1);
-                        episodeList = [episodeList; tempTable];
+                        tempTable.ResultID = repmat(resultNum, height(tempTable), 1); % Patientennummer hinzufügen
+                        episodeList = [episodeList; tempTable]; % An Summary-Array anhängen
                         
+                        % Anfangs- und Endzeiten der Aufzeichnung anhängen
                         timeList = [timeList; table(resultNum, resultStruct.FirstValidTime, resultStruct.LastValidTime, ...
                                     'VariableNames', {'ResultID', 'FirstValidTime', 'LastValidTime'})];
                     end
                 end
             end
             
+            % Abspeichern der fertigen Summaries in Summary_Episodes und
+            % Summary_GlobalTimes
             obj.data.(resultsField).Summary_Episodes = episodeList;
             obj.data.(resultsField).Summary_GlobalTimes = timeList;
         end
 
-        function saveTableAsCSV(data, tablePath, saveFolder)
-            tableRef = data;
-            pathParts = strsplit(tablePath, '.');
-            for i = 1:length(pathParts)
-                tableRef = tableRef.(pathParts{i});
+        % Speichert eine Tabelle als CSV ab. Man muss nur den gewüsnchten
+        % Ordner und einen Pfad angeben wo sie liegt. Falls kein
+        % Tabellenname (tableName) angegeben, werden alle Tabellen aus dem
+        % Pfad abgespeichert
+        function saveTableAsCSV(obj, containerField, saveFolder, tableName) 
+            % Sicherstellen, dass der Ausgabeordner existiert
+            if ~exist(saveFolder, 'dir')
+                mkdir(saveFolder);
             end
-            
-            if istable(tableRef)
-                savePath = fullfile(saveFolder, [pathParts{end}, '.csv']);
-                writetable(tableRef, savePath);
+
+            % Falls Tabellenname übergeben, dann nur diesen abspeichern
+           if nargin > 3
+                tableRef = obj.data.(containerField).(tableName);
+                % Prüfen ob Pfad in der Datenstruktur korrekt ist
+                if istable(tableRef)
+                    savePath = fullfile(saveFolder, [tableName, '.csv']);
+                    writetable(tableRef, savePath);
+                else
+                    error('Der angegebene Pfad ' + tableRef + 'führt nicht zu einer Tabelle.');
+                end
+            % Falls kein Tabellenname übergeben wurde, einfach alles im Ordner, was eine Tabelle ist abspeichern    
             else
-                error('Der angegebene Pfad führt nicht zu einer Tabelle.');
-            end
+                tables = fieldnames(obj.data.(containerField));
+                for i = 1:length(tables)
+                    currentTable = obj.data.(containerField).tables{i};
+                    if istable (currentTable)
+                        savePath = fullfile(saveFolder, [currentTable, '.csv']);
+                        writetable(currentTable, savePath);
+                    else
+                        warning('Der angegebene Pfad ' + currentTable + 'führt nicht zu einer Tabelle.');
+                    end
+                end
+           end
         end
 
 
