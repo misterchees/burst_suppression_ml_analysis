@@ -1,28 +1,28 @@
 
-%% Variablen-Deklaration
+%% Variable declaration
 mataDataFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\';
 resultsFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\results\';
 plotsFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\plots\episode lengths v2\';
-range = 1:6388; % Anzahl an MAC-Dateien
-MatricesField = 'bisMatrices'; % Feldname BIS-Tabellen
-filteredMatricesField = 'filteredWithFixedThreshold'; % Feldname nur nach BIS threshold gefilterte Tabellen
-BIS_col_name = 'BIS_BIS'; % Spalte für BIS-Werte
-BIS_SR_col_name = 'BIS_SR'; % Spalte für SuppRate
-MAC_col_name = 'Primus_MAC'; % Spalte für MAC-Werte
-BIS_threshold = 70; % Untergrenze BIS
-MAC_threshold = 0.6; % Untergrenze MAC
-min_BIS_episodeTimeInSeconds = 10; % Mindestzeit für mutmaßliche BS-Episoden
-refractoryTimeInSeconds = 5; % Mindestzeit zw. zwei unterschiedlichen mutmaßlichen BS-Episoden
+range = 1:6388; % Number of MAC tables from VitalDB
+MatricesField = 'bisMatrices'; % fieldname in data structure of tables with the BIS values
+filteredMatricesField = 'filteredWithFixedThreshold'; % fieldname with tables after filtering for BIS threshold
+BIS_col_name = 'BIS_BIS'; % Column name for BIS values in BIS tables
+BIS_SR_col_name = 'BIS_SR'; % Column name for BIS Suppression Rate values 
+MAC_col_name = 'Primus_MAC'; % Column for MAC values
+BIS_threshold = 70; % Threshold minimum BIS
+MAC_threshold = 0.6; % Threshold minimum MAC
+min_BIS_episodeTimeInSeconds = 10; % Threshold minimum for episodes
+refractoryTimeInSeconds = 5; % Threshold minimum for time in between episodes
 
-%% Initialisierung und Metadaten einlesen
+%% Initialize and read metadata
 bumpSearcherBIS = BIS_bumpSearch();
 bumpSearcherBIS = bumpSearcherBIS.readMetadata(mataDataFolderPath);
-% Da die Dateien Nummern sind suche ich einfach nach den Nummern in der
-% Range definiert und speicher sie intern im Feld "matricesField"
+% Names of tables are numbers. Iterating over these numbers and
+% then saving them in internal data structure
 for i = range
      fileAsString = num2str(i); % Da Zahl -> in str konvertieren
      
-     % Fehlerbehandlung
+     % error handling
      try
         bumpSearcherBIS = bumpSearcherBIS.readSingleFile(fileAsString, MatricesField);
      catch error
