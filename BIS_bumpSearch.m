@@ -10,16 +10,17 @@ classdef BIS_bumpSearch < handle
         inputFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\vitaldb_csvprocessed_BIS_BIS_SR_MAC\';
         metaDataFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\';
         resultsFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\results\';
-        plotsFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\plots\episode lengths v2\';
+        plotsFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\plots\';
         inputTablesField = 'inputTables'; % fieldname in data structure of tables with the BIS values
         episodesTablesField = 'episodeTables'; % fieldname with tables of found episodes
+        metadataField = 'metadata'; % filedname with metadata from all patients
         BIS_col_name = 'BIS_BIS'; % Column name for BIS values in BIS tables
         BIS_SR_col_name = 'BIS_SR'; % Column name for BIS Suppression Rate values 
         MAC_col_name = 'Primus_MAC'; % Column for MAC values
-        BIS_threshold = 70; % Threshold minimum BIS
-        MAC_threshold = 0.5; % Threshold minimum MAC
-        min_BIS_episodeTimeInSeconds = 10; % Threshold minimum for episodes
-        refractoryTimeInSeconds = 5; % Threshold minimum for time in between episodes
+        BIS_threshold = 70; % Threshold minimum BIS (range 0-100)
+        MAC_threshold = 0.5; % Threshold minimum MAC (no unit)
+        min_BIS_episodeTimeInSeconds = 5; % Threshold minimum time (s) for episodes
+        refractoryTimeInSeconds = 5; % Threshold minimum for time (s) in between episodes
         data = struct; % Datenstruktur mit allen relevanten Daten
     end
 
@@ -47,6 +48,12 @@ classdef BIS_bumpSearch < handle
         function obj = setNewThresholds(obj, BIS_threshold, MAC_threshold)
             obj.BIS_threshold = BIS_threshold;
             obj.MAC_threshold = MAC_threshold;
+        end
+
+        % Set new episode time and new refractory time
+        function obj = setNewTimes(obj, episodeTime, refractoryTime)
+            obj.min_BIS_episodeTimeInSeconds = episodeTime;
+            obj.refractoryTimeInSeconds = refractoryTime;
         end
 
         % Searches for Episodes where BIS values and MAC values
@@ -143,9 +150,9 @@ classdef BIS_bumpSearch < handle
         end
 
         % Detect Episodes in all tables of given tables field
-        function obj = detectEpisodesInAllTables(obj, tablesField)
+        function obj = detectEpisodesInAllTables(obj)
             
-            tables = fieldnames(obj.data.(tablesField));
+            tables = fieldnames(obj.data.(obj.inputTablesField));
             for i = 1:length(tables)
                 try
                     disp(strcat('Searching in table: ' , tables{i}));
@@ -190,12 +197,24 @@ classdef BIS_bumpSearch < handle
             obj.data.(resultsField).Summary_GlobalTimes = timeList;
         end
 
+        % Generate summary tables for every resultField in obj.data
+        function obj = generateSumaryTablesForAll(obj)
+            fields = fieldnames(obj.data);
+            for i = 1:length(fields)
+                if startsWith(fields{i}, 'result_') % Only evaluate fields starting with 'result_'
+                    generateSummaryTables(obj, fields{i});
+                end
+            end
+        end
 
         % Search in given folder for subfolders with Episode_Summary and
         % create new table with name Summary_Merged_Episodes.csv where all
         % flagged episodes were merged together depending on refractory
         % time
-        function mergeFlaggedEpisodes(obj, resultsFolder)
+        function mergeFlaggedEpisodes(obj)
+            % save resultsFolderPath in variable
+            resultsFolder = obj.resultsFolderPath;
+
             % Search for subfolder in 'results'-directory
             subFolders = dir(resultsFolder);
             % filter all nonFolders out (hidden Folders, system folders etc.)
@@ -208,11 +227,11 @@ classdef BIS_bumpSearch < handle
                 
                 % Errorhandling for not existing file
                 if ~exist(summaryFile, 'file')
-                    error('%s existiert nicht.',summaryFile);
+                    error('%s does not exist.',summaryFile);
                 end
 
                 % log
-                disp(strcat('Geflaggte Episoden in ', summaryFile, ' werden zusammengefasst'));
+                disp(strcat('Merging flagged Episodes from ', summaryFile));
 
                 % load CSV file
                 episodes = readtable(summaryFile);
@@ -251,11 +270,402 @@ classdef BIS_bumpSearch < handle
                 mergedFile = fullfile(curFolderPath, 'Summary_Merged_Episodes.csv');
                 writetable(mergedTable, mergedFile);
                 % finalization log
-                disp(strcat('Geflaggte Episoden liegen in Tabelle: ', mergedFile));
+                disp(strcat('Merging complete. Episodes are in: ', mergedFile));
             end
         end
 
-       
+        % This function processes subfolders inside the given folderPath.
+        % Each subfolder is named as 'result_A_B_C_D'.
+        % It filters folders where C >= windowlength, then reads 'Summary_Episodes.csv',
+        % and generates new episodes based on given windowlength and overlap.
+        % The output is written to a new CSV file named 'Summary_Episodes_X_Y.csv'.
+        % mergedEpisodes is a logical parameter, that decides if this looks
+        % into 'Summary_Merged_Episodes.csv' or 'Summary_Episodes.csv'
+        function generate_windowed_episodes(obj, windowlength, overlap, mergedEpisodes, noOverwrite)
+
+            % input handling
+            if windowlength < 1
+                error("illegal window length:" + windowlength)
+            end
+
+            % use folderPath from class
+            folderPath = obj.resultsFolderPath;
+        
+            % Format overlap for filename
+            overlap_str = sprintf('%03d', round(overlap * 100));
+
+            % Build output filename
+            if mergedEpisodes
+                outputFilename = sprintf('Summary_Merged_Episodes_%d_%s.csv', windowlength, overlap_str);
+            else
+                outputFilename = sprintf('Summary_Episodes_%d_%s.csv', windowlength, overlap_str);
+            end
+        
+            % List all items in the folderPath
+            folderList = dir(folderPath);
+        
+            for i = 1:length(folderList)
+                folderName = folderList(i).name;
+
+                % log current folder
+                fprintf("Processing folder: %s \n", folderName);
+        
+                % Skip if it's not a folder or doesn't match the 'result_' pattern
+                if ~folderList(i).isdir || ~startsWith(folderName, 'result_')
+                    warning("Folder %s does not start with 'result_' and will be ignored ", folderName);
+                    continue;
+                end
+        
+                % Build the path to the episodes CSV depending on
+                % mergedEpisodes Flag
+                if mergedEpisodes
+                    csvFile = 'Summary_Merged_Episodes.csv';
+                else
+                    csvFile = 'Summary_Episodes.csv';
+                end
+                csvPath = fullfile(folderPath, folderName, csvFile);
+
+                % Build output path
+                outputPath = fullfile(folderPath, folderName, outputFilename);
+
+                % Skip if output File exists and noOverwrite is set 
+                if isfile(outputPath) && noOverwrite
+                    warning("The file in %s does exist and function is in no overwrite mode. Continuing with next file", outputPath);
+                    continue;
+                end
+
+                % Check if file exists
+                if ~isfile(csvPath)
+                    warning("The file in %s does not exist. Continuing with next file", csvPath);
+                    continue;
+                end
+        
+                % Read the original CSV file
+                csvTable = readtable(csvPath);
+        
+                % Check required columns exist
+                if ~all(ismember({'Start', 'End', 'ResultID'}, csvTable.Properties.VariableNames))
+                    warning('Missing required columns in %s', csvPath);
+                    continue;
+                end
+        
+                % Initialize output table
+                newEpisodes = table();
+        
+                % Generate new windows for each row
+                for j = 1:height(csvTable)
+                    startTime = csvTable.Start(j);
+                    endTime = csvTable.End(j);
+                    currentLength = endTime-startTime;
+                    resultID = csvTable.ResultID(j);
+        
+                    step = windowlength * (1 - overlap);
+                    t = startTime;
+        
+                    % ensure window is big enough to be split
+                    if currentLength >= windowlength
+                        while (t + windowlength) <= endTime
+                            % Round start and end to nearest whole number upwards
+                            winStart = ceil(t);
+                            winEnd = ceil(t + windowlength);
+            
+                            % Append to new table
+                            newEpisodes = [newEpisodes; table(winStart, winEnd, resultID, ...
+                                'VariableNames', {'Start', 'End', 'ResultID'})];
+                            
+                            % Increment to next start
+                            t = t + step;
+                        end
+                    end
+                end
+        
+                % Write the new table to CSV
+                writetable(newEpisodes, outputPath);
+
+                % output log
+                fprintf("Folder: %s succesfully processed \n", folderName);
+            end
+        end
+
+        function collect_episode_statistics(obj, mergedEpisodes)
+            % This function scans subfolders named 'result_A_B_C_D' inside folderPath.
+            % In each subfolder, it looks for files named 'Summary_Episodes_X_Y.csv'.
+            % It parses A, B, C, D from folder name and X, Y from file name,
+            % counts the number of episodes (rows) in each CSV file,
+            % and writes a summary table to 'all_episodes_count.csv' in
+            % folderPath. If mergedEpisodes is true, than it will do all
+            % this but for merged episode files instead
+        
+            % variable for folder path
+            folderPath = obj.resultsFolderPath;
+            
+            % log beginning of function
+            if mergedEpisodes
+                fprintf("Collecting merged episode statistics in folder: %s \n", folderPath);
+            else
+                fprintf("Collecting episode statistics in folder: %s \n", folderPath);
+            end
+
+            % Initialize empty cell array to collect data
+            summaryData = {};
+        
+            % List all folders in the given path
+            folderList = dir(folderPath);
+        
+            for i = 1:length(folderList)
+                folderName = folderList(i).name;
+        
+                % Check if it's a folder and matches the expected pattern
+                if ~folderList(i).isdir || ~startsWith(folderName, 'result_')
+                    warning("Folder %s does not start with 'result_' and will be ignored ", folderName);
+                    continue;
+                end
+        
+                % Extract parameters A, B, C, D from folder name
+                tokens = regexp(folderName, 'result_(\d+)_([\d]+)_(\d+)_([\d]+)', 'tokens');
+                if isempty(tokens)
+                    warning("Could not find parameters in Folder %s. Continuing with next folder ", folderName);
+                    continue;
+                end
+        
+                parts = tokens{1};
+                A = str2double(parts{1});                      % BIS_thr
+                % insert dot after first number
+                B = str2double(insertAfter(string(parts{2}), 1, '.')); % MAC_thr
+                C = str2double(parts{3});                      % min_length
+                D = str2double(parts{4});                      % min_reftime
+        
+                % change filename and regex template depending on
+                % mergedEpisodes flag
+                if mergedEpisodes
+                    fileName = 'Summary_Merged_Episodes_*.csv';
+                    fileNameRegex = 'Summary_Merged_Episodes_(\d+)_([\d]+)\.csv';
+                else
+                    fileName = 'Summary_Episodes_*.csv';
+                    fileNameRegex = 'Summary_Episodes_(\d+)_([\d]+)\.csv';
+                end
+                
+                % Path to current result folder
+                subfolderPath = fullfile(folderPath, folderName);
+        
+                % Get all Summary_Episodes_X_Y.csv files
+                csvFiles = dir(fullfile(subfolderPath, fileName));
+        
+                for j = 1:length(csvFiles)
+                    csvName = csvFiles(j).name;
+        
+                    % Extract X (fixed window length) and Y (overlap fraction)
+                    tokensCSV = regexp(csvName, fileNameRegex, 'tokens');
+                    if isempty(tokensCSV)
+                        warning("Could not find parameters in CSV %s. Continuing with next csv file ", csvName);
+                        continue;
+                    end
+        
+                    partsCSV = tokensCSV{1};
+                    X = str2double(partsCSV{1});               % fixed_window
+                    % insert dot after first number
+                    Y = str2double(insertAfter(string(partsCSV{2}), 1, '.')); % overlap_frac
+        
+                    % Count the number of episodes in the CSV file
+                    fullCsvPath = fullfile(subfolderPath, csvName);
+                    episodeTable = readtable(fullCsvPath);
+                    numEpisodes = height(episodeTable);
+        
+                    % Append to summary data
+                    summaryData(end+1, :) = {A, B, C, D, X, Y, numEpisodes};
+                end
+            end
+        
+            % Convert to table with appropriate column names
+            summaryTable = cell2table(summaryData, 'VariableNames', ...
+                {'BIS_thr', 'MAC_thr', 'min_length', 'min_reftime', ...
+                 'fixed_window', 'overlap_frac', 'num_episodes'});
+        
+            if mergedEpisodes
+                % Write to CSV and log
+                writetable(summaryTable, fullfile(folderPath, 'all_merged_episodes_count.csv'));
+                fprintf("Finished calculating merged episode statistics. Saving to folder: %s \n", folderPath);
+            else
+                % Write to CSV and log
+                writetable(summaryTable, fullfile(folderPath, 'all_episodes_count.csv'));
+                fprintf("Finished calculating episode statistics. Saving to folder: %s \n", folderPath);
+            end
+        end
+        
+        function generate_overlap_summary_tables(obj, mergedEpisodes)
+            % This function reads 'all_episodes_count.csv' in the given folder.
+            % It groups the data by BIS_thr, MAC_thr, min_length, min_reftime
+            % and creates one summary table per unique combination.
+            % Each table has columns: window, overlap_000, overlap_025, overlap_050, etc.
+            % Output tables are written to a subfolder called 'window vs overlap'.
+        
+            % variable for folder path
+            folderPath = obj.resultsFolderPath;
+
+            if mergedEpisodes
+                inputCSV = 'all_merged_episodes_count.csv';
+            else
+                inputCSV = 'all_episodes_count.csv';
+            end
+
+            % log
+            fprintf("Creating pivot tables for %s in folder: %s \n", inputCSV ,folderPath);
+
+            % Path to the input CSV
+            inputFile = fullfile(folderPath, inputCSV);
+        
+            % Read the main summary file
+            if ~isfile(inputFile)
+                error('File "%s" not found in folder: %s', inputCSV, folderPath);
+            end
+        
+            fileData = readtable(inputFile);
+        
+            % Create output folder
+            outputDir = fullfile(folderPath, 'window vs overlap');
+            if ~exist(outputDir, 'dir')
+                mkdir(outputDir);
+            end
+        
+            % Get all unique combinations of parameters
+            [uniqueCombos, ~, idx] = unique(fileData(:, {'BIS_thr', 'MAC_thr', 'min_length', 'min_reftime'}), 'rows');
+        
+            for i = 1:height(uniqueCombos)
+                % Get data for the current parameter combo
+                comboData = fileData(idx == i, :);
+        
+                % Extract A, B, C, D
+                A = uniqueCombos.BIS_thr(i);
+                floatingMAC = uniqueCombos.MAC_thr(i);
+                B_str = sprintf('%03d', round(floatingMAC * 100));  % convert float to 3-digit string
+                C = uniqueCombos.min_length(i);
+                D = uniqueCombos.min_reftime(i);
+        
+                % Create pivot-like table: rows = fixed_window, columns = overlap types
+                uniqueWindows = unique(comboData.fixed_window);
+                uniqueOverlaps = unique(comboData.overlap_frac);
+        
+                % Prepare table with one row per window size
+                resultTable = table(uniqueWindows, 'VariableNames', {'window'});
+        
+                % Sort overlaps ascending
+                uniqueOverlaps = sort(uniqueOverlaps);
+        
+                for j = 1:length(uniqueOverlaps)
+                    ov = uniqueOverlaps(j);
+                    % Create column name like 'overlap_025'
+                    colName = sprintf('overlap_%03d', round(ov * 100));
+        
+                    % Preallocate column with NaNs
+                    colData = NaN(height(resultTable), 1);
+        
+                    for k = 1:height(resultTable)
+                        w = resultTable.window(k);
+                        match = comboData.fixed_window == w & comboData.overlap_frac == ov;
+        
+                        if any(match)
+                            colData(k) = comboData.num_episodes(match);
+                        end
+                    end
+        
+                    % Add column to table
+                    resultTable.(colName) = colData;
+                end
+        
+                % Create filename and log output
+                if mergedEpisodes
+                    filename = sprintf('result_merged_%d_%s_%d_%d.csv', A, B_str, C, D);
+                else
+                    filename = sprintf('result_%d_%s_%d_%d.csv', A, B_str, C, D);
+                end
+                writetable(resultTable, fullfile(outputDir, filename));
+                fprintf("Succesfully created pivot table %s \n", filename);
+            end
+        end
+
+        function generate_diff_merged_counts(obj)
+            % This function compares normal episode counts and merged episode counts
+            % and generates a pivot table showing the difference in episode counts
+            % for each unique min_reftime.
+            % The result is saved as 'diff_merged_counts.csv' in the folder.
+        
+            % variable for folder path
+            folderPath = obj.resultsFolderPath;
+
+            % Load the two source tables
+            normalPath = fullfile(folderPath, 'all_episodes_count.csv');
+            mergedPath = fullfile(folderPath, 'all_merged_episodes_count.csv');
+        
+            if ~isfile(normalPath) || ~isfile(mergedPath)
+                error('Both all_episodes_count.csv and all_merged_episodes_count.csv must exist.');
+            end
+        
+            normalTable = readtable(normalPath);
+            mergedTable = readtable(mergedPath);
+        
+            % Define join keys (all parameters except num_episodes and min_reftime)
+            joinKeys = {'BIS_thr', 'MAC_thr', 'min_length', 'fixed_window', 'overlap_frac'};
+        
+            % Get unique min_reftime values
+            refTimes = unique(normalTable.min_reftime);
+        
+            % Initialize map for storing diffs
+            allDiffs = [];
+        
+            for i = 1:length(refTimes)
+                refTime = refTimes(i);
+        
+                % Filter for current ref_time in both tables
+                normalFiltered = normalTable(normalTable.min_reftime == refTime, :);
+                mergedFiltered = mergedTable(mergedTable.min_reftime == refTime, :);
+        
+                % Rename episode columns to include ref_time
+                normalFiltered.Properties.VariableNames{'num_episodes'} = 'normal_count';
+                mergedFiltered.Properties.VariableNames{'num_episodes'} = 'merged_count';
+        
+                % Join the two tables on the shared parameters
+                mergedData = outerjoin(normalFiltered, mergedFiltered, ...
+                    'Keys', joinKeys, ...
+                    'MergeKeys', true, ...
+                    'Type', 'full');
+        
+                % Fill missing counts with 0
+                if ~ismember('normal_count', mergedData.Properties.VariableNames)
+                    mergedData.normal_count = zeros(height(mergedData),1);
+                else
+                    mergedData.normal_count(isnan(mergedData.normal_count)) = 0;
+                end
+        
+                if ~ismember('merged_count', mergedData.Properties.VariableNames)
+                    mergedData.merged_count = zeros(height(mergedData),1);
+                else
+                    mergedData.merged_count(isnan(mergedData.merged_count)) = 0;
+                end
+        
+                % Compute the difference
+                diffCol = mergedData.normal_count - mergedData.merged_count;
+                mergedData = mergedData(:, joinKeys);  % remove other columns
+                mergedData.(sprintf('ref_%d', refTime)) = diffCol;
+        
+                % Merge into global diff table
+                if isempty(allDiffs)
+                    allDiffs = mergedData;
+                else
+                    allDiffs = outerjoin(allDiffs, mergedData, ...
+                        'Keys', joinKeys, ...
+                        'MergeKeys', true, ...
+                        'Type', 'full');
+                end
+            end
+        
+            % Replace missing with NaN or 0 as desired (here we use 0)
+            allDiffs = fillmissing(allDiffs, 'constant', 0);
+        
+            % Write to output file
+            writetable(allDiffs, fullfile(folderPath, 'diff_merged_counts.csv'));
+        end
+
+
         % plots one or two files from resultsfolder and saves the plots in
         % plotsFolderPath as matlab plots. Plots are histogramm and
         % cumulative distribution of episodes based on their lengths
@@ -364,7 +774,6 @@ classdef BIS_bumpSearch < handle
             close;
         end
 
-
         % Save table from containerField as CSV file in given Folder.
         % tableName is optional and omitting it will save all tables from
         % given containerField
@@ -382,7 +791,7 @@ classdef BIS_bumpSearch < handle
                     savePath = fullfile(saveFolder, [tableName, '.csv']);
                     writetable(tableRef, savePath);
                 else
-                    error('Der angegebene Pfad ' + tableRef + 'führt nicht zu einer Tabelle.');
+                    error('No table for path %s ', tableRef);
                 end
             % When no tableName given, iterate through all tables in
             % containerField
@@ -394,10 +803,25 @@ classdef BIS_bumpSearch < handle
                         savePath = fullfile(saveFolder, [currentTable, '.csv']);
                         writetable(currentTable, savePath);
                     else
-                        warning('Der angegebene Pfad ' + currentTable + 'führt nicht zu einer Tabelle.');
+                        warning('No table for path %s ', currentTable);
                     end
                 end
            end
+        end
+
+        % Will Save all Summaries
+        function saveAllSummaryTablesAsCSV(obj)
+            fields = fieldnames(obj.data);
+            for i = 1:length(fields)
+                currentField = fields{i};
+                if startsWith(currentField, 'result_') % Only evaluate fields starting with 'result_'
+                    saveFolder = strcat(obj.resultsFolderPath, currentField);
+                    % log savings
+                    fprintf("Saving Summaries from %s in path %s\n", currentField, saveFolder);
+                    saveTableAsCSV(obj, currentField, saveFolder, 'Summary_Episodes');
+                    saveTableAsCSV(obj, currentField, saveFolder, 'Summary_GlobalTimes');
+                end
+            end
         end
 
 
@@ -407,7 +831,7 @@ classdef BIS_bumpSearch < handle
             % Assemble full filepath
             fullMetadaPath = fullfile(obj.metaDataFolderPath, 'metadata_vitaldb');
             % Read file and save in field 'metadata' in data
-            readSingleFile(obj, fullMetadaPath, 'metadata') 
+            readSingleFile(obj, fullMetadaPath, obj.metadataField); 
         end
 
 
@@ -424,10 +848,10 @@ classdef BIS_bumpSearch < handle
             
             for i = loopStart:loopEnd
                 % Name of current File
-                tempFileName = csvFiles(i).name;
+                tempFileName = fullfile(obj.inputFolderPath, csvFiles(i).name);
 
                 % read File
-                readSingleFile(obj, tempFileName, 'bisMatrices');
+                readSingleFile(obj, tempFileName, obj.inputTablesField);
             end
         end
 
@@ -450,8 +874,9 @@ classdef BIS_bumpSearch < handle
             obj.data.(fieldToSave).(structFileName) = tempData;
 
             % Display that function ran succesfully
-            disp("Saving File: " + fileName + " as: " + structFileName);
+            disp("Succesfully loaded File: " + fileName + " as: " + structFileName + " in data.");
         end
+
 
     end
 end
