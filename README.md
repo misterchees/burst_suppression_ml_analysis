@@ -7,19 +7,19 @@ high BIS Values, which are sometimes associated with Burst Suppression Patterns.
 ## Roadmap
 ### Dataset
 Dataset from [VitalDB](https://vitaldb.net/dataset/)
--[x] Skript for Downloading Data
--[ ] Load Skript into this Repo
+- [x] Skript for Downloading Data
+- [ ] Load Skript into this Repo
 
 ### Workflow
--[x] Build Utils for merging tables
--[ ] Build Functions for 
+- [x] Build Utils for merging tables
+- [ ] Build Functions for 
 
 ### Misc
--[x] Use consistently english in code and comments; change existing german code
--[x] Make Code readable
--[x] revise Codebase for code with no usage
--[ ] Speed up loops 
--[ ] search and follow conventions
+- [x] Use consistently english in code and comments; change existing german code
+- [x] Make Code readable
+- [x] revise Codebase for code with no usage
+- [ ] Speed up loops 
+- [ ] search and follow conventions
 
 
 ## BIS_bumpSearch
