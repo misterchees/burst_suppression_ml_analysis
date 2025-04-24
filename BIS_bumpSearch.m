@@ -56,12 +56,70 @@ classdef BIS_bumpSearch < handle
             obj.refractoryTimeInSeconds = refractoryTime;
         end
 
+        function getAwakeTime(obj)
+        % This function gathers all relevant caseids in the input folder
+        % and then proceeds to sum all positive numbers of anestart in
+        % metadata, outputting the overall sum of the time, where patients
+        % were awake and also outputs which patients contributed to the
+        % sum.
+            
+            % Declare variables
+            csvFolderPath = obj.inputFolderPath;
+            metadataFolderPath = obj.metaDataFolderPath;
+
+
+            % List all CSV files in the target folder
+            files = dir(fullfile(csvFolderPath, '*.csv'));
+            
+            % Extract numbers from filenames and store in list
+            caseIds = [];
+            for i = 1:length(files)
+                [~, name, ~] = fileparts(files(i).name);
+                id = str2double(name);
+                % If number -> append, if not -> warning
+                if ~isnan(id)
+                    caseIds(end+1) = id; 
+                else
+                    warning("Number in csv-file %s could not be extracted" ,files(i).name);
+                end
+            end
+        
+            % Load metadata file
+            metadataFile = fullfile(metadataFolderPath, 'metadata_vitaldb.csv');
+            if ~isfile(metadataFile)
+                error('Metadata file not found in %s', metadataFile);
+            end
+        
+            metadata = readtable(metadataFile);
+        
+            % Filter metadata rows matching the extracted case IDs
+            validIndices = ismember(metadata.caseid, caseIds);
+            matchedCaseIds = metadata.caseid(validIndices);
+            anestartValues = metadata.anestart(validIndices);
+        
+            % Further filter rows where anestart > 0
+            positiveMask = anestartValues > 0;
+            filteredCaseIds = matchedCaseIds(positiveMask);
+            filteredAnestartValues = anestartValues(positiveMask);
+            totalSum = sum(filteredAnestartValues);
+        
+            % Display results in the console
+            fprintf('Found case IDs: %s\n', mat2str(filteredCaseIds'));
+            fprintf('Sum of awake times: %.2f\n', totalSum);
+        
+            % Save results to a CSV file
+            resultTable = table(filteredCaseIds, filteredAnestartValues, ...
+                'VariableNames', {'caseid', 'anestart'});
+            resultFile = fullfile(metadataFolderPath, 'anestart_analysis_results.csv');
+            writetable(resultTable, resultFile);
+        end
+
+        function obj = detectEpisodes(obj, tableName)
         % Searches for Episodes where BIS values and MAC values
         % simultaniously exceed certain thresholds over a minimum duration
         % and flagging episodes if duration in between is below a
         % refractory time. Thresholds and durations are class properties
         % and can be changed through setters
-        function obj = detectEpisodes(obj, tableName)
             
             % Set function variables
             inputTables = obj.inputTablesField;
@@ -130,7 +188,6 @@ classdef BIS_bumpSearch < handle
             obj.data.(resultName).(['result_' extractAfter(tableName, 'BIS_ID_')])... 
                 = struct('Episodes', episodeTable, 'FirstValidTime', firstTime, 'LastValidTime', lastTime);
         end
-
        
         % Detect Episodes for a range of tables
         function obj = detectEpisodesInRange(obj, range)
@@ -274,6 +331,7 @@ classdef BIS_bumpSearch < handle
             end
         end
 
+        function generate_windowed_episodes(obj, windowlength, overlap, mergedEpisodes, noOverwrite)
         % This function processes subfolders inside the given folderPath.
         % Each subfolder is named as 'result_A_B_C_D'.
         % It filters folders where C >= windowlength, then reads 'Summary_Episodes.csv',
@@ -281,7 +339,6 @@ classdef BIS_bumpSearch < handle
         % The output is written to a new CSV file named 'Summary_Episodes_X_Y.csv'.
         % mergedEpisodes is a logical parameter, that decides if this looks
         % into 'Summary_Merged_Episodes.csv' or 'Summary_Episodes.csv'
-        function generate_windowed_episodes(obj, windowlength, overlap, mergedEpisodes, noOverwrite)
 
             % input handling
             if windowlength < 1
@@ -665,7 +722,6 @@ classdef BIS_bumpSearch < handle
             writetable(allDiffs, fullfile(folderPath, 'diff_merged_counts.csv'));
         end
 
-
         % plots one or two files from resultsfolder and saves the plots in
         % plotsFolderPath as matlab plots. Plots are histogramm and
         % cumulative distribution of episodes based on their lengths
@@ -876,7 +932,6 @@ classdef BIS_bumpSearch < handle
             % Display that function ran succesfully
             disp("Succesfully loaded File: " + fileName + " as: " + structFileName + " in data.");
         end
-
 
     end
 end

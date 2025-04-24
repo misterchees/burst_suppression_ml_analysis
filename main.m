@@ -67,8 +67,11 @@ bumpSearcherBIS.generate_overlap_summary_tables(1);
 %% Generate diff table for merged episodes depending on reftime
 bumpSearcherBIS.generate_diff_merged_counts();
 
-%% Summary Anzahl der Episoden Plots erstellen
+%% Get awake time and save as all relevant caseids in csv in metadata folder
+bumpSearcherBIS.getAwakeTime();
+
+%% Plot number of episodes
 bumpSearcherBIS.plotEpisodeCounts(resultsFolderPath, plotsFolderPath, 'Summary_Episodes.csv','', 'Summary_Episodes_Plots')
 
-%% Histogramme der Episodenlänge für jede einzelne Konfiguration der Parameter
+%% Histogram of episode length for each configuration of parameter
 bumpSearcherBIS.plotEpisodeDurations(resultsFolderPath, plotsFolderPath, 'Summary_Merged_Episodes.csv','')
