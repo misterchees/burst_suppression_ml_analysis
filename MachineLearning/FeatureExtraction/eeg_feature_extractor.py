@@ -3,6 +3,7 @@ import warnings
 import pandas as pd
 import scipy.io
 from scipy.signal import welch
+import numpy as np
 
 
 class EEGFeatureExtractor:
@@ -11,15 +12,24 @@ class EEGFeatureExtractor:
     # directory of raw EEGs as .mat data
     vitaldb_eeg_dir = "C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\Praktische Arbeit und Bachelorarbeit\\Material\\Daten\\Initial data\\vitalDB_mat_EEG"
     # output directory for current calculated feature
-    output_dir = "C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\Praktische Arbeit und Bachelorarbeit\\Material\\Daten\\Features\\PSDs"
+    output_dir = "C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\Praktische Arbeit und Bachelorarbeit\\Material\\Daten\\Features"
 
-    merged_episodes = False     # flag to determine if episodes are merged
-    bis_threshold = 70          # lower threshold on BIS value (options: 70)
-    mac_threshold = 0.8         # lower threshold on MAC value (options: 0.5, 0.6, 0.7, 0.8)
-    min_episode_length = 20     # lower threshold on episode length (options: 5, 6, 7, 8, 9, 10, 15, 20)
-    refractory_time = 5         # maximum refractory time between episodes in seconds (options: 3, 4, 5)
-    fixed_window_size = 20      # exact window length (options: 5, 6, 7, 8, 9, 10, 15, 20)
-    overlap = 0.0               # window overlap (options: 0.0, 0.25, 0.5)
+    merged_episodes = False  # flag to determine if episodes are merged
+    bis_threshold = 70  # lower threshold on BIS value (options: 70)
+    mac_threshold = 0.8  # lower threshold on MAC value (options: 0.5, 0.6, 0.7, 0.8)
+    min_episode_length = 20  # lower threshold on episode length (options: 5, 6, 7, 8, 9, 10, 15, 20)
+    refractory_time = 5  # maximum refractory time between episodes in seconds (options: 3, 4, 5)
+    fixed_window_size = 20  # exact window length (options: 5, 6, 7, 8, 9, 10, 15, 20)
+    overlap = 0.0  # window overlap (options: 0.0, 0.25, 0.5)
+
+    # Typical bands of EEG
+    frequency_bands = {
+        "Delta": (0.5, 4),
+        "Theta": (4, 8),
+        "Alpha": (8, 13),
+        "Beta": (13, 30),
+        "Gamma": (30, 45)
+    }
 
     def __init__(self, **kwargs):
         """
@@ -27,12 +37,13 @@ class EEGFeatureExtractor:
         EEGFeatureExtractor and uses the initialized default if no value is given in the kwargs.
         """
         for attr in ["preprocessing_dir", "vitaldb_eeg_dir", "output_dir", "merged_episodes", "bis_threshold",
-                     "mac_threshold",  "min_episode_length", "refractory_time", "fixed_window_size", "overlap"]:
+                     "mac_threshold", "min_episode_length", "refractory_time", "fixed_window_size", "overlap"]:
             setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))
 
     def extract_psd(self, channel=1, nperseg_seconds=2):
         """
-        Calculates PSDs for EEG windows in specified csv from preprocessing_csv_fullpath.
+        Calculates PSDs for EEG windows in specified csv from preprocessing_csv_fullpath and saves
+        every PSD in a seperate csv file in a defined output directory.
 
         Parameters:
         - channel: EEG-Channel (options: 1, 2)
@@ -49,7 +60,7 @@ class EEGFeatureExtractor:
         # create output directory with same structure as input subfolder: PSD_A_B_C_D\Summary_Episodes_X_Y
         psd_subfolder_1 = self.create_A_B_C_D_subfolder_name("PSD")
         psd_subfolder_2 = self.create_X_Y_subfolder_name()
-        psd_output_path = os.path.join(self.output_dir, psd_subfolder_1, psd_subfolder_2)
+        psd_output_path = os.path.join(self.output_dir,"PSDs", psd_subfolder_1, psd_subfolder_2)
         os.makedirs(psd_output_path, exist_ok=True)
 
         for _, row in input_dataframe.iterrows():
@@ -95,9 +106,74 @@ class EEGFeatureExtractor:
 
             print(f"Saved: {psd_file_path}")
 
-    # Placeholder methods for future features (e.g., Bandpower, Entropy)
-    def extract_bandpower(self):
-        pass
+    def extract_relative_bandpower(self):
+        """
+        Uses the function calculate_relative_bandpower() to calculate the relative band power in all
+        windows of the PSD directory.
+        """
+
+        # create path to directory with PSDs (specified by class attributes)
+        psd_subfolder_1 = self.create_A_B_C_D_subfolder_name("PSD")
+        psd_subfolder_2 = self.create_X_Y_subfolder_name()
+        psd_directory_path = os.path.join(self.output_dir,"PSDs", psd_subfolder_1, psd_subfolder_2)
+
+        # Output
+        all_rows = []
+
+        for psd_window_file in os.listdir(psd_directory_path):
+            if psd_window_file.endswith(".csv"):
+                psd_fullpath = os.path.join(psd_directory_path, psd_window_file)
+                print(f"Processing {psd_fullpath}")
+                metadata = psd_window_file.split("_")[1:]   # PSD_0_1_2 -> ['0','1','2.csv']
+
+                psd_dataframe = pd.read_csv(psd_fullpath)
+                relative_bandpowers = self.calculate_relative_bandpower(psd_dataframe)
+                row = {
+                    "ResultID": int(metadata[0]),
+                    "Start": int(metadata[1]),
+                    "End": int(metadata[2].split(".")[0]),      # 2.csv -> 2
+                    **relative_bandpowers  # unpack dict with band powers
+                }
+                all_rows.append(row)
+
+        # save as CSV in bandpower subfolder
+        result_df = pd.DataFrame(all_rows)
+        output_dir = os.path.join(self.output_dir,"rel_bandpowers", self.create_A_B_C_D_subfolder_name("RelBandpower"))
+        os.makedirs(output_dir, exist_ok=True)
+        result_df.to_csv(os.path.join(output_dir, f"{psd_subfolder_2}.csv"), index=False)  # write without row index
+
+    def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="total"):
+        """
+        Calculate relative bandpower from PSD DataFrame.
+
+        :param psd_df: DataFrame with columns 'Frequency_Hz' and 'PSD_V2_per_Hz'
+        :param normalize_to: 'total' → normalize to total PSD power;
+                            'bands' → normalize only to sum of power in specified bands
+        :return: dict of relative power values per band
+        """
+
+        freqs = psd_df["Frequency_Hz"].values
+        power = psd_df["PSD_V2_per_Hz"].values
+
+        # Compute total power for denominator depending on strategy
+        if normalize_to == "total":
+            total_power = np.trapezoid(power, freqs)    # estimate total power (i.e. AUC) with trapezoid rule
+        elif normalize_to == "bands":
+            # Only sum the power within all band ranges
+            mask = np.zeros_like(freqs, dtype=bool)
+            for low, high in self.frequency_bands.values():
+                mask |= (freqs >= low) & (freqs < high)
+            total_power = np.trapezoid(power[mask], freqs[mask])
+        else:
+            raise ValueError("normalize_to must be either 'total' or 'bands'")
+
+        result = {}
+        for band_name, (low, high) in self.frequency_bands.items():  # for each frequency band (specified in class)
+            mask = (psd_df['Frequency_Hz'] >= low) & (psd_df['Frequency_Hz'] < high)  # gather frequencies of band
+            band_power = np.trapezoid(psd_df.loc[mask, 'PSD_V2_per_Hz'], psd_df.loc[mask, 'Frequency_Hz'])
+            relative_power = band_power / total_power if total_power > 0 else 0
+            result[band_name] = relative_power
+        return result
 
     def extract_entropy(self):
         pass

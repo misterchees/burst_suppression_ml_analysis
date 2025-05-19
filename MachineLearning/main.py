@@ -10,12 +10,10 @@ def main():
     extractor = EEGFeatureExtractor()
 
     # Extract PSD features
-    print("Starting PSD extraction...")
-    extractor.extract_psd(channel=1, nperseg_seconds=2)
+    # print("Starting PSD extraction...")
+    # extractor.extract_psd(channel=1, nperseg_seconds=2)
 
-    # Placeholder for other feature methods:
-    # extractor.extract_bandpower()
-    # extractor.extract_entropy()
+    extractor.extract_relative_bandpower()
 
 
 if __name__ == "__main__":
