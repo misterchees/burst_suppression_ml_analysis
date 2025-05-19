@@ -124,21 +124,21 @@ class EEGFeatureExtractor:
             if psd_window_file.endswith(".csv"):
                 psd_fullpath = os.path.join(psd_directory_path, psd_window_file)
                 print(f"Processing {psd_fullpath}")
-                metadata = psd_window_file.split("_")[1:]   # PSD_0_1_2 -> ['0','1','2.csv']
+                metadata = psd_window_file.replace(".csv", "").split("_")[1:]   # PSD_0_1_2.csv -> ['0','1','2']
 
                 psd_dataframe = pd.read_csv(psd_fullpath)
                 relative_bandpowers = self.calculate_relative_bandpower(psd_dataframe)
                 row = {
                     "ResultID": int(metadata[0]),
                     "Start": int(metadata[1]),
-                    "End": int(metadata[2].split(".")[0]),      # 2.csv -> 2
+                    "End": int(metadata[2]),      # 2.csv -> 2
                     **relative_bandpowers  # unpack dict with band powers
                 }
                 all_rows.append(row)
 
         # save as CSV in bandpower subfolder
         result_df = pd.DataFrame(all_rows)
-        output_dir = os.path.join(self.output_dir,"rel_bandpowers", self.create_A_B_C_D_subfolder_name("RelBandpower"))
+        output_dir = os.path.join(self.output_dir, "rel_bandpowers", self.create_A_B_C_D_subfolder_name("RelBandpower"))
         os.makedirs(output_dir, exist_ok=True)
         result_df.to_csv(os.path.join(output_dir, f"{psd_subfolder_2}.csv"), index=False)  # write without row index
 
@@ -147,7 +147,7 @@ class EEGFeatureExtractor:
         Calculate relative bandpower from PSD DataFrame.
 
         :param psd_df: DataFrame with columns 'Frequency_Hz' and 'PSD_V2_per_Hz'
-        :param normalize_to: 'total' → normalize to total PSD power;
+        :param normalize_to: 'total' → normalize to total PSD power (default);
                             'bands' → normalize only to sum of power in specified bands
         :return: dict of relative power values per band
         """
@@ -175,8 +175,72 @@ class EEGFeatureExtractor:
             result[band_name] = relative_power
         return result
 
-    def extract_entropy(self):
-        pass
+    def extract_shannon_entropy(self):
+        """
+        Iterates over all PSD CSVs in a folder, calculates Shannon entropy,
+        and saves the results as CSVs in the output folder.
+        """
+
+        output_dir = os.path.join(self.output_dir, "ShannonEntropies", self.create_A_B_C_D_subfolder_name("ShannonEntropy"))
+        os.makedirs(output_dir, exist_ok=True)  # Create output folder if needed
+
+        psd_input_dir = os.path.join(self.output_dir, "PSDs")   # Create path to PSDs
+
+        for filename in os.listdir(psd_input_dir):
+            if filename.endswith(".csv"):
+                psd_path = os.path.join(psd_input_dir, filename)
+                psd_df = pd.read_csv(psd_path)
+
+                # Calculate entropy
+                entropy = self.calculate_shannon_entropy(psd_df)
+
+                # Extract metadata from filename
+                parts = filename.replace(".csv", "").split("_")  # ['PSD', 'ResultID', 'Start', 'End']
+                if len(parts) != 4:
+                    warnings.warn(f"skipped due to unexpected filename format: {filename}")
+                    continue
+
+                result_id = parts[1]
+                start = parts[2]
+                end = parts[3]
+
+                # Create result row
+                result = pd.DataFrame([{
+                    "ResultID": result_id,
+                    "Start": start,
+                    "End": end,
+                    "ShannonEntropy": entropy
+                }])
+
+                # Output filename and path
+                out_filename = f"Entropy_{result_id}_{start}_{end}.csv"
+                out_path = os.path.join(output_dir, out_filename)
+
+                # Save without index column
+                result.to_csv(out_path, index=False)
+
+    def calculate_shannon_entropy(self, psd_df: pd.DataFrame) -> float:
+        """
+        Calculates the Shannon entropy of a PSD.
+
+        :param psd_df: DataFrame with a 'PSD_V2_per_Hz' column
+        :return: Shannon entropy as float
+        """
+
+        power = psd_df["PSD_V2_per_Hz"].values
+        total_power = np.sum(power)
+
+        if total_power == 0:
+            return np.nan  # Avoid division by zero
+
+        # Normalize PSD to create a probability distribution
+        probabilities = power / total_power
+
+        # Avoid log(0) by masking zero entries i.e remove them in nonzero_probs
+        nonzero_probs = probabilities[probabilities > 0]
+
+        entropy = -np.sum(nonzero_probs * np.log2(nonzero_probs))
+        return entropy
 
     def set_attributes(self, **kwargs):
         """
