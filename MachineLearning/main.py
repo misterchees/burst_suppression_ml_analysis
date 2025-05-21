@@ -14,6 +14,7 @@ def main():
     # extractor.extract_psd(channel=1, nperseg_seconds=2)
 
     extractor.extract_relative_bandpower()
+    # extractor.extract_shannon_entropy()
 
 
 if __name__ == "__main__":

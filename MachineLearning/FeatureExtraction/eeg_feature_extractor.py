@@ -22,6 +22,12 @@ class EEGFeatureExtractor:
     fixed_window_size = 20  # exact window length (options: 5, 6, 7, 8, 9, 10, 15, 20)
     overlap = 0.0  # window overlap (options: 0.0, 0.25, 0.5)
 
+    eeg_fs = "fs"
+    eeg_rawEEG = "rawEEG"
+
+    psd_freq_col = "Frequency_Hz"
+    psd_power_col = "PSD_V2_per_Hz"
+
     # Typical bands of EEG
     frequency_bands = {
         "Delta": (0.5, 4),
@@ -60,7 +66,7 @@ class EEGFeatureExtractor:
         # create output directory with same structure as input subfolder: PSD_A_B_C_D\Summary_Episodes_X_Y
         psd_subfolder_1 = self.create_A_B_C_D_subfolder_name("PSD")
         psd_subfolder_2 = self.create_X_Y_subfolder_name()
-        psd_output_path = os.path.join(self.output_dir,"PSDs", psd_subfolder_1, psd_subfolder_2)
+        psd_output_path = os.path.join(self.output_dir, "PSDs", psd_subfolder_1, psd_subfolder_2)
         os.makedirs(psd_output_path, exist_ok=True)
 
         for _, row in input_dataframe.iterrows():
@@ -75,8 +81,8 @@ class EEGFeatureExtractor:
 
             # load .mat file
             mat_data = scipy.io.loadmat(mat_file_path)
-            fs = int(mat_data['fs'].squeeze())
-            raw_eeg = mat_data['rawEEG']
+            fs = int(mat_data[self.eeg_fs].squeeze())
+            raw_eeg = mat_data[self.eeg_rawEEG]
 
             # validate channel
             if channel not in [1, 2]:
@@ -95,8 +101,8 @@ class EEGFeatureExtractor:
 
             # result as DataFrame
             psd_df = pd.DataFrame({
-                'Frequency_Hz': frequencies,
-                'PSD_V2_per_Hz': psd
+                self.psd_freq_col: frequencies,
+                self.psd_power_col: psd
             })
 
             # save as PSD_H_K_L.csv according to structure in preprocessing CSV file. i.e. start, end, resultID
@@ -142,18 +148,18 @@ class EEGFeatureExtractor:
         os.makedirs(output_dir, exist_ok=True)
         result_df.to_csv(os.path.join(output_dir, f"{psd_subfolder_2}.csv"), index=False)  # write without row index
 
-    def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="total"):
+    def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="bands"):
         """
         Calculate relative bandpower from PSD DataFrame.
 
-        :param psd_df: DataFrame with columns 'Frequency_Hz' and 'PSD_V2_per_Hz'
+        :param psd_df: PSD DataFrame with columns 'Frequency_Hz' and 'PSD_V2_per_Hz'
         :param normalize_to: 'total' → normalize to total PSD power (default);
                             'bands' → normalize only to sum of power in specified bands
         :return: dict of relative power values per band
         """
 
-        freqs = psd_df["Frequency_Hz"].values
-        power = psd_df["PSD_V2_per_Hz"].values
+        freqs = psd_df[self.psd_freq_col].values
+        power = psd_df[self.psd_power_col].values
 
         # Compute total power for denominator depending on strategy
         if normalize_to == "total":
@@ -162,34 +168,38 @@ class EEGFeatureExtractor:
             # Only sum the power within all band ranges
             mask = np.zeros_like(freqs, dtype=bool)
             for low, high in self.frequency_bands.values():
-                mask |= (freqs >= low) & (freqs < high)
+                mask |= (freqs >= low) & (freqs < high)     # bitwise OR to use all band values or zeros
             total_power = np.trapezoid(power[mask], freqs[mask])
         else:
             raise ValueError("normalize_to must be either 'total' or 'bands'")
 
         result = {}
         for band_name, (low, high) in self.frequency_bands.items():  # for each frequency band (specified in class)
-            mask = (psd_df['Frequency_Hz'] >= low) & (psd_df['Frequency_Hz'] < high)  # gather frequencies of band
-            band_power = np.trapezoid(psd_df.loc[mask, 'PSD_V2_per_Hz'], psd_df.loc[mask, 'Frequency_Hz'])
+            mask = (psd_df[self.psd_freq_col] >= low) & (psd_df[self.psd_freq_col] < high)  # gather frequencies of band
+            band_power = np.trapezoid(psd_df.loc[mask, self.psd_power_col], psd_df.loc[mask, self.psd_freq_col])
             relative_power = band_power / total_power if total_power > 0 else 0
             result[band_name] = relative_power
         return result
 
     def extract_shannon_entropy(self):
         """
-        Iterates over all PSD CSVs in a folder, calculates Shannon entropy,
-        and saves the results as CSVs in the output folder.
+        Iterates over all PSD CSVs in the Feature PSD folder, calculates Shannon entropy,
+        and saves the results as CSVs in an shannonEntropy output folder.
         """
 
         output_dir = os.path.join(self.output_dir, "ShannonEntropies", self.create_A_B_C_D_subfolder_name("ShannonEntropy"))
         os.makedirs(output_dir, exist_ok=True)  # Create output folder if needed
 
-        psd_input_dir = os.path.join(self.output_dir, "PSDs")   # Create path to PSDs
+        psd_input_dir = os.path.join(self.output_dir, "PSDs",
+                                     self.create_A_B_C_D_subfolder_name("PSD"), self.create_X_Y_subfolder_name())   # Create path to PSDs
+
+        all_rows = []
 
         for filename in os.listdir(psd_input_dir):
             if filename.endswith(".csv"):
-                psd_path = os.path.join(psd_input_dir, filename)
-                psd_df = pd.read_csv(psd_path)
+                psd_fullpath = os.path.join(psd_input_dir, filename)
+                print(f"Processing {psd_fullpath}")
+                psd_df = pd.read_csv(psd_fullpath)
 
                 # Calculate entropy
                 entropy = self.calculate_shannon_entropy(psd_df)
@@ -205,29 +215,32 @@ class EEGFeatureExtractor:
                 end = parts[3]
 
                 # Create result row
-                result = pd.DataFrame([{
+                result_row = {
                     "ResultID": result_id,
                     "Start": start,
                     "End": end,
                     "ShannonEntropy": entropy
-                }])
+                }
+                all_rows.append(result_row)
 
-                # Output filename and path
-                out_filename = f"Entropy_{result_id}_{start}_{end}.csv"
-                out_path = os.path.join(output_dir, out_filename)
+        result = pd.DataFrame(all_rows)
+        # Output filename and path
+        out_filename = f"{self.create_X_Y_subfolder_name()}.csv"
+        out_path = os.path.join(output_dir, out_filename)
 
-                # Save without index column
-                result.to_csv(out_path, index=False)
+        # Save without index column
+        result.to_csv(out_path, index=False)
 
-    def calculate_shannon_entropy(self, psd_df: pd.DataFrame) -> float:
+    def calculate_shannon_entropy(self, psd_df: pd.DataFrame, normalize=True) -> float:
         """
         Calculates the Shannon entropy of a PSD.
 
+        :param normalize: Normalize Entropy (default: True)
         :param psd_df: DataFrame with a 'PSD_V2_per_Hz' column
         :return: Shannon entropy as float
         """
 
-        power = psd_df["PSD_V2_per_Hz"].values
+        power = psd_df[self.psd_power_col].values
         total_power = np.sum(power)
 
         if total_power == 0:
@@ -240,7 +253,48 @@ class EEGFeatureExtractor:
         nonzero_probs = probabilities[probabilities > 0]
 
         entropy = -np.sum(nonzero_probs * np.log2(nonzero_probs))
+
+        if normalize and len(nonzero_probs) > 1:
+            entropy /= np.log2(len(nonzero_probs))
+
         return entropy
+
+    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize="0-1") -> float:
+        """
+        Calculates spectral skewness from a power spectral density (PSD).
+
+        :param psd_df: DataFrame with columns 'Freq_Hz' and 'PSD_V2_per_Hz'
+        :param normalize: False -> raw, "tanh" -> confining smoothly to [-1,1] , or "0-1" -> clipped to [0,1] (default)
+        :return skewness: Float (normalized if requested)
+        """
+
+        freqs = psd_df[self.psd_freq_col].values
+        power = psd_df[self.psd_power_col].values
+        total_power = np.sum(power)
+
+        if total_power == 0:
+            return np.nan
+
+        # Normalize power to form a probability distribution
+        probabilities = power / total_power
+        # Weighted mean frequency
+        mean_freq = np.sum(probabilities * freqs)
+        # Weighted standard deviation
+        std_freq = np.sqrt(np.sum(probabilities * (freqs - mean_freq) ** 2))
+
+        # no standard deviation -> perfectly symmetric -> no skewness
+        if std_freq == 0:
+            return 0.5 if normalize == "0-1" else 0.0
+
+        skewness = np.sum(probabilities * ((freqs - mean_freq) / std_freq) ** 3)
+
+        if normalize == "tanh":
+            skewness = np.tanh(skewness)
+        elif normalize == "0-1":
+            skewness = np.clip(skewness, -1.0, 1.0)
+            skewness = (skewness + 1) / 2
+
+        return skewness
 
     def set_attributes(self, **kwargs):
         """
