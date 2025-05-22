@@ -15,6 +15,8 @@ class IOCore:
     plots_subdir = "Plots"
     # subdirectory for filtered data
     filtered_data_subdir = "Filtered"
+    # subdirectory for PSDs
+    psds_subdir = "PSDs"
 
     # field/column names for EEG files
     eeg_fs = "fs"
@@ -31,7 +33,7 @@ class IOCore:
         and uses the initialized default if no new value is passed.
         """
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",
-                     "filtered_data_subdir"]:
+                     "filtered_data_subdir", "psds_subdir"]:
             setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))
 
     def create_faw_path(self) -> str:
@@ -51,5 +53,5 @@ class IOCore:
 
     def set_attributes(self, **kwargs):
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",
-                     "filtered_data_subdir"]:
+                     "filtered_data_subdir", "psds_subdir"]:
             setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))

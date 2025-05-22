@@ -9,7 +9,7 @@ class EEGFeatureExtractor(MLObject):
     def __init__(self):
         super().__init__()
 
-    def extract_relative_bandpower(self):
+    def extract_relative_bandpower_for_current_parameters(self):
         """
         Uses the function calculate_relative_bandpower() to calculate the relative band power in all
         windows of the PSD directory.

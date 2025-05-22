@@ -1,5 +1,6 @@
 from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.load_data import LoadData
+from MachineLearning.IO.save_result import SaveResult
 from scipy.signal import welch
 
 
@@ -17,9 +18,12 @@ class Transform(MLObject):
         - channel: EEG-Channel (options: 1, 2)
         - nperseg_seconds: Length of window for Welch in seconds (usually: 1 or 2)
         """
+        # instances for IO classes to load and save
+        data_loader = LoadData()
+        result_saver = SaveResult()
 
         # Load FAW Episode based on current parameters
-        input_dataframe = LoadData.load_faw_csv_as_df(self.parameter_dict)
+        input_dataframe = data_loader.load_faw_csv_as_df(self.parameter_dict)
 
         for _, row in input_dataframe.iterrows():
             result_id = int(row['ResultID'])
@@ -27,7 +31,7 @@ class Transform(MLObject):
             end_time = int(row['End'])
 
             # unpack the data of .mat file of interest
-            fs, raw_eeg = LoadData.return_eeg_tuple(result_id)
+            fs, raw_eeg = data_loader.return_eeg_tuple(result_id)
 
             # validate channel
             if channel not in [1, 2]:
@@ -42,23 +46,6 @@ class Transform(MLObject):
 
             # calculate welch PSD
             nperseg = int(nperseg_seconds * fs)
-            frequencies, psd = welch(eeg_segment, fs=fs, nperseg=nperseg)
+            frequencies, power = welch(eeg_segment, fs=fs, nperseg=nperseg)
 
-            # result as DataFrame
-            psd_df = pd.DataFrame({
-                self.psd_freq_col: frequencies,
-                self.psd_power_col: psd
-            })
-
-            # create output directory with same structure as input subfolder: PSD_A_B_C_D\Summary_Episodes_X_Y
-            psd_subfolder_1 = self.create_A_B_C_D_subfolder_name("PSD")
-            psd_subfolder_2 = self.create_X_Y_subfolder_name()
-            psd_output_path = os.path.join(self.output_dir, "PSDs", psd_subfolder_1, psd_subfolder_2)
-            os.makedirs(psd_output_path, exist_ok=True)
-
-            # save as PSD_H_K_L.csv according to structure in preprocessing CSV file. i.e. start, end, resultID
-            psd_filename = f"PSD_{start_time}_{end_time}_{result_id}.csv"
-            psd_file_path = os.path.join(psd_output_path, psd_filename)
-            psd_df.to_csv(psd_file_path, index=False)
-
-            print(f"Saved: {psd_file_path}")
+            result_saver.save_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)

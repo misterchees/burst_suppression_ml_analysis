@@ -55,4 +55,4 @@ class LoadData(io_core.IOCore):
         return fs, raw_eeg
 
     def create_mat_eeg_dir(self):
-        return Utils.create_anypath(self.data_dir, self.initial_data_subdir,self.raw_eeg_mat_subdir)
+        return Utils.create_anypath(self.data_dir, self.initial_data_subdir, self.raw_eeg_mat_subdir)
