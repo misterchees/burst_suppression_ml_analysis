@@ -51,6 +51,15 @@ class IOCore:
     def create_filtered_data_path(self) -> str:
         return Utils.create_anypath(self.data_dir, self.filtered_data_subdir)
 
+    def create_psd_path(self) -> str:
+        return Utils.create_anypath(self.data_dir, self.features_subdir, self.psds_subdir)
+
+    def create_psd_path_with_parameters(self, parameters: dict) -> str:
+        psd_dir = self.create_psd_path()
+        abcd_subdir = Utils.create_A_B_C_D_subfolder_name("PSD", parameters)
+        xy_subdir = Utils.create_X_Y_subfolder_name(parameters)
+        return Utils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
+
     def set_attributes(self, **kwargs):
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",
                      "filtered_data_subdir", "psds_subdir"]:

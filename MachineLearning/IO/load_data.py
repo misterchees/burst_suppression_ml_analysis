@@ -56,3 +56,21 @@ class LoadData(io_core.IOCore):
 
     def create_mat_eeg_dir(self):
         return Utils.create_anypath(self.data_dir, self.initial_data_subdir, self.raw_eeg_mat_subdir)
+
+    def load_psd_with_start_end_resultid(self, directory_path: str, filename: str)\
+            -> Tuple[pd.DataFrame, int, int, int]:
+        """
+        Loads a PSD csv file as Dataframe and returns it with metadata from the filename
+        :param filename:
+        :param directory_path:
+        :return: A tuple structured this way (dataframe, start, end, result_id)
+        """
+        psd_fullpath = Utils.create_anypath(directory_path, filename)
+        print(f"Processing {psd_fullpath}")
+        metadata = filename.replace(".csv", "").split("_")[1:]  # PSD_0_1_2.csv -> ['0','1','2']
+        start = int(metadata[0])
+        end = int(metadata[1])
+        result_id = int(metadata[2])
+        psd_dataframe = pd.read_csv(psd_fullpath)
+
+        return psd_dataframe, start, end, result_id

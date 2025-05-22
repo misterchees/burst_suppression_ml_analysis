@@ -6,6 +6,8 @@ from MachineLearning.Core.utils import Utils
 
 
 class SaveResult(IOCore):
+    bandpower_subdir = "rel_bandpowers"
+    shannon_entropy_subdir = "ShannonEntropies"
     def __init__(self):
         super().__init__()
 
@@ -22,7 +24,7 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir = Utils.create_anypath(self.data_dir, self.features_subdir, self.psds_subdir)
+        psd_dir = self.create_psd_path()
         abcd_subdir = Utils.create_A_B_C_D_subfolder_name("PSD", parameters)
         xy_subdir = Utils.create_X_Y_subfolder_name(parameters)
         psd_dir_fullpath = Utils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
@@ -45,7 +47,20 @@ class SaveResult(IOCore):
 
         print(f"Saved: {fullpath}")
 
+    def save_bandpower(self, bandpowers: list, parameters: dict):
+        """
+        Saves a csv with all episodes of relative bandpower for given parameters
+        :param bandpowers: list of bandpowers
+        :param parameters: parameters for the episode -> define the subfolder names
+        """
+        # save as CSV in bandpower subfolder
+        result_df = pd.DataFrame(bandpowers)
+        bandpower_dir = self.create_bandpower_path()
+        bandpower_prefix = "RelBandpower"
+        fullpath = Utils.create_csv_fullpath(bandpower_dir, bandpower_prefix, parameters)
+        os.makedirs(Utils.create_A_B_C_D_subfolder_name(bandpower_prefix, parameters), exist_ok=True)
+        result_df.to_csv(fullpath, index=False)  # write without row index
 
-
-
-
+    def create_bandpower_path(self):
+        feature_dir = self.create_features_path()
+        return Utils.create_anypath(feature_dir, self.bandpower_subdir)

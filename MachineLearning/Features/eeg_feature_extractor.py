@@ -3,47 +3,43 @@ import warnings
 import pandas as pd
 import numpy as np
 from MachineLearning.Core.ml_object import MLObject
+from MachineLearning.IO.save_result import SaveResult
+from MachineLearning.IO.io_core import IOCore
+from MachineLearning.IO.load_data import LoadData
 
 
 class EEGFeatureExtractor(MLObject):
     def __init__(self):
         super().__init__()
 
-    def extract_relative_bandpower_for_current_parameters(self):
+    def extract_relative_bandpower_for_parameter_combination(self):
         """
         Uses the function calculate_relative_bandpower() to calculate the relative band power in all
-        windows of the PSD directory.
+        windows of the current parameter combiantion.
         """
 
+        data_loader = LoadData()
+        result_saver = SaveResult()
         # create path to directory with PSDs (specified by class attributes)
-        psd_subfolder_1 = self.create_A_B_C_D_subfolder_name("PSD")
-        psd_subfolder_2 = self.create_X_Y_subfolder_name()
-        psd_directory_path = os.path.join(self.output_dir,"PSDs", psd_subfolder_1, psd_subfolder_2)
+        psd_directory_path = data_loader.create_psd_path_with_parameters(self.parameter_dict)
 
         # Output
         all_rows = []
 
         for psd_window_file in os.listdir(psd_directory_path):
             if psd_window_file.endswith(".csv"):
-                psd_fullpath = os.path.join(psd_directory_path, psd_window_file)
-                print(f"Processing {psd_fullpath}")
-                metadata = psd_window_file.replace(".csv", "").split("_")[1:]   # PSD_0_1_2.csv -> ['0','1','2']
-
-                psd_dataframe = pd.read_csv(psd_fullpath)
-                relative_bandpowers = self.calculate_relative_bandpower(psd_dataframe)
+                psd_data = data_loader.load_psd_with_start_end_resultid(psd_directory_path, psd_window_file)
+                relative_bandpowers = self.calculate_relative_bandpower(psd_data[0])
                 row = {
-                    "ResultID": int(metadata[0]),
-                    "Start": int(metadata[1]),
-                    "End": int(metadata[2]),      # 2.csv -> 2
+                    "ResultID": psd_data[1],
+                    "Start": psd_data[2],
+                    "End": psd_data[3],
                     **relative_bandpowers  # unpack dict with band powers
                 }
                 all_rows.append(row)
 
         # save as CSV in bandpower subfolder
-        result_df = pd.DataFrame(all_rows)
-        output_dir = os.path.join(self.output_dir, "rel_bandpowers", self.create_A_B_C_D_subfolder_name("RelBandpower"))
-        os.makedirs(output_dir, exist_ok=True)
-        result_df.to_csv(os.path.join(output_dir, f"{psd_subfolder_2}.csv"), index=False)  # write without row index
+        result_saver.save_bandpower(all_rows, self.parameter_dict)
 
     def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="bands"):
         """
@@ -54,9 +50,13 @@ class EEGFeatureExtractor(MLObject):
                             'bands' → normalize only to sum of power in specified bands
         :return: dict of relative power values per band
         """
+        # column names
+        io_stuff = IOCore()
+        freq_col = io_stuff.psd_freq_col
+        power_col = io_stuff.psd_power_col
 
-        freqs = psd_df[self.psd_freq_col].values
-        power = psd_df[self.psd_power_col].values
+        freqs = psd_df[freq_col].values
+        power = psd_df[power_col].values
 
         # Compute total power for denominator depending on strategy
         if normalize_to == "total":
@@ -72,8 +72,8 @@ class EEGFeatureExtractor(MLObject):
 
         result = {}
         for band_name, (low, high) in self.frequency_bands.items():  # for each frequency band (specified in class)
-            mask = (psd_df[self.psd_freq_col] >= low) & (psd_df[self.psd_freq_col] < high)  # gather frequencies of band
-            band_power = np.trapezoid(psd_df.loc[mask, self.psd_power_col], psd_df.loc[mask, self.psd_freq_col])
+            mask = (psd_df[freq_col] >= low) & (psd_df[freq_col] < high)  # gather frequencies of band
+            band_power = np.trapezoid(psd_df.loc[mask, power_col], psd_df.loc[mask, freq_col])
             relative_power = band_power / total_power if total_power > 0 else 0
             result[band_name] = relative_power
         return result
