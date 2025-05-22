@@ -1,15 +1,55 @@
-import MachineLearning.Core.utils as utils
+from MachineLearning.Core.utils import Utils
+
 
 class IOCore:
     # basic directory for all data in this project
     data_dir = ("C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\"
                 "Praktische Arbeit und Bachelorarbeit\\Material\\Daten")
-    # directory of subsets with episodes of fake awakeness (FAW)
-    faw_dir = "FAW subsets"
-    # directory for all initial raw data only
-    initial_data_dir = "Initial data"
-    # directory for features and related data (like PSDs for freq domain features)
-    features_dir = "Features"
+    # subdirectory of subsets with episodes of fake awakeness (FAW)
+    faw_subdir = "FAW subsets"
+    # subdirectory for all initial raw data only
+    initial_data_subdir = "Initial data"
+    # subdirectory for features and related data (like PSDs for freq domain features)
+    features_subdir = "Features"
+    # subdirectory for plots
+    plots_subdir = "Plots"
+    # subdirectory for filtered data
+    filtered_data_subdir = "Filtered"
 
-    def __init__(self):
-        pass
+    # field/column names for EEG files
+    eeg_fs = "fs"
+    eeg_rawEEG = "rawEEG"
+    eeg_channels = ["1", "2"]
+
+    # column names for PSDs
+    psd_freq_col = "Frequency_Hz"
+    psd_power_col = "PSD_V2_per_Hz"
+
+    def __init__(self, **kwargs):
+        """
+        Initialize the IOCore with optional variables. It checks for every attribute
+        and uses the initialized default if no new value is passed.
+        """
+        for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",
+                     "filtered_data_subdir"]:
+            setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))
+
+    def create_faw_path(self) -> str:
+        return Utils.create_anypath(self.data_dir, self.faw_subdir)
+
+    def create_initial_data_path(self) -> str:
+        return Utils.create_anypath(self.data_dir, self.initial_data_subdir)
+
+    def create_features_path(self) -> str:
+        return Utils.create_anypath(self.data_dir, self.features_subdir)
+
+    def create_plots_path(self) -> str:
+        return Utils.create_anypath(self.data_dir, self.plots_subdir)
+
+    def create_filtered_data_path(self) -> str:
+        return Utils.create_anypath(self.data_dir, self.filtered_data_subdir)
+
+    def set_attributes(self, **kwargs):
+        for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",
+                     "filtered_data_subdir"]:
+            setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))

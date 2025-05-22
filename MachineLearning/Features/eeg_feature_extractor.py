@@ -1,116 +1,13 @@
 import os
 import warnings
 import pandas as pd
-import scipy.io
-from scipy.signal import welch
 import numpy as np
+from MachineLearning.Core.ml_object import MLObject
 
 
-class EEGFeatureExtractor:
-    # directory of all preprocessed csv data
-    preprocessing_dir = "C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\Praktische Arbeit und Bachelorarbeit\\Material\\Daten\\Preprocessing"
-    # directory of raw EEGs as .mat data
-    vitaldb_eeg_dir = "C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\Praktische Arbeit und Bachelorarbeit\\Material\\Daten\\Initial data\\vitalDB_mat_EEG"
-    # output directory for current calculated feature
-    output_dir = "C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\Praktische Arbeit und Bachelorarbeit\\Material\\Daten\\Features"
-
-    merged_episodes = False  # flag to determine if episodes are merged
-    bis_threshold = 70  # lower threshold on BIS value (options: 70)
-    mac_threshold = 0.8  # lower threshold on MAC value (options: 0.5, 0.6, 0.7, 0.8)
-    min_episode_length = 20  # lower threshold on episode length (options: 5, 6, 7, 8, 9, 10, 15, 20)
-    refractory_time = 5  # maximum refractory time between episodes in seconds (options: 3, 4, 5)
-    fixed_window_size = 20  # exact window length (options: 5, 6, 7, 8, 9, 10, 15, 20)
-    overlap = 0.0  # window overlap (options: 0.0, 0.25, 0.5)
-
-    eeg_fs = "fs"
-    eeg_rawEEG = "rawEEG"
-
-    psd_freq_col = "Frequency_Hz"
-    psd_power_col = "PSD_V2_per_Hz"
-
-    # Typical bands of EEG
-    frequency_bands = {
-        "Delta": (0.5, 4),
-        "Theta": (4, 8),
-        "Alpha": (8, 13),
-        "Beta": (13, 30),
-        "Gamma": (30, 45)
-    }
-
-    def __init__(self, **kwargs):
-        """
-        Initialize the EEGFeatureExtractor with optional variables. It checks for every attribute in
-        EEGFeatureExtractor and uses the initialized default if no value is given in the kwargs.
-        """
-        for attr in ["preprocessing_dir", "vitaldb_eeg_dir", "output_dir", "merged_episodes", "bis_threshold",
-                     "mac_threshold", "min_episode_length", "refractory_time", "fixed_window_size", "overlap"]:
-            setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))
-
-    def extract_psd(self, channel=1, nperseg_seconds=2):
-        """
-        Calculates PSDs for EEG windows in specified csv from preprocessing_csv_fullpath and saves
-        every PSD in a seperate csv file in a defined output directory.
-
-        Parameters:
-        - channel: EEG-Channel (options: 1, 2)
-        - nperseg_seconds: Length of window for Welch in seconds (usually: 1 or 2)
-        """
-
-        csv_path = self.create_preprocessing_fullpath()
-        # validate if input file exists
-        if not os.path.isfile(csv_path):
-            warnings.warn(f"CSV not found: {csv_path}")
-
-        input_dataframe = pd.read_csv(csv_path)
-
-        # create output directory with same structure as input subfolder: PSD_A_B_C_D\Summary_Episodes_X_Y
-        psd_subfolder_1 = self.create_A_B_C_D_subfolder_name("PSD")
-        psd_subfolder_2 = self.create_X_Y_subfolder_name()
-        psd_output_path = os.path.join(self.output_dir, "PSDs", psd_subfolder_1, psd_subfolder_2)
-        os.makedirs(psd_output_path, exist_ok=True)
-
-        for _, row in input_dataframe.iterrows():
-            result_id = int(row['ResultID'])
-            start_time = int(row['Start'])
-            end_time = int(row['End'])
-
-            mat_file_path = os.path.join(self.vitaldb_eeg_dir, f"{result_id}.mat")
-            if not os.path.isfile(mat_file_path):
-                warnings.warn(f"MAT-file not found: {mat_file_path}")
-                continue
-
-            # load .mat file
-            mat_data = scipy.io.loadmat(mat_file_path)
-            fs = int(mat_data[self.eeg_fs].squeeze())
-            raw_eeg = mat_data[self.eeg_rawEEG]
-
-            # validate channel
-            if channel not in [1, 2]:
-                raise ValueError(f"Channel value is: {channel} but must be 1 or 2")
-
-            eeg_signal = raw_eeg[:, channel - 1]
-
-            # timeframe in samples
-            start_sample = int(start_time * fs)
-            end_sample = int(end_time * fs)
-            eeg_segment = eeg_signal[start_sample:end_sample]
-
-            # calculate welch PSD
-            nperseg = int(nperseg_seconds * fs)
-            frequencies, psd = welch(eeg_segment, fs=fs, nperseg=nperseg)
-
-            # result as DataFrame
-            psd_df = pd.DataFrame({
-                self.psd_freq_col: frequencies,
-                self.psd_power_col: psd
-            })
-
-            # save as PSD_H_K_L.csv according to structure in preprocessing CSV file. i.e. start, end, resultID
-            psd_filename = f"PSD_{start_time}_{end_time}_{result_id}.csv"
-            psd_file_path = os.path.join(psd_output_path, psd_filename)
-            psd_df.to_csv(psd_file_path, index=False)
-
-            print(f"Saved: {psd_file_path}")
+class EEGFeatureExtractor(MLObject):
+    def __init__(self):
+        super().__init__()
 
     def extract_relative_bandpower(self):
         """
