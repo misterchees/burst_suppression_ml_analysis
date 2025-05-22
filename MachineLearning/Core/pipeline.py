@@ -1,4 +1,4 @@
-from MachineLearning.FeatureExtraction.eeg_feature_extractor import EEGFeatureExtractor
+from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
 
 
 def main():
