@@ -64,12 +64,12 @@ class EEGFeatureExtractor(MLObject):
 
         # Compute total power for denominator depending on strategy
         if normalize_to == "total":
-            total_power = np.trapezoid(power, freqs)    # estimate total power (i.e. AUC) with trapezoid rule
+            total_power = np.trapezoid(power, freqs)  # estimate total power (i.e. AUC) with trapezoid rule
         elif normalize_to == "bands":
             # Only sum the power within all band ranges
             mask = np.zeros_like(freqs, dtype=bool)
             for low, high in self.frequency_bands.values():
-                mask |= (freqs >= low) & (freqs < high)     # bitwise OR to use all band values or zeros
+                mask |= (freqs >= low) & (freqs < high)  # bitwise OR to use all band values or zeros
             total_power = np.trapezoid(power[mask], freqs[mask])
         else:
             raise ValueError("normalize_to must be either 'total' or 'bands'")
@@ -120,7 +120,7 @@ class EEGFeatureExtractor(MLObject):
         """
         Calculates the Shannon entropy of a PSD.
 
-        :param normalize: Normalize Entropy (default: True)
+        :param normalize: Normalize Entropy to [0,1] (default: True)
         :param psd_df: DataFrame with a 'PSD_V2_per_Hz' column
         :return: Shannon entropy as float
         """
@@ -183,12 +183,13 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(all_rows, skewness_name, self.parameter_dict)
         print(f"Succesfully calculated and saved Spectral Skewness")
 
-    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize="0-1") -> float:
+    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize="tanh", to_0_1=True) -> float:
         """
         Calculates spectral skewness from a power spectral density (PSD).
 
         :param psd_df: DataFrame with columns 'Freq_Hz' and 'PSD_V2_per_Hz'
-        :param normalize: False -> raw, "tanh" -> confining smoothly to [-1,1] , or "0-1" -> clipped to [0,1] (default)
+        :param normalize: False -> raw, "tanh" -> confining smoothly to [-1,1] , or "clip" -> clipped to [-1,1]
+        :param to_0_1: Assign all values from [-1,1] to [0,1]
         :return skewness: Float (normalized if requested)
         """
         io_stuff = self.io_instance
@@ -216,10 +217,10 @@ class EEGFeatureExtractor(MLObject):
 
         if normalize == "tanh":
             skewness = np.tanh(skewness)
-        elif normalize == "0-1":
+        elif normalize == "clip":
             skewness = np.clip(skewness, -1.0, 1.0)
+
+        if to_0_1:
             skewness = (skewness + 1) / 2
 
         return skewness
-
-

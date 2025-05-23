@@ -6,4 +6,4 @@ random_PSD_df = pd.read_csv(random_PSD_path)
 
 # Create an instance of EEGFeatureExtractor
 extractor = EEGFeatureExtractor()
-extractor.calculate_spectral_skewness(random_PSD_df)
+extractor.calculate_spectral_skewness(random_PSD_df, normalize="tanh")

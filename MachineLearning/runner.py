@@ -13,8 +13,8 @@ def runner():
     # print("Starting PSD extraction...")
     # extractor.extract_psd(channel=1, nperseg_seconds=2)
 
-    extractor.extract_relative_bandpower_for_parameter_combination()
-    extractor.extract_shannon_entropy_for_parameter_combination()
+    # extractor.extract_relative_bandpower_for_parameter_combination()
+    # extractor.extract_shannon_entropy_for_parameter_combination()
     extractor.extraxt_spectral_skewness_for_parameter_combination()
 
 
