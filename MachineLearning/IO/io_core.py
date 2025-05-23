@@ -6,9 +6,9 @@ class IOCore:
     data_dir = ("C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\"
                 "Praktische Arbeit und Bachelorarbeit\\Material\\Daten")
     # subdirectory of subsets with episodes of fake awakeness (FAW)
-    faw_subdir = "FAW subsets"
+    faw_subdir = "FAW_subsets"
     # subdirectory for all initial raw data only
-    initial_data_subdir = "Initial data"
+    initial_data_subdir = "Initial_data"
     # subdirectory for features and related data (like PSDs for freq domain features)
     features_subdir = "Features"
     # subdirectory for plots

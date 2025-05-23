@@ -22,7 +22,20 @@ class MLObject:
         """
         Create an instance with new values for the parameters
 
-        :param kwargs: Any parameter with value
+        :param kwargs: Any parameter(s) with value
+        """
+        # copy of parameters for these instance
+        self.parameter = self.parameter_dict.copy()
+
+        for key in kwargs:
+            if key in self.parameter:
+                self.parameter[key] = kwargs[key]
+
+    def set_attributes(self, **kwargs):
+        """
+        Sets any number of the attributes of the EEGFeatureExtractor.
+
+        :param kwargs: Any parameter(s) with value
         """
         # copy of parameters for these instance
         self.parameter = self.parameter_dict.copy()

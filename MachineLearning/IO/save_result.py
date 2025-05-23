@@ -6,8 +6,10 @@ from MachineLearning.Core.utils import Utils
 
 
 class SaveResult(IOCore):
-    bandpower_subdir = "rel_bandpowers"
-    shannon_entropy_subdir = "ShannonEntropies"
+    bandpower_subdir = "Rel_bandpower"
+    shannon_entropy_subdir = "Shannon_entropy"
+    spectral_skewness_subdir = "Spectral_skewness"
+
     def __init__(self):
         super().__init__()
 
@@ -47,20 +49,18 @@ class SaveResult(IOCore):
 
         print(f"Saved: {fullpath}")
 
-    def save_bandpower(self, bandpowers: list, parameters: dict):
+    def save_feature_summary_episode(self, results: list, subdir_prefix: str, parameters: dict):
         """
-        Saves a csv with all episodes of relative bandpower for given parameters
-        :param bandpowers: list of bandpowers
+        Saves a csv with all episodes of a given parameter combination
+        :param results: list of results
+        :param subdir_prefix: prefix of the subdirectory where the summary episode will be saved
         :param parameters: parameters for the episode -> define the subfolder names
         """
-        # save as CSV in bandpower subfolder
-        result_df = pd.DataFrame(bandpowers)
-        bandpower_dir = self.create_bandpower_path()
-        bandpower_prefix = "RelBandpower"
-        fullpath = Utils.create_csv_fullpath(bandpower_dir, bandpower_prefix, parameters)
-        os.makedirs(Utils.create_A_B_C_D_subfolder_name(bandpower_prefix, parameters), exist_ok=True)
+        # save as CSV in subfolder with prefix
+        result_df = pd.DataFrame(results)
+        subdir_of_feature = Utils.create_anypath(self.data_dir, self.features_subdir, subdir_prefix)
+        abcd_subdir = Utils.create_A_B_C_D_subfolder_name(subdir_prefix, parameters)
+        subdir_of_file = Utils.create_anypath(subdir_of_feature, abcd_subdir)
+        fullpath = Utils.create_csv_fullpath(subdir_of_feature, subdir_prefix, parameters)
+        os.makedirs(subdir_of_file, exist_ok=True)
         result_df.to_csv(fullpath, index=False)  # write without row index
-
-    def create_bandpower_path(self):
-        feature_dir = self.create_features_path()
-        return Utils.create_anypath(feature_dir, self.bandpower_subdir)

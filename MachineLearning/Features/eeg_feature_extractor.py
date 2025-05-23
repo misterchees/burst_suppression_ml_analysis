@@ -1,5 +1,4 @@
 import os
-import warnings
 import pandas as pd
 import numpy as np
 from MachineLearning.Core.ml_object import MLObject
@@ -9,37 +8,41 @@ from MachineLearning.IO.load_data import LoadData
 
 
 class EEGFeatureExtractor(MLObject):
+    io_instance = IOCore()
+    data_loader = LoadData()
+    result_saver = SaveResult()
+
     def __init__(self):
         super().__init__()
 
     def extract_relative_bandpower_for_parameter_combination(self):
         """
-        Uses the function calculate_relative_bandpower() to calculate the relative band power in all
-        windows of the current parameter combiantion.
+        Iterates over all PSD CSVs in the Feature PSD folder,calculates the relative band power
+        and saves the results as CSV in a Rel_bandpower output folder of the current parameter combination.
         """
-
-        data_loader = LoadData()
-        result_saver = SaveResult()
+        loader = self.data_loader
+        saver = self.result_saver
         # create path to directory with PSDs (specified by class attributes)
-        psd_directory_path = data_loader.create_psd_path_with_parameters(self.parameter_dict)
+        psd_dir = loader.create_psd_path_with_parameters(self.parameter_dict)
 
         # Output
         all_rows = []
 
-        for psd_window_file in os.listdir(psd_directory_path):
-            if psd_window_file.endswith(".csv"):
-                psd_data = data_loader.load_psd_with_start_end_resultid(psd_directory_path, psd_window_file)
-                relative_bandpowers = self.calculate_relative_bandpower(psd_data[0])
+        for psd_file in os.listdir(psd_dir):
+            if psd_file.endswith(".csv"):
+                psd_df, start, end, result_id = loader.load_psd_with_start_end_resultid(psd_dir, psd_file)
+                relative_bandpowers = self.calculate_relative_bandpower(psd_df)
                 row = {
-                    "ResultID": psd_data[1],
-                    "Start": psd_data[2],
-                    "End": psd_data[3],
+                    "Start": start,
+                    "End": end,
+                    "ResultID": result_id,
                     **relative_bandpowers  # unpack dict with band powers
                 }
                 all_rows.append(row)
 
         # save as CSV in bandpower subfolder
-        result_saver.save_bandpower(all_rows, self.parameter_dict)
+        saver.save_feature_summary_episode(all_rows, saver.bandpower_subdir, self.parameter_dict)
+        print(f"Succesfully calculated and saved bandpowers")
 
     def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="bands"):
         """
@@ -50,8 +53,9 @@ class EEGFeatureExtractor(MLObject):
                             'bands' → normalize only to sum of power in specified bands
         :return: dict of relative power values per band
         """
+
+        io_stuff = self.io_instance
         # column names
-        io_stuff = IOCore()
         freq_col = io_stuff.psd_freq_col
         power_col = io_stuff.psd_power_col
 
@@ -78,55 +82,39 @@ class EEGFeatureExtractor(MLObject):
             result[band_name] = relative_power
         return result
 
-    def extract_shannon_entropy(self):
+    def extract_shannon_entropy_for_parameter_combination(self):
         """
         Iterates over all PSD CSVs in the Feature PSD folder, calculates Shannon entropy,
-        and saves the results as CSVs in an shannonEntropy output folder.
+        and saves the results as CSV in a Shannon_entropy output folder of the current parameter combination.
         """
+        loader = self.data_loader
+        saver = self.result_saver
+        # create path to directory with PSDs (specified by class attributes)
+        psd_directory_path = loader.create_psd_path_with_parameters(self.parameter_dict)
 
-        output_dir = os.path.join(self.output_dir, "ShannonEntropies", self.create_A_B_C_D_subfolder_name("ShannonEntropy"))
-        os.makedirs(output_dir, exist_ok=True)  # Create output folder if needed
-
-        psd_input_dir = os.path.join(self.output_dir, "PSDs",
-                                     self.create_A_B_C_D_subfolder_name("PSD"), self.create_X_Y_subfolder_name())   # Create path to PSDs
+        # retrieve name of feature -> will be the name for subdirectory and column
+        entropy_name = saver.shannon_entropy_subdir
 
         all_rows = []
 
-        for filename in os.listdir(psd_input_dir):
-            if filename.endswith(".csv"):
-                psd_fullpath = os.path.join(psd_input_dir, filename)
-                print(f"Processing {psd_fullpath}")
-                psd_df = pd.read_csv(psd_fullpath)
+        for psd_file in os.listdir(psd_directory_path):
+            if psd_file.endswith(".csv"):
+                psd_df, start, end, result_id = loader.load_psd_with_start_end_resultid(psd_directory_path, psd_file)
 
                 # Calculate entropy
                 entropy = self.calculate_shannon_entropy(psd_df)
 
-                # Extract metadata from filename
-                parts = filename.replace(".csv", "").split("_")  # ['PSD', 'ResultID', 'Start', 'End']
-                if len(parts) != 4:
-                    warnings.warn(f"skipped due to unexpected filename format: {filename}")
-                    continue
-
-                result_id = parts[1]
-                start = parts[2]
-                end = parts[3]
-
                 # Create result row
                 result_row = {
-                    "ResultID": result_id,
                     "Start": start,
                     "End": end,
-                    "ShannonEntropy": entropy
+                    "ResultID": result_id,
+                    entropy_name: entropy
                 }
                 all_rows.append(result_row)
 
-        result = pd.DataFrame(all_rows)
-        # Output filename and path
-        out_filename = f"{self.create_X_Y_subfolder_name()}.csv"
-        out_path = os.path.join(output_dir, out_filename)
-
-        # Save without index column
-        result.to_csv(out_path, index=False)
+        saver.save_feature_summary_episode(all_rows, entropy_name, self.parameter_dict)
+        print(f"Succesfully calculated and saved Shannon Entropy")
 
     def calculate_shannon_entropy(self, psd_df: pd.DataFrame, normalize=True) -> float:
         """
@@ -137,7 +125,12 @@ class EEGFeatureExtractor(MLObject):
         :return: Shannon entropy as float
         """
 
-        power = psd_df[self.psd_power_col].values
+        # columns
+        io_stuff = self.io_instance
+        power_col = io_stuff.psd_power_col
+
+        # get all powers and calculate total power
+        power = psd_df[power_col].values
         total_power = np.sum(power)
 
         if total_power == 0:
@@ -156,6 +149,40 @@ class EEGFeatureExtractor(MLObject):
 
         return entropy
 
+    def extraxt_spectral_skewness_for_parameter_combination(self):
+        """
+        Iterates over all PSD CSVs in the Feature PSD folder, calculates spectral Skewness,
+        and saves the results as CSV in a Spectral_skewness output folder of the current parameter combination.
+        """
+        loader = self.data_loader
+        saver = self.result_saver
+        # create path to directory with PSDs (specified by class attributes)
+        psd_directory_path = loader.create_psd_path_with_parameters(self.parameter_dict)
+
+        # retrieve name of feature -> will be the name for subdirectory and column
+        skewness_name = saver.spectral_skewness_subdir
+
+        all_rows = []
+
+        for psd_file in os.listdir(psd_directory_path):
+            if psd_file.endswith(".csv"):
+                psd_df, start, end, result_id = loader.load_psd_with_start_end_resultid(psd_directory_path, psd_file)
+
+                # Calculate skewness
+                skewness = self.calculate_spectral_skewness(psd_df)
+
+                # Create result row
+                result_row = {
+                    "Start": start,
+                    "End": end,
+                    "ResultID": result_id,
+                    skewness_name: skewness
+                }
+                all_rows.append(result_row)
+
+        saver.save_feature_summary_episode(all_rows, skewness_name, self.parameter_dict)
+        print(f"Succesfully calculated and saved Spectral Skewness")
+
     def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize="0-1") -> float:
         """
         Calculates spectral skewness from a power spectral density (PSD).
@@ -164,9 +191,11 @@ class EEGFeatureExtractor(MLObject):
         :param normalize: False -> raw, "tanh" -> confining smoothly to [-1,1] , or "0-1" -> clipped to [0,1] (default)
         :return skewness: Float (normalized if requested)
         """
+        io_stuff = self.io_instance
 
-        freqs = psd_df[self.psd_freq_col].values
-        power = psd_df[self.psd_power_col].values
+        # get frequencies and power
+        freqs = psd_df[io_stuff.psd_freq_col].values
+        power = psd_df[io_stuff.psd_power_col].values
         total_power = np.sum(power)
 
         if total_power == 0:
@@ -193,19 +222,4 @@ class EEGFeatureExtractor(MLObject):
 
         return skewness
 
-    def set_attributes(self, **kwargs):
-        """
-        Sets any number of the attributes of the EEGFeatureExtractor.
 
-        :param merged_episodes: flag to determine if episodes are merged (default: False)
-        :param bis_threshold: lower threshold on BIS value (options: 70)
-        :param mac_threshold: lower threshold on MAC value (options: 0.5, 0.6, 0.7, 0.8)
-        :param min_episode_length: lower threshold on episode length (options: 5, 6, 7, 8, 9, 10, 15, 20)
-        :param refractory_time: maximum refractory time between episodes in seconds (options: 3, 4, 5)
-        :param fixed_window_size: exact window length (options: 5, 6, 7, 8, 9, 10, 15, 20)
-        :param overlap: window overlap (options: 0.0, 0.25, 0.5)
-        """
-
-        for attr in ["preprocessing_dir", "vitaldb_eeg_dir", "output_dir", "merged_episodes", "bis_threshold",
-                     "mac_threshold", "min_episode_length", "refractory_time", "fixed_window_size", "overlap"]:
-            setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))
