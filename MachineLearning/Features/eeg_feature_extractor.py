@@ -4,7 +4,8 @@ import numpy as np
 from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.IO.io_core import IOCore
-from MachineLearning.IO.load_data import LoadData
+from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resultid
+from MachineLearning.Utils.math_utils import MathUtils
 
 
 class EEGFeatureExtractor(MLObject):
@@ -30,7 +31,7 @@ class EEGFeatureExtractor(MLObject):
 
         for psd_file in os.listdir(psd_dir):
             if psd_file.endswith(".csv"):
-                psd_df, start, end, result_id = loader.load_psd_with_start_end_resultid(psd_dir, psd_file)
+                psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_dir, psd_file)
                 relative_bandpowers = self.calculate_relative_bandpower(psd_df)
                 row = {
                     "Start": start,
@@ -99,7 +100,7 @@ class EEGFeatureExtractor(MLObject):
 
         for psd_file in os.listdir(psd_directory_path):
             if psd_file.endswith(".csv"):
-                psd_df, start, end, result_id = loader.load_psd_with_start_end_resultid(psd_directory_path, psd_file)
+                psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_directory_path, psd_file)
 
                 # Calculate entropy
                 entropy = self.calculate_shannon_entropy(psd_df)
@@ -166,7 +167,7 @@ class EEGFeatureExtractor(MLObject):
 
         for psd_file in os.listdir(psd_directory_path):
             if psd_file.endswith(".csv"):
-                psd_df, start, end, result_id = loader.load_psd_with_start_end_resultid(psd_directory_path, psd_file)
+                psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_directory_path, psd_file)
 
                 # Calculate skewness
                 skewness = self.calculate_spectral_skewness(psd_df)
@@ -183,14 +184,18 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(all_rows, skewness_name, self.parameter_dict)
         print(f"Succesfully calculated and saved Spectral Skewness")
 
-    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize="tanh", to_0_1=True) -> float:
+    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize=True, n_method="tanh",
+                                    lower_bound=0, upper_bound=1) -> float:
         """
         Calculates spectral skewness from a power spectral density (PSD).
 
         :param psd_df: DataFrame with columns 'Freq_Hz' and 'PSD_V2_per_Hz'
-        :param normalize: False -> raw, "tanh" -> confining smoothly to [-1,1] , or "clip" -> clipped to [-1,1]
-        :param to_0_1: Assign all values from [-1,1] to [0,1]
-        :return skewness: Float (normalized if requested)
+        :param normalize: False -> raw, True -> normalized with method specified in n_method
+        :param n_method: "tanh" -> confines values with tan hyperbolic into [a,b];
+                         "clip" -> takes only values between [a,b], outliers get mapped respectively to a or b
+        :param lower_bound: Lower bound of normalization range, referred to as a
+        :param upper_bound: Upper bound of normalization range, referred to as b
+        :return: Skewness as float (normalized if requested)
         """
         io_stuff = self.io_instance
 
@@ -208,19 +213,89 @@ class EEGFeatureExtractor(MLObject):
         mean_freq = np.sum(probabilities * freqs)
         # Weighted standard deviation
         std_freq = np.sqrt(np.sum(probabilities * (freqs - mean_freq) ** 2))
-
-        # no standard deviation -> perfectly symmetric -> no skewness
-        if std_freq == 0:
-            return 0.5 if normalize == "0-1" else 0.0
-
+        # compute spectral skewness
         skewness = np.sum(probabilities * ((freqs - mean_freq) / std_freq) ** 3)
 
-        if normalize == "tanh":
-            skewness = np.tanh(skewness)
-        elif normalize == "clip":
-            skewness = np.clip(skewness, -1.0, 1.0)
-
-        if to_0_1:
-            skewness = (skewness + 1) / 2
+        if normalize:
+            if n_method == "tanh":
+                skewness = MathUtils.scaled_tanh(skewness, out_min=lower_bound, out_max=upper_bound)
+            elif normalize == "clip":
+                skewness = np.clip(skewness, lower_bound, upper_bound)
+        else:
+            raise ValueError(f"Normalization method '{n_method}' not supported")
 
         return skewness
+
+    def extraxt_spectral_kurtosis_for_parameter_combination(self):
+        """
+        Iterates over all PSD CSVs in the Feature PSD folder, calculates spectral Kurtosis,
+        and saves the results as CSV in a Spectral_kurtosis output folder of the current parameter combination.
+        """
+        loader = self.data_loader
+        saver = self.result_saver
+        # create path to directory with PSDs (specified by class attributes)
+        psd_directory_path = loader.create_psd_path_with_parameters(self.parameter_dict)
+
+        # retrieve name of feature -> will be the name for subdirectory and column
+        kurtosis_name = saver.spectral_kurtosis_subdir
+
+        all_rows = []
+
+        for psd_file in os.listdir(psd_directory_path):
+            if psd_file.endswith(".csv"):
+                psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_directory_path, psd_file)
+
+                # Calculate kurtosis
+                kurtosis = self.calculate_spectral_kurtosis(psd_df)
+
+                # Create result row
+                result_row = {
+                    "Start": start,
+                    "End": end,
+                    "ResultID": result_id,
+                    kurtosis_name: kurtosis
+                }
+                all_rows.append(result_row)
+
+        saver.save_feature_summary_episode(all_rows, kurtosis_name, self.parameter_dict)
+        print(f"Succesfully calculated and saved Spectral Kurtosis")
+
+    def calculate_spectral_kurtosis(self, psd_df: pd.DataFrame, normalize=True, n_method="tanh",
+                                    lower_bound=0, upper_bound=1) -> float:
+        """
+        Calculates spectral kurtosis from a power spectral density (PSD).
+
+        :param psd_df: DataFrame containing the PSD with frequency and power columns
+        :param normalize: False -> raw, True -> normalized with method specified in n_method
+        :param n_method: "tanh" -> confines values with tan hyperbolic into [a,b];
+                         "clip" -> takes only values between [a,b], outliers get mapped respectively to a or b
+        :param lower_bound: Lower bound of normalization range, referred to as a
+        :param upper_bound: Upper bound of normalization range, referred to as b
+        :return: Spectral kurtosis as float (normalized if requested)
+        """
+        io_stuff = self.io_instance
+
+        freqs = psd_df[io_stuff.psd_freq_col].values
+        power = psd_df[io_stuff.psd_power_col].values
+        total_power = np.sum(power)
+
+        if total_power == 0:
+            return np.nan
+
+        # Normalize power to probabilities (weights)
+        probabilities = power / total_power
+        mean_freq = np.sum(probabilities * freqs)
+        std_freq = np.sqrt(np.sum(probabilities * (freqs - mean_freq) ** 2))
+
+        # Weighted fourth central moment
+        kurtosis = np.sum(probabilities * ((freqs - mean_freq) / std_freq) ** 4)
+
+        if normalize:
+            if n_method == "tanh":
+                kurtosis = MathUtils.scaled_tanh(kurtosis, out_min=lower_bound, out_max=upper_bound)
+            elif normalize == "clip":
+                kurtosis = np.clip(kurtosis, lower_bound, upper_bound)
+        else:
+            raise ValueError(f"Normalization method '{n_method}' not supported")
+
+        return kurtosis

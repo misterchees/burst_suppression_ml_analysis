@@ -5,7 +5,26 @@ import pandas as pd
 import scipy.io
 
 import MachineLearning.IO.io_core as io_core
-from MachineLearning.Core.utils import Utils
+from MachineLearning.Utils.path_utils import PathUtils
+
+
+def load_psd_with_start_end_resultid(directory_path: str, filename: str)\
+        -> Tuple[pd.DataFrame, int, int, int]:
+    """
+    Loads a PSD csv file as Dataframe and returns it with metadata from the filename
+    :param filename: a file with this name structure -> start_end_resultid.csv
+    :param directory_path: The directory of filename
+    :return: A tuple structured this way (dataframe, start, end, result_id)
+    """
+    psd_fullpath = PathUtils.create_anypath(directory_path, filename)
+    print(f"Processing {psd_fullpath}")
+    metadata = filename.replace(".csv", "").split("_")[1:]  # PSD_0_1_2.csv -> ['0','1','2']
+    start = int(metadata[0])
+    end = int(metadata[1])
+    result_id = int(metadata[2])
+    psd_dataframe = pd.read_csv(psd_fullpath)
+
+    return psd_dataframe, start, end, result_id
 
 
 class LoadData(io_core.IOCore):
@@ -24,7 +43,7 @@ class LoadData(io_core.IOCore):
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
         faw_dir = self.create_faw_path()
-        csv_fullpath = Utils.create_csv_fullpath(faw_dir, "result", parameters)
+        csv_fullpath = PathUtils.create_csv_fullpath(faw_dir, "result", parameters)
         # validate fullpath
         if not os.path.isfile(csv_fullpath):
             raise FileNotFoundError(f"CSV not found: {csv_fullpath}")
@@ -55,22 +74,4 @@ class LoadData(io_core.IOCore):
         return fs, raw_eeg
 
     def create_mat_eeg_dir(self):
-        return Utils.create_anypath(self.data_dir, self.initial_data_subdir, self.raw_eeg_mat_subdir)
-
-    def load_psd_with_start_end_resultid(self, directory_path: str, filename: str)\
-            -> Tuple[pd.DataFrame, int, int, int]:
-        """
-        Loads a PSD csv file as Dataframe and returns it with metadata from the filename
-        :param filename:
-        :param directory_path:
-        :return: A tuple structured this way (dataframe, start, end, result_id)
-        """
-        psd_fullpath = Utils.create_anypath(directory_path, filename)
-        print(f"Processing {psd_fullpath}")
-        metadata = filename.replace(".csv", "").split("_")[1:]  # PSD_0_1_2.csv -> ['0','1','2']
-        start = int(metadata[0])
-        end = int(metadata[1])
-        result_id = int(metadata[2])
-        psd_dataframe = pd.read_csv(psd_fullpath)
-
-        return psd_dataframe, start, end, result_id
+        return PathUtils.create_anypath(self.data_dir, self.initial_data_subdir, self.raw_eeg_mat_subdir)

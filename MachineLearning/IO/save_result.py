@@ -2,13 +2,14 @@ import numpy as np
 import os
 import pandas as pd
 from MachineLearning.IO.io_core import IOCore
-from MachineLearning.Core.utils import Utils
+from MachineLearning.Utils.path_utils import PathUtils
 
 
 class SaveResult(IOCore):
     bandpower_subdir = "Rel_bandpower"
     shannon_entropy_subdir = "Shannon_entropy"
     spectral_skewness_subdir = "Spectral_skewness"
+    spectral_kurtosis_subdir = "Spectral_kurtosis"
 
     def __init__(self):
         super().__init__()
@@ -27,9 +28,9 @@ class SaveResult(IOCore):
 
         # assemble path to directory
         psd_dir = self.create_psd_path()
-        abcd_subdir = Utils.create_A_B_C_D_subfolder_name("PSD", parameters)
-        xy_subdir = Utils.create_X_Y_subfolder_name(parameters)
-        psd_dir_fullpath = Utils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
+        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name("PSD", parameters)
+        xy_subdir = PathUtils.create_X_Y_subfolder_name(parameters)
+        psd_dir_fullpath = PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
 
         # create directory
         os.makedirs(psd_dir_fullpath, exist_ok=True)
@@ -42,7 +43,7 @@ class SaveResult(IOCore):
 
         # create fullpath with PSD name to save data
         psd_filename = f"PSD_{start}_{end}_{result_id}.csv"
-        fullpath = Utils.create_anypath(psd_dir_fullpath, psd_filename)
+        fullpath = PathUtils.create_anypath(psd_dir_fullpath, psd_filename)
 
         # save psd
         psd_df.to_csv(fullpath, index=False)
@@ -58,9 +59,9 @@ class SaveResult(IOCore):
         """
         # save as CSV in subfolder with prefix
         result_df = pd.DataFrame(results)
-        subdir_of_feature = Utils.create_anypath(self.data_dir, self.features_subdir, subdir_prefix)
-        abcd_subdir = Utils.create_A_B_C_D_subfolder_name(subdir_prefix, parameters)
-        subdir_of_file = Utils.create_anypath(subdir_of_feature, abcd_subdir)
-        fullpath = Utils.create_csv_fullpath(subdir_of_feature, subdir_prefix, parameters)
+        subdir_of_feature = PathUtils.create_anypath(self.data_dir, self.features_subdir, subdir_prefix)
+        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name(subdir_prefix, parameters)
+        subdir_of_file = PathUtils.create_anypath(subdir_of_feature, abcd_subdir)
+        fullpath = PathUtils.create_csv_fullpath(subdir_of_feature, subdir_prefix, parameters)
         os.makedirs(subdir_of_file, exist_ok=True)
         result_df.to_csv(fullpath, index=False)  # write without row index

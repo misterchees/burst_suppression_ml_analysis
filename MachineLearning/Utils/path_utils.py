@@ -1,16 +1,7 @@
 import os
 
 
-class Utils:
-
-    # @staticmethod
-    # def create_preprocessing_fullpath():
-    #     """
-    #     Sets the preprocessing fullpath variable to "result_..." with the subsequent dots
-    #     as placeholder for the specific path depending on the attributes of EEGFeatureExtractor.
-    #     """
-    #     return Utils.create_fullpath("result")
-
+class PathUtils:
     @staticmethod
     def create_anypath(*path_parts: str) -> str:
         """
@@ -35,8 +26,8 @@ class Utils:
         """
 
         # Assemble path from given parameters with structure dir/prefix_A_B_C_D_subfolder/Summary_Episodes_X_Y_file
-        subfolder_name = Utils.create_A_B_C_D_subfolder_name(prefix, parameters)
-        x_y_name = Utils.create_X_Y_subfolder_name(parameters)
+        subfolder_name = PathUtils.create_A_B_C_D_subfolder_name(prefix, parameters)
+        x_y_name = PathUtils.create_X_Y_subfolder_name(parameters)
         csv_name = f"{x_y_name}.csv"
         return str(os.path.join(directory, subfolder_name, csv_name))
 

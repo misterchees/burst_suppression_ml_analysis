@@ -1,4 +1,4 @@
-from MachineLearning.Core.utils import Utils
+from MachineLearning.Utils.path_utils import PathUtils
 
 
 class IOCore:
@@ -37,28 +37,28 @@ class IOCore:
             setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))
 
     def create_faw_path(self) -> str:
-        return Utils.create_anypath(self.data_dir, self.faw_subdir)
+        return PathUtils.create_anypath(self.data_dir, self.faw_subdir)
 
     def create_initial_data_path(self) -> str:
-        return Utils.create_anypath(self.data_dir, self.initial_data_subdir)
+        return PathUtils.create_anypath(self.data_dir, self.initial_data_subdir)
 
     def create_features_path(self) -> str:
-        return Utils.create_anypath(self.data_dir, self.features_subdir)
+        return PathUtils.create_anypath(self.data_dir, self.features_subdir)
 
     def create_plots_path(self) -> str:
-        return Utils.create_anypath(self.data_dir, self.plots_subdir)
+        return PathUtils.create_anypath(self.data_dir, self.plots_subdir)
 
     def create_filtered_data_path(self) -> str:
-        return Utils.create_anypath(self.data_dir, self.filtered_data_subdir)
+        return PathUtils.create_anypath(self.data_dir, self.filtered_data_subdir)
 
     def create_psd_path(self) -> str:
-        return Utils.create_anypath(self.data_dir, self.features_subdir, self.psds_subdir)
+        return PathUtils.create_anypath(self.data_dir, self.features_subdir, self.psds_subdir)
 
     def create_psd_path_with_parameters(self, parameters: dict) -> str:
         psd_dir = self.create_psd_path()
-        abcd_subdir = Utils.create_A_B_C_D_subfolder_name("PSD", parameters)
-        xy_subdir = Utils.create_X_Y_subfolder_name(parameters)
-        return Utils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
+        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name("PSD", parameters)
+        xy_subdir = PathUtils.create_X_Y_subfolder_name(parameters)
+        return PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
 
     def set_attributes(self, **kwargs):
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",
