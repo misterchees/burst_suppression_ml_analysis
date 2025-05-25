@@ -17,6 +17,8 @@ class IOCore:
     filtered_data_subdir = "Filtered"
     # subdirectory for PSDs
     psds_subdir = "PSDs"
+    # subdirectory with files of all features
+    all_features_subdir = "All_features"
 
     # field/column names for EEG files
     eeg_fs = "fs"

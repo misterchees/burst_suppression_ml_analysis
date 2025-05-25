@@ -299,3 +299,4 @@ class EEGFeatureExtractor(MLObject):
             raise ValueError(f"Normalization method '{n_method}' not supported")
 
         return kurtosis
+

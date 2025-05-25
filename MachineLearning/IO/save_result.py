@@ -65,3 +65,25 @@ class SaveResult(IOCore):
         fullpath = PathUtils.create_csv_fullpath(subdir_of_feature, subdir_prefix, parameters)
         os.makedirs(subdir_of_file, exist_ok=True)
         result_df.to_csv(fullpath, index=False)  # write without row index
+
+    def save_filtered_eeg(self, filtered_eeg: np.ndarray, fs: int, result_id: int):
+        """
+        Saves a filtered EEG as a result_id.csv. Assuming the EEG has only 2 channels, these
+        will be the columns of the csv-file, and a third column for the fs (sampling frequency)
+        :param filtered_eeg: An array of filtered EEG (assuming 2 columns i.e. channels)
+        :param fs: The sampling frequency of the EEG
+        :param result_id: The patient ID. Will be part of the saved file -> result_id.csv
+        """
+        # Create a DataFrame and insert fs as the first row
+        df = pd.DataFrame(filtered_eeg, columns=['Channel_1', 'Channel_2'])
+        df.insert(0, 'fs', '')
+
+        # Add fs value to the first row
+        first_row = pd.DataFrame({'fs': [fs], 'Channel_1': [np.nan], 'Channel_2': [np.nan]})
+        df = pd.concat([first_row, df], ignore_index=True)
+
+        # Save to CSV
+        filtered_eeg_subdir = self.create_filtered_data_path()
+        os.makedirs(os.path.dirname(filtered_eeg_subdir), exist_ok=True)
+        fullpath = PathUtils.create_anypath(filtered_eeg_subdir, f"{result_id}.csv")
+        df.to_csv(fullpath, index=False)

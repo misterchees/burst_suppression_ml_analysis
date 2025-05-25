@@ -53,7 +53,8 @@ class LoadData(io_core.IOCore):
 
     def return_eeg_tuple(self, result_id: int) -> Tuple[int, np.ndarray]:
         """
-        Assembles a path to the EEG mat File of interest, specified by the patient ID
+        Assembles a path to the EEG mat File of interest, specified by the patient ID and
+        returns fs and raw EEG as a Tuple
 
         :param result_id: The patient ID
         :return: a tuple containing the sampling frequency and an array with two channels of raw EEG

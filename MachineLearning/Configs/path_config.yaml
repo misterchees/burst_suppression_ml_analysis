@@ -1,0 +1,26 @@
+base_dir: # basic directory for all data in this project
+    path_name: "C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\
+    Praktische Arbeit und Bachelorarbeit\\Material\\Daten"
+    subdirs:
+        faw: # subdirectory of subsets with episodes of fake awakeness (FAW)
+            path_name: "FAW_subsets"
+        initial_data: # subdirectory for all initial raw data only
+            path_name: "Initial_data"
+            subdirs:
+                combined_raw_data: "vitaldb_csvprocessed_BIS_BIS_SR_MAC" # contains synchronized and combined raw data: bis, bis_sr and mac
+                raw_eeg_mat: "vitalDB_mat_EEG" # contains
+        features: # subdirectory for features and related data (like PSDs for freq domain features)
+            path_name: "Features"
+            subdirs:
+                psds: "PSDs" # PSDs for frequency domain features
+                all_features: "All_features" # Folder where all features are integrated
+                bandpower: "Rel_bandpower" # Relative bandpowers of alpha, beta, gamma, theta, delta
+                shannon_entropy: "Shannon_entropy" # spectral shannon entropy
+                spectral_skewness: "Spectral_skewness" # spectral skewness
+                spectral_kurtosis: "Spectral_kurtosis" # spectral kurtosis
+        plots: # subdirectory for plots
+            path_name: "Plots"
+        filtered_data: # subdirectory for filtered data
+            path_name: "Filtered"
+    files:
+        metadata: "metadata_vitaldb.csv" # File with metadata for all patients
