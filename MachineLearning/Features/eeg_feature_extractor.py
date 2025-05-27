@@ -300,3 +300,17 @@ class EEGFeatureExtractor(MLObject):
 
         return kurtosis
 
+    def calculate_mean(self, result_id, channel=1):
+        """
+        Calculate the mean value of EEG signal for each channel.
+        :param result_id: patient ID of the EEG of interest (with two channels)
+        :param channel: channel of the EEG; valid options -> 1 or 2
+
+        """
+        loader = self.data_loader
+
+        # Load EEG data
+        fs, eeg_data = loader.return_eeg_tuple(result_id)
+        mean = np.mean(eeg_data[:, channel-1])
+
+        return mean

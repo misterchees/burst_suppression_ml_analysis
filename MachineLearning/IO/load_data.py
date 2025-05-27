@@ -42,7 +42,7 @@ class LoadData(io_core.IOCore):
         :param parameters: A dictionary with all episode parameters from the project
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
-        faw_dir = self.create_faw_path()
+        faw_dir = self.return_level1_subdir_path("faw")
         csv_fullpath = PathUtils.create_csv_fullpath(faw_dir, "result", parameters)
         # validate fullpath
         if not os.path.isfile(csv_fullpath):
