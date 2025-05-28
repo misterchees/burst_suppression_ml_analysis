@@ -24,7 +24,7 @@ class EEGFeatureExtractor(MLObject):
         loader = self.data_loader
         saver = self.result_saver
         # create path to directory with PSDs (specified by class attributes)
-        psd_dir = loader.create_psd_path_with_parameters(self.parameter_dict)
+        psd_dir = loader.psd_path_with_parameters(self.parameter_dict)
 
         # Output
         all_rows = []
@@ -91,7 +91,7 @@ class EEGFeatureExtractor(MLObject):
         loader = self.data_loader
         saver = self.result_saver
         # create path to directory with PSDs (specified by class attributes)
-        psd_directory_path = loader.create_psd_path_with_parameters(self.parameter_dict)
+        psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         entropy_name = saver.shannon_entropy_subdir
@@ -158,7 +158,7 @@ class EEGFeatureExtractor(MLObject):
         loader = self.data_loader
         saver = self.result_saver
         # create path to directory with PSDs (specified by class attributes)
-        psd_directory_path = loader.create_psd_path_with_parameters(self.parameter_dict)
+        psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         skewness_name = saver.spectral_skewness_subdir
@@ -234,7 +234,7 @@ class EEGFeatureExtractor(MLObject):
         loader = self.data_loader
         saver = self.result_saver
         # create path to directory with PSDs (specified by class attributes)
-        psd_directory_path = loader.create_psd_path_with_parameters(self.parameter_dict)
+        psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         kurtosis_name = saver.spectral_kurtosis_subdir

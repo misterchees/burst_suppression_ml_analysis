@@ -1,0 +1,7 @@
+eeg_files:  # field/column names for EEG files
+  eeg_fs: "fs"
+  eeg_rawEEG: "rawEEG"
+  eeg_channels: ["1", "2"]
+psd_files:  # column names for PSDs
+    psd_freq_col: "Frequency_Hz"
+    psd_power_col: "PSD_V2_per_Hz"

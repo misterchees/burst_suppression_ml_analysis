@@ -1,5 +1,14 @@
-from MachineLearning.Utils.config_loader import load_config
+from MachineLearning.Utils.plots import Plots
 
-config = load_config("path_config.yaml")
+plots = Plots()
+plt1 = plots.plot_butterworth_filtering()
+plt2 = plots.plot_butterworth_filtering(order=2)
+plt3 = plots.plot_butterworth_filtering(order=8)
+plt4 = plots.plot_butterworth_filtering(order=16)
+plt5 = plots.plot_butterworth_filtering(order=32)
 
-print(config["base_dir"]["subdirs"].keys())
+plt1.show(block=False)
+plt2.show(block=False)
+plt3.show(block=False)
+plt4.show(block=False)
+plt5.show()

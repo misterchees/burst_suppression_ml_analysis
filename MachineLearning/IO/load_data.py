@@ -28,10 +28,6 @@ def load_psd_with_start_end_resultid(directory_path: str, filename: str)\
 
 
 class LoadData(io_core.IOCore):
-    metadata_filename = "metadata_vitaldb.csv"
-    combined_raw_data_subdir = "vitaldb_csvprocessed_BIS_BIS_SR_MAC"
-    raw_eeg_mat_subdir = "vitalDB_mat_EEG"
-
     def __init__(self):
         super().__init__()
 
@@ -42,7 +38,7 @@ class LoadData(io_core.IOCore):
         :param parameters: A dictionary with all episode parameters from the project
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
-        faw_dir = self.return_level1_subdir_path("faw")
+        faw_dir = self.level1_subdir_path("faw")
         csv_fullpath = PathUtils.create_csv_fullpath(faw_dir, "result", parameters)
         # validate fullpath
         if not os.path.isfile(csv_fullpath):
@@ -61,7 +57,7 @@ class LoadData(io_core.IOCore):
         """
 
         # Assemble Path to directory with .mat files
-        vitaldb_eeg_dir = self.create_mat_eeg_dir()
+        vitaldb_eeg_dir = self.level2_subdir_path("initial_data", "raw_eeg_mat")
 
         mat_file_path = os.path.join(vitaldb_eeg_dir, f"{result_id}.mat")
         if not os.path.isfile(mat_file_path):
@@ -73,6 +69,3 @@ class LoadData(io_core.IOCore):
         raw_eeg = mat_data[self.eeg_rawEEG]
 
         return fs, raw_eeg
-
-    def create_mat_eeg_dir(self):
-        return PathUtils.create_anypath(self.data_dir, self.initial_data_subdir, self.raw_eeg_mat_subdir)

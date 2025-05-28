@@ -6,11 +6,6 @@ from MachineLearning.Utils.path_utils import PathUtils
 
 
 class SaveResult(IOCore):
-    bandpower_subdir = "Rel_bandpower"
-    shannon_entropy_subdir = "Shannon_entropy"
-    spectral_skewness_subdir = "Spectral_skewness"
-    spectral_kurtosis_subdir = "Spectral_kurtosis"
-
     def __init__(self):
         super().__init__()
 
@@ -27,7 +22,7 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir = self.create_psd_path()
+        psd_dir = self.level2_subdir_path("features", "psds")
         abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name("PSD", parameters)
         xy_subdir = PathUtils.create_X_Y_subfolder_name(parameters)
         psd_dir_fullpath = PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
@@ -50,19 +45,19 @@ class SaveResult(IOCore):
 
         print(f"Saved: {fullpath}")
 
-    def save_feature_summary_episode(self, results: list, subdir_prefix: str, parameters: dict):
+    def save_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
         """
         Saves a csv with all episodes of a given parameter combination
         :param results: list of results
-        :param subdir_prefix: prefix of the subdirectory where the summary episode will be saved
+        :param feature_key: key of the subdirectory in path_config, where the summary episode will be saved
         :param parameters: parameters for the episode -> define the subfolder names
         """
         # save as CSV in subfolder with prefix
         result_df = pd.DataFrame(results)
-        subdir_of_feature = PathUtils.create_anypath(self.data_dir, self.features_subdir, subdir_prefix)
-        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name(subdir_prefix, parameters)
+        subdir_of_feature = self.level2_subdir_path("features", feature_key)
+        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name(feature_key, parameters)
         subdir_of_file = PathUtils.create_anypath(subdir_of_feature, abcd_subdir)
-        fullpath = PathUtils.create_csv_fullpath(subdir_of_feature, subdir_prefix, parameters)
+        fullpath = PathUtils.create_csv_fullpath(subdir_of_feature, feature_key, parameters)
         os.makedirs(subdir_of_file, exist_ok=True)
         result_df.to_csv(fullpath, index=False)  # write without row index
 
@@ -83,7 +78,7 @@ class SaveResult(IOCore):
         df = pd.concat([first_row, df], ignore_index=True)
 
         # Save to CSV
-        filtered_eeg_subdir = self.return_level1_subdir_path("filtered_data")
+        filtered_eeg_subdir = self.level1_subdir_path("filtered_data")
         os.makedirs(os.path.dirname(filtered_eeg_subdir), exist_ok=True)
         fullpath = PathUtils.create_anypath(filtered_eeg_subdir, f"{result_id}.csv")
         df.to_csv(fullpath, index=False)
