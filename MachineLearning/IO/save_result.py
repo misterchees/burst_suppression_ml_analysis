@@ -31,9 +31,10 @@ class SaveResult(IOCore):
         os.makedirs(psd_dir_fullpath, exist_ok=True)
 
         # create dataframe from PSD data
+        psd_cols = self.data_names["psd_files"]
         psd_df = pd.DataFrame({
-            self.psd_freq_col: frequencies,
-            self.psd_power_col: power
+            psd_cols["psd_freq_col"]: frequencies,
+            psd_cols["psd_power_col"]: power
         })
 
         # create fullpath with PSD name to save data
@@ -69,16 +70,15 @@ class SaveResult(IOCore):
         :param fs: The sampling frequency of the EEG
         :param result_id: The patient ID. Will be part of the saved file -> <result_id>.csv
         """
-        # Create a DataFrame and insert fs as the first row
-        df = pd.DataFrame(filtered_eeg, columns=['Channel_1', 'Channel_2'])
-        df.insert(0, 'fs', '')
-
-        # Add fs value to the first row
-        first_row = pd.DataFrame({'fs': [fs], 'Channel_1': [np.nan], 'Channel_2': [np.nan]})
-        df = pd.concat([first_row, df], ignore_index=True)
-
-        # Save to CSV
+        channels = self.data_names["eeg_files"]["eeg_channels"]
+        df = pd.DataFrame(filtered_eeg, columns=channels)
         filtered_eeg_subdir = self.level1_subdir_path("filtered_data")
         os.makedirs(os.path.dirname(filtered_eeg_subdir), exist_ok=True)
         fullpath = PathUtils.create_anypath(filtered_eeg_subdir, f"{result_id}.csv")
-        df.to_csv(fullpath, index=False)
+
+        # Write fs as header line, then the rounded data
+        with open(fullpath, "w", newline='') as f:
+            f.write(f"# fs = {fs}\n")
+            df.to_csv(f, index=False, float_format="%.4f")
+
+        print(f"Successfully saved filtered EEG to {fullpath}")

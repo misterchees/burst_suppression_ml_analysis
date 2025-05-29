@@ -1,3 +1,6 @@
+from MachineLearning.Utils.config_loader import load_config
+
+
 class MLObject:
     parameter_dict = {
         "merged_episodes": False,  # flag to determine if episodes are merged
@@ -8,15 +11,7 @@ class MLObject:
         "fixed_window_size": 20,  # exact window length (options: 5, 6, 7, 8, 9, 10, 15, 20)
         "overlap": 0.0  # window overlap (options: 0.0, 0.25, 0.5)
     }
-
-    # Typical bands of EEG
-    frequency_bands = {
-        "Delta": (0.5, 4),
-        "Theta": (4, 8),
-        "Alpha": (8, 13),
-        "Beta": (13, 30),
-        "Gamma": (30, 45)
-    }
+    param_config = load_config("parameters_config.yaml")
 
     def __init__(self, **kwargs):
         """

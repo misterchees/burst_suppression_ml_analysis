@@ -4,15 +4,7 @@ from MachineLearning.Utils.config_loader import load_config
 
 class IOCore:
     path_config = load_config("path_config.yaml")
-
-    # field/column names for EEG files
-    eeg_fs = "fs"
-    eeg_rawEEG = "rawEEG"
-    eeg_channels = ["1", "2"]
-
-    # column names for PSDs
-    psd_freq_col = "Frequency_Hz"
-    psd_power_col = "PSD_V2_per_Hz"
+    data_names = load_config("data_names_config.yaml")
 
     def __init__(self, **kwargs):
         pass
@@ -29,7 +21,7 @@ class IOCore:
         if subdir_key not in valid_subdirs:
             raise ValueError(f"Invalid lvl1 subdir key: {subdir_key}. Valid subdir keys are {valid_subdirs}")
         base_dir = self.path_config["base_dir"]["path_name"]
-        subdir = self.path_config["base_dir"]["subdirs"][subdir_key]
+        subdir = self.path_config["base_dir"]["subdirs"][subdir_key]["path_name"]
         return PathUtils.create_anypath(base_dir, subdir)
 
     def level2_subdir_path(self, subdir_lvl_1_key: str, subdir_lvl_2_key) -> str:
@@ -49,10 +41,19 @@ class IOCore:
         return PathUtils.create_anypath(lvl_1_subdir, lvl_2_subdir)
 
     def psd_path_with_parameters(self, parameters: dict) -> str:
+        """
+        Returns a path to the PSD directory, with the current parameters specified in <parameters>.
+        :param parameters: Current Episode Parameters
+        :return: Path to the PSD directory
+        """
         psd_dir = self.level2_subdir_path("features", "psds")
         abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name("PSD", parameters)
         xy_subdir = PathUtils.create_X_Y_subfolder_name(parameters)
         return PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
+
+    def return_feature_name(self, feature_key: str) -> str:
+        """Returns the name of the feature for given key from path_config"""
+        return self.path_config["base_dir"]["subdirs"]["features"]["subdirs"][feature_key]
 
     def set_attributes(self, **kwargs):
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",

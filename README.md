@@ -8,19 +8,28 @@ high BIS Values, which are sometimes associated with Burst Suppression Patterns.
 ### Dataset
 Dataset from [VitalDB](https://vitaldb.net/dataset/)
 - [x] Skript for Downloading Data
-- [ ] Load Skript into this Repo
-
-### Workflow
-- [x] Build Utils for merging tables
-- [ ] Build Functions for 
+- [x] Load Skript into this Repo
 
 ### Misc
 - [x] Use consistently english in code and comments; change existing german code
 - [x] Make Code readable
 - [x] revise Codebase for code with no usage
-- [ ] Speed up loops 
-- [ ] search and follow conventions
 
+# Python Section
+**TO-DO**
+- [ ] Create subfolder in PSDs for filtered and raw EEG PSDs
+- [ ] Plot it to find filtering sweet spot
+  - [ ] (Optional) Implement Method to get filtering Parameters based on Ringing and Attenuation slope
+- [ ] Implement the Rest of the Features
+- [ ] Implement train and test set functions
+- [ ] Implement SVM
+- [ ] Implement modular Workflow
+- [ ] ... more to come
+
+# Matlab Section
+**TO-DO**
+Workflow
+- [x] Build Utils for merging tables
 
 ## BIS_bumpSearch
 This is a class, that provides functionalities around searching for Episodes, where the BIS is 
@@ -30,7 +39,7 @@ BIS values are typical for being awake but high MAC values are typical for being
 ## CSVMerger
 This provides functionalities to merge CSVs retrieved from VitalDB
 
-## Data and Folder Name Conventions
+# Data and Folder Name Conventions
 + **Resultfolders with Name 'result_A_B_C_D':**
     These are folders for results of the Episode search with a combination of Parameters 
     represented in the name. Parameters are:

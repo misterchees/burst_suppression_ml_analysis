@@ -32,7 +32,7 @@ class EEGFeatureExtractor(MLObject):
         for psd_file in os.listdir(psd_dir):
             if psd_file.endswith(".csv"):
                 psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_dir, psd_file)
-                relative_bandpowers = self.calculate_relative_bandpower(psd_df)
+                relative_bandpowers = self.calculate_relative_bandpower(psd_df)  # This is where the calculation happens
                 row = {
                     "Start": start,
                     "End": end,
@@ -42,7 +42,7 @@ class EEGFeatureExtractor(MLObject):
                 all_rows.append(row)
 
         # save as CSV in bandpower subfolder
-        saver.save_feature_summary_episode(all_rows, saver.bandpower_subdir, self.parameter_dict)
+        saver.save_feature_summary_episode(all_rows, saver.return_feature_name("bandpower"), self.parameter_dict)
         print(f"Succesfully calculated and saved bandpowers")
 
     def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="bands"):
@@ -56,6 +56,7 @@ class EEGFeatureExtractor(MLObject):
         """
 
         io_stuff = self.io_instance
+        frequency_bands = self.param_config["frequency_bands"]
         # column names
         freq_col = io_stuff.psd_freq_col
         power_col = io_stuff.psd_power_col
@@ -69,14 +70,14 @@ class EEGFeatureExtractor(MLObject):
         elif normalize_to == "bands":
             # Only sum the power within all band ranges
             mask = np.zeros_like(freqs, dtype=bool)
-            for low, high in self.frequency_bands.values():
+            for low, high in frequency_bands.values():
                 mask |= (freqs >= low) & (freqs < high)  # bitwise OR to use all band values or zeros
             total_power = np.trapezoid(power[mask], freqs[mask])
         else:
             raise ValueError("normalize_to must be either 'total' or 'bands'")
 
         result = {}
-        for band_name, (low, high) in self.frequency_bands.items():  # for each frequency band (specified in class)
+        for band_name, (low, high) in frequency_bands.items():  # for each frequency band (specified in class)
             mask = (psd_df[freq_col] >= low) & (psd_df[freq_col] < high)  # gather frequencies of band
             band_power = np.trapezoid(psd_df.loc[mask, power_col], psd_df.loc[mask, freq_col])
             relative_power = band_power / total_power if total_power > 0 else 0
@@ -94,7 +95,7 @@ class EEGFeatureExtractor(MLObject):
         psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
 
         # retrieve name of feature -> will be the name for subdirectory and column
-        entropy_name = saver.shannon_entropy_subdir
+        entropy_name = saver.return_feature_name("shannon_entropy")
 
         all_rows = []
 
@@ -161,7 +162,7 @@ class EEGFeatureExtractor(MLObject):
         psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
 
         # retrieve name of feature -> will be the name for subdirectory and column
-        skewness_name = saver.spectral_skewness_subdir
+        skewness_name = saver.return_feature_name("spectral_skewness")
 
         all_rows = []
 
@@ -237,7 +238,7 @@ class EEGFeatureExtractor(MLObject):
         psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
 
         # retrieve name of feature -> will be the name for subdirectory and column
-        kurtosis_name = saver.spectral_kurtosis_subdir
+        kurtosis_name = saver.return_feature_name("spectral_kurtosis")
 
         all_rows = []
 
@@ -305,12 +306,11 @@ class EEGFeatureExtractor(MLObject):
         Calculate the mean value of EEG signal for each channel.
         :param result_id: patient ID of the EEG of interest (with two channels)
         :param channel: channel of the EEG; valid options -> 1 or 2
-
         """
         loader = self.data_loader
 
         # Load EEG data
         fs, eeg_data = loader.return_eeg_tuple(result_id)
-        mean = np.mean(eeg_data[:, channel-1])
+        mean = np.mean(eeg_data[:, channel - 1])
 
         return mean
