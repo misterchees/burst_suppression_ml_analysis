@@ -27,7 +27,7 @@ class SaveResult(IOCore):
         xy_subdir = PathUtils.create_X_Y_subfolder_name(parameters)
         psd_dir_fullpath = PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
 
-        # create directory
+        # make sure directory exists
         os.makedirs(psd_dir_fullpath, exist_ok=True)
 
         # create dataframe from PSD data
@@ -44,7 +44,46 @@ class SaveResult(IOCore):
         # save psd
         psd_df.to_csv(fullpath, index=False)
 
-        print(f"Saved: {fullpath}")
+        print(f"Single episode PSD saved: {fullpath}")
+
+    def save_wholeEEG_psd(self, frequencies: np.ndarray, power: np.ndarray, filtered: bool, result_id: int):
+        """
+        Saves whole EEG PSDs in the PSD directory
+        :param frequencies: Frequencies from the PSD
+        :param power: Power of the Frequencies from the PSD
+        :param filtered: Metadata if PSD is from a filtered EEG.
+        :param result_id: Patient ID corresponding to EEG.
+        """
+        # assemble path to directory
+        psd_dir = self.level2_subdir_path("features", "psds")
+
+        if filtered:
+            filter_prefix = "filtered"
+        else:
+            filter_prefix = "raw"
+
+        psd_filename = f"PSD_{filter_prefix}_whole_EEG_{result_id}.csv"
+        whole_eeg_subdir = PathUtils.create_anypath(psd_dir, "whole_EEG_PSD", filter_prefix)
+
+        # make sure directory exists
+        os.makedirs(whole_eeg_subdir, exist_ok=True)
+
+        # create dataframe from PSD data
+        psd_cols = self.data_names["psd_files"]
+        psd_df = pd.DataFrame({
+            psd_cols["psd_freq_col"]: frequencies,
+            psd_cols["psd_power_col"]: power
+        })
+
+        # create fullpath with PSD name to save data
+        fullpath = PathUtils.create_anypath(whole_eeg_subdir, psd_filename)
+
+        # save psd
+        psd_df.to_csv(fullpath, index=False)
+
+        print(f"Single episode PSD saved: {fullpath}")
+
+
 
     def save_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
         """

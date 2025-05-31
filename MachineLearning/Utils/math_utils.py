@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler, QuantileTransformer
 
 
 class MathUtils:
@@ -55,3 +56,73 @@ class MathUtils:
         """
         midpoint = (a + b) / 2
         return 2 * np.abs(x - midpoint) / (b - a)
+
+    @staticmethod
+    def normalize_scalar(value: float, method: str, feature_type: str = None) -> float:
+        """
+        Normalizes a single scalar value according to a method and optional feature type.
+
+        :param value: The scalar value to normalize.
+        :param method: The normalization method. Options: 'tanh', 'log', 'clip'.
+        :param feature_type: Optional context about the feature type (e.g., 'skewness', 'entropy').
+        :returns: The normalized scalar.
+        """
+        if method == "tanh":
+            return np.tanh(value)
+
+        if method == "log":
+            if value < 0:
+                raise ValueError("Log normalization requires non-negative values.")
+            return np.log1p(value)
+
+        if method == "clip":
+            if feature_type == "skewness":
+                return np.clip(value, -2, 2)
+            elif feature_type == "kurtosis":
+                return np.clip(value, 0, 10)
+            else:
+                raise ValueError(f"Clipping not defined for feature type '{feature_type}'.")
+
+        raise ValueError(f"Unsupported method '{method}' for scalar normalization.")
+
+    @staticmethod
+    def normalize_array(values: Union[np.ndarray, list], method: str, feature_type: str = None) -> np.ndarray:
+        """
+        Normalizes an array of values based on a method and optional feature type.
+
+        :param values: Array of values to normalize.
+        :param method: The normalization method. Options: 'zscore', 'tanh_zscore', 'minmax', 'quantile', 'log', 'clip'.
+        :param feature_type: Optional context for clipping or specialized rules.
+        :returns: Normalized array (NumPy ndarray).
+        """
+        x = np.asarray(values)
+
+        if method == "zscore":
+            return (x - np.mean(x)) / np.std(x)
+
+        if method == "tanh_zscore":
+            z = (x - np.mean(x)) / np.std(x)
+            return np.tanh(z)
+
+        if method == "minmax":
+            scaler = MinMaxScaler()
+            return scaler.fit_transform(x.reshape(-1, 1)).flatten()
+
+        if method == "quantile":
+            qt = QuantileTransformer(output_distribution='uniform', random_state=42)
+            return qt.fit_transform(x.reshape(-1, 1)).flatten()
+
+        if method == "log":
+            if np.any(x < 0):
+                raise ValueError("Log normalization requires all values to be non-negative.")
+            return np.log1p(x)
+
+        if method == "clip":
+            if feature_type == "skewness":
+                return np.clip(x, -2, 2)
+            elif feature_type == "kurtosis":
+                return np.clip(x, 0, 10)
+            else:
+                raise ValueError(f"Clipping not defined for feature type '{feature_type}'.")
+
+        raise ValueError(f"Unsupported method '{method}' for array normalization.")

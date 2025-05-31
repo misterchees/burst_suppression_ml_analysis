@@ -11,7 +11,19 @@ class Filtering:
     def __init__(self):
         pass
 
-    def butterworth(self, result_id: int, lowcut=0.5, highcut=30.0, order=4):
+    def filter_multiple_eeg(self, eeg_list: list, lowcut=0.5, highcut=30.0, order=4):
+        """
+        Applies a filter function to all raw-EEGs specified by the result IDs in given list and saves
+        the result in the filtered subdirectory.
+        :param eeg_list: list with all result_ids of EEGs to be filtered
+        :param lowcut: Lower bound of the bandpass filter (Hz)
+        :param highcut: Upper bound of the bandpass filter (Hz)
+        :param order: Order of the bandpass filter -> How steep is the power transition to the filtered frequencies
+        """
+        for result_id in eeg_list:
+            self.butterworth(result_id, lowcut, highcut, order)
+
+    def butterworth(self, result_id: int, lowcut, highcut, order):
         """
         Applies butterworth bandpass filtering to raw-EEG specified by the result ID and saves the result in
         the filtered subdirectory
@@ -32,3 +44,4 @@ class Filtering:
         # Apply filter to each channel
         filtered_eeg = signal.filtfilt(b, a, raw_eeg, axis=0)
         saver.save_filtered_eeg(filtered_eeg, fs, result_id)
+        print(f"Patient ID: {result_id} succesfully filtered and saved in filtered subdirectory")

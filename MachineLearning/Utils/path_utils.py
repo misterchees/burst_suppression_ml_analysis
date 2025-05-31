@@ -1,4 +1,5 @@
 import os
+import warnings
 
 
 class PathUtils:
@@ -75,3 +76,26 @@ class PathUtils:
         # leave 2 digits after decimal point and remove it afterward: 0.5 -> 050, 0.25 -> 025 etc.
         overlap = f"{overlap:.2f}".replace(".", "")
         return f"{episode_name}_{fixed_window_size}_{overlap}"
+
+    @staticmethod
+    def return_all_result_ids(directory: str) -> list:
+        """
+        Returns a list of all result IDs found in the given directory.
+        :param directory: Path to the directory as a string.
+        :return: List of all result IDs in directory.
+        """
+
+        result_ids = []
+        for file in os.listdir(directory):
+            try:
+                # Try to get Patient ID from filename
+                result_id = int(file.split(".")[0])
+                # Add filename to list
+                result_ids.append(result_id)
+            except TypeError as ex:
+                warnings.warn(f"File: {file} has not the right format. It should be <integer>.<file extension>\n"
+                              f"Error message: {ex}")
+            except Exception as ex:
+                warnings.warn(f"Something went wrong while file: {file} was parsed. Error {ex}")
+
+        return result_ids

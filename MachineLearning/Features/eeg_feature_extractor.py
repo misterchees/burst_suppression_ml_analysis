@@ -1,6 +1,12 @@
 import os
+from typing import Any
+from nolds import sampen
+from antropy import perm_entropy
+from EntropyHub import FuzzEn
 import pandas as pd
 import numpy as np
+from numpy import floating
+
 from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.IO.io_core import IOCore
@@ -58,8 +64,9 @@ class EEGFeatureExtractor(MLObject):
         io_stuff = self.io_instance
         frequency_bands = self.param_config["frequency_bands"]
         # column names
-        freq_col = io_stuff.psd_freq_col
-        power_col = io_stuff.psd_power_col
+        psd_cols = io_stuff.data_names["psd_files"]
+        freq_col = psd_cols["psd_freq_col"]
+        power_col = psd_cols["psd_power_col"]
 
         freqs = psd_df[freq_col].values
         power = psd_df[power_col].values
@@ -128,8 +135,7 @@ class EEGFeatureExtractor(MLObject):
         """
 
         # columns
-        io_stuff = self.io_instance
-        power_col = io_stuff.psd_power_col
+        power_col = self.io_instance.data_names["psd_files"]["psd_power_col"]
 
         # get all powers and calculate total power
         power = psd_df[power_col].values
@@ -185,7 +191,7 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(all_rows, skewness_name, self.parameter_dict)
         print(f"Succesfully calculated and saved Spectral Skewness")
 
-    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize=True, n_method="tanh",
+    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize=True, n_method="clip",
                                     lower_bound=0, upper_bound=1) -> float:
         """
         Calculates spectral skewness from a power spectral density (PSD).
@@ -201,8 +207,9 @@ class EEGFeatureExtractor(MLObject):
         io_stuff = self.io_instance
 
         # get frequencies and power
-        freqs = psd_df[io_stuff.psd_freq_col].values
-        power = psd_df[io_stuff.psd_power_col].values
+        psd_cols = io_stuff.data_names["psd_files"]
+        freqs = psd_df[psd_cols["psd_freq_col"]].values
+        power = psd_df[psd_cols["psd_power_col"]].values
         total_power = np.sum(power)
 
         if total_power == 0:
@@ -261,7 +268,7 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(all_rows, kurtosis_name, self.parameter_dict)
         print(f"Succesfully calculated and saved Spectral Kurtosis")
 
-    def calculate_spectral_kurtosis(self, psd_df: pd.DataFrame, normalize=True, n_method="tanh",
+    def calculate_spectral_kurtosis(self, psd_df: pd.DataFrame, normalize=True, n_method="clip",
                                     lower_bound=0, upper_bound=1) -> float:
         """
         Calculates spectral kurtosis from a power spectral density (PSD).
@@ -276,8 +283,10 @@ class EEGFeatureExtractor(MLObject):
         """
         io_stuff = self.io_instance
 
-        freqs = psd_df[io_stuff.psd_freq_col].values
-        power = psd_df[io_stuff.psd_power_col].values
+        # get frequencies and power
+        psd_cols = io_stuff.data_names["psd_files"]
+        freqs = psd_df[psd_cols["psd_freq_col"]].values
+        power = psd_df[psd_cols["psd_power_col"]].values
         total_power = np.sum(power)
 
         if total_power == 0:
@@ -312,5 +321,61 @@ class EEGFeatureExtractor(MLObject):
         # Load EEG data
         fs, eeg_data = loader.return_eeg_tuple(result_id)
         mean = np.mean(eeg_data[:, channel - 1])
-
         return mean
+
+
+    def calculate_variance(self, signal: np.ndarray) -> floating[Any]:
+        """
+        Computes the variance of the EEG signal.
+
+        :param signal: 1D EEG signal.
+        :returns: Variance of the signal.
+        """
+        return np.var(signal)
+
+    def calculate_amplitude(self, signal: np.ndarray) -> float:
+        """
+        Computes the peak-to-peak amplitude of the EEG signal.
+
+        :param signal: 1D EEG signal.
+        :returns: Peak-to-peak amplitude.
+        """
+        return np.ptp(signal)  # equivalent to max - min
+
+    def calculate_sample_entropy(self, signal: np.ndarray, emb_dim: int = 2, tolerance: float = 0.2) -> float:
+        """
+        Computes the sample entropy of the EEG signal.
+
+        :param signal: 1D EEG signal.
+        :param emb_dim: Embedding dimension (default 2).
+        :param tolerance: Tolerance as a fraction of std (default 0.2).
+        :returns: Sample entropy value.
+        """
+        return sampen(signal, emb_dim=emb_dim, tolerance=tolerance * np.std(signal))
+
+    def feature_permutation_entropy(self, signal: np.ndarray, order: int = 3, delay: int = 1,
+                                    normalize: bool = True) -> float:
+        """
+        Computes the permutation entropy of the EEG signal.
+
+        :param signal: 1D EEG signal.
+        :param order: Embedding order (default 3).
+        :param delay: Delay between elements in embedded vectors (default 1).
+        :param normalize: Whether to normalize the entropy (default True).
+        :returns: Permutation entropy value.
+        """
+        return perm_entropy(signal, order, delay, True)
+
+    def feature_fuzzy_entropy(signal: np.ndarray, m: int = 2, r: float = 0.2, n: int = 2) -> float:
+        """
+        Computes fuzzy entropy using EntropyHub.
+
+        :param signal: 1D EEG signal.
+        :param m: Embedding dimension.
+        :param r: Tolerance (relative to std).
+        :param n: Fuzziness parameter.
+        :returns: Fuzzy entropy value.
+        """
+        std_r = r * np.std(signal)
+        result = FuzzEn(signal, m, std_r, n)
+        return result['FuzzEn']

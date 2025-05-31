@@ -1,23 +1,16 @@
-from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
+from MachineLearning.Core.pipeline import Pipeline
+
+initial_data_subdir_key = "combined_raw_data"
 
 
-def runner():
+def run():
     """
     Function to execute any code
     """
-
-    # Create an instance of EEGFeatureExtractor
-    extractor = EEGFeatureExtractor()
-
-    # Extract PSD features
-    # print("Starting PSD extraction...")
-    # extractor.extract_psd(channel=1, nperseg_seconds=2)
-
-    # extractor.extract_relative_bandpower_for_parameter_combination()
-    # extractor.extract_shannon_entropy_for_parameter_combination()
-    # extractor.extraxt_spectral_skewness_for_parameter_combination()
-    extractor.extraxt_spectral_kurtosis_for_parameter_combination()
+    # Initialize with directory key of directory with patient ID subset of interest
+    pipeline = Pipeline(initial_data_subdir_key)
+    pipeline.filter_step()
 
 
 if __name__ == "__main__":
-    runner()
+    run()
