@@ -3,6 +3,10 @@ from MachineLearning.Utils.plots import Plots
 from MachineLearning.Preprocessing.filtering import Filtering
 from MachineLearning.Utils.config_loader import load_config
 from MachineLearning.IO.load_data import LoadData
+from MachineLearning.Evaluation.comparison import Comparison
+
+comp = Comparison()
+comp.compare_filtered_and_unfiltered_eeg(1, y_scale="min-max")
 
 # orders = [2, 4, 6, 8, 10]
 # fig, axes = Plots.create_subplot_grid(len(orders), cols=1, figsize=(10, 3 * len(orders)))
@@ -16,9 +20,9 @@ from MachineLearning.IO.load_data import LoadData
 # filtering = Filtering()
 # filtering.butterworth(1)
 
-loader = LoadData()
-freq, power = loader.return_raw_eeg_tuple(1)
-filt_freq, filt_power = loader.return_filtered_eeg_tuple(1)
+# loader = LoadData()
+# freq, power = loader.return_raw_eeg_tuple(1)
+# filt_freq, filt_power = loader.return_filtered_eeg_tuple(1)
 
 # fig, axes = Plots.create_subplot_grid(2, cols=1, figsize=(10, 6))
 # Plots.plot_psd((fig, axes[0]), freq, power)

@@ -70,7 +70,7 @@ class Plots:
         else:
             ax.plot(freqs, power)
         ax.set_xlabel("Frequenz [Hz]")
-        ax.set_ylabel("Power [V²/Hz]" if not log_scale else "log(Power)")
+        ax.set_ylabel("Power [V²/Hz]" if not log_scale else "log(Power[V²/Hz])")
         ax.set_title(title)
         ax.grid(True)
         ax.set_xlim([min(freqs), max(freqs)])
@@ -91,3 +91,37 @@ class Plots:
         fig, axs = plt.subplots(rows, cols, figsize=figsize)
         axs = axs.flatten() if n_plots > 1 else [axs]
         return fig, axs[:n_plots]
+
+
+    @staticmethod
+    def align_axis(preserve_ax, rescale_ax, scale_x=False, scale_y=True, min_max_scale=False):
+        """
+        Takes two axes and aligns their chosen scales.
+        :param preserve_ax: Ax of which the scale will be preserved. It's the template for the rescale_ax scale.
+        :param rescale_ax: Ax of which the scale will be rescaled according to preserve_ax scale.
+        :param scale_x: If True, x_scales will be rescaled.
+        :param scale_y: If True, y_scales will be rescaled.
+        :param min_max_scale: Instead of copying the scale of preserve_ax, the global minima and maxima of the scales
+        of both axes will be applied to both axes.
+        :return: Both (rescaled) axes.
+        """
+        if scale_y:
+            if min_max_scale:
+                ymin = min(min(preserve_ax.get_ylim()), min(rescale_ax.get_ylim()))
+                ymax = max(max(preserve_ax.get_ylim()), max(rescale_ax.get_ylim()))
+                # Set Global maxima and minima for both y-axis
+                preserve_ax.set_ylim(ymin, ymax)
+                rescale_ax.set_ylim(ymin, ymax)
+            else:
+                rescale_ax.set_ylim(preserve_ax.get_ylim())
+        if scale_x:
+            if min_max_scale:
+                xmin = min(min(preserve_ax.get_xlim()), min(rescale_ax.get_xlim()))
+                xmax = max(max(preserve_ax.get_xlim()), max(rescale_ax.get_xlim()))
+                # Set Global maxima and minima for both y-axis
+                preserve_ax.set_xlim(xmin, xmax)
+                rescale_ax.set_xlim(xmin, xmax)
+            else:
+                rescale_ax.set_xlim(preserve_ax.get_xlim())
+
+        return preserve_ax, rescale_ax

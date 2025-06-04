@@ -18,6 +18,12 @@ base_dir: # basic directory for all data in this project
                 shannon_entropy: "Shannon_entropy" # spectral shannon entropy
                 spectral_skewness: "Spectral_skewness" # spectral skewness
                 spectral_kurtosis: "Spectral_kurtosis" # spectral kurtosis
+                mean: "Mean" # Mean for EEG time domain
+                variance: "Variance" # Variance for EEG time domain
+                amplitude: "Amplitude" # Amplitude of EEG
+                sample_entropy: "Sample_entropy" # Sample Entropy in time domain
+                permutation_entropy: "Permutation_entropy" # Permutation Entropy in time domain
+                fuzzy_entropy: "Fuzzy_entropy" # Fuzzy Entropy in time domain
         plots: # subdirectory for plots
             path_name: "Plots"
         filtered_data: # subdirectory for filtered data

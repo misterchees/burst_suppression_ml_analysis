@@ -83,8 +83,6 @@ class SaveResult(IOCore):
 
         print(f"Single episode PSD saved: {fullpath}")
 
-
-
     def save_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
         """
         Saves a csv with all episodes of a given parameter combination

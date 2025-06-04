@@ -58,7 +58,7 @@ class LoadData(io_core.IOCore):
 
         :param result_id: The patient ID
         :param filtered: If True retrieves the filtered EEG file instead of the raw EEG file
-        :return: a tuple containing the sampling frequency and an array with two channels of raw EEG
+        :return: a tuple (fs, eeg). fs -> sampling frequency; eeg -> an EEG samples array with two channels
         """
         if filtered:
             return self.return_filtered_eeg_tuple(result_id)
@@ -71,7 +71,7 @@ class LoadData(io_core.IOCore):
         returns fs and raw EEG as a Tuple
 
         :param result_id: The patient ID
-        :return: a tuple containing the sampling frequency and an array with two channels of raw EEG
+        :return: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a raw-EEG samples array with two channels
         """
 
         # Assemble Path to directory with .mat files
@@ -93,8 +93,7 @@ class LoadData(io_core.IOCore):
         """
         Loads a filtered EEG from a CSV file with a comment line containing the sampling rate (fs).
         :param result_id: The patient ID
-        :returns: A tuple (fs, raw_eeg) where fs is an integer sampling rate and
-         raw_eeg is a ndarray of shape (n_samples, 2)
+        :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
         """
         # Assemble Path to directory with .mat files
         filtered_eeg_dir = self.level1_subdir_path("filtered_data")

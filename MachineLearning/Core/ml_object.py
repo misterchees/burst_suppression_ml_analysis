@@ -19,7 +19,7 @@ class MLObject:
 
         :param kwargs: Any parameter(s) with value
         """
-        # copy of parameters for these instance
+        # copy of parameters for this instance
         self.parameter = self.parameter_dict.copy()
 
         for key in kwargs:

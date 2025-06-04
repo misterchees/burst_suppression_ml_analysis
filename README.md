@@ -17,14 +17,17 @@ Dataset from [VitalDB](https://vitaldb.net/dataset/)
 
 # Python Section
 **TO-DO**
-- [ ] Create subfolder in PSDs for filtered and raw EEG PSDs
+- [ ] Find solution for organization of filtered and raw EEG PSDs
 - [ ] Plot it to find filtering sweet spot
   - [ ] (Optional) Implement Method to get filtering Parameters based on Ringing and Attenuation slope
 - [ ] Implement the Rest of the Features
+  - [x] Add missing docstrings
+  - [x] Make helper functions for code block, that loops through epochs in feature_extractor functions
+- [ ] Implement Epoching of awake episodes
 - [ ] Implement train and test set functions
 - [ ] Implement SVM
 - [ ] Implement modular Workflow
-- [ ] ... more to come
+- [ ] 
 
 # Matlab Section
 **TO-DO**
