@@ -9,7 +9,7 @@ def run():
     """
     # Initialize with directory key of directory with patient ID subset of interest
     pipeline = Pipeline(initial_data_subdir_key)
-    pipeline.filter_step()
+    pipeline.raw_eeg_filtering()
 
 
 if __name__ == "__main__":

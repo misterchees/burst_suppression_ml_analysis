@@ -49,3 +49,6 @@ class FeatureUtils:
             output_list.append(data_tuple)
 
         return output_list
+
+    def return_all_features_dict(self):
+        return self.data_loader.path_config["base_dir"]["subdirs"]["features"]["subdirs"]

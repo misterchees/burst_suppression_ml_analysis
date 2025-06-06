@@ -12,20 +12,38 @@ from MachineLearning.IO.io_core import IOCore
 from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resultid
 from MachineLearning.Utils.math_utils import MathUtils
 from MachineLearning.Utils.feature_utils import FeatureUtils
+from MachineLearning.Features.feature_function import FeatureFunction
 
-# Registry for feature functions
-feature_registry = {}
+# Registries for feature functions. One for the calculators and one for the extractors
+feature_calculators_registry = {}
+feature_extractors_registry = {}
 
 
-def register_feature(name):
-    """Adds feature function names to registry. Callable by @register_feature(name) before function code
+def register_feature_calculator(name):
+    """Adds feature calculator function names to registry. Callable by @register_feature(name) before function code
 
     :param name: Key of the feature. To find in path config.
     """
+
     def decorator(func):
-        feature_registry[name] = func
+        feature_calculators_registry[name] = func
         return func
 
+    return decorator
+
+
+def register_feature_extractor(name, default_params=None):
+    """
+    Decorator to register a feature function as a FeatureFunction object.
+
+    :param name: Feature key for the registry.
+    :param default_params: Optional default parameters for this feature.
+    :returns: Decorator that registers the function.
+    """
+    def decorator(func):
+        feature_func = FeatureFunction(func, default_params)
+        feature_extractors_registry[name] = feature_func
+        return func  # return func to keep it callable
     return decorator
 
 
@@ -37,8 +55,11 @@ class EEGFeatureExtractor(MLObject):
 
     def __init__(self):
         super().__init__()
-        self.feature_functions = feature_registry
+        # initialize registries
+        self.feature_functions = feature_calculators_registry
+        self.feature_extractors = feature_extractors_registry
 
+    @register_feature_extractor("bandpower", default_params={"normalize_to": "bands"})
     def extract_relative_bandpower(self, normalize_to="bands"):
         """
         Iterates over all PSD CSVs in the Feature PSD folder,calculates the relative band power
@@ -53,16 +74,15 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "bandpower"
-        bandpower_name = saver.return_feature_name(feature_key)
 
         # Output
         all_rows = self.calculate_results_from_PSDs(psd_dir, feature_key, normalize_to=normalize_to)
 
         # save as CSV in bandpower subfolder
-        saver.save_feature_summary_episode(all_rows, bandpower_name, self.parameter_dict)
+        saver.save_feature_summary_episode(all_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved bandpowers")
 
-    @register_feature("bandpower")
+    @register_feature_calculator("bandpower")
     def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="bands") -> dict:
         """
         Calculate relative bandpower from PSD DataFrame.
@@ -103,6 +123,7 @@ class EEGFeatureExtractor(MLObject):
             result[band_name] = relative_power
         return result
 
+    @register_feature_extractor("shannon_entropy", default_params={"normalize": True})
     def extract_shannon_entropy(self, normalize=True):
         """
         Iterates over all PSD CSVs in the Feature PSD folder, calculates Shannon entropy,
@@ -117,15 +138,14 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "shannon_entropy"
-        entropy_name = saver.return_feature_name(feature_key)
 
         # Calculate results for PSDs
         result_rows = self.calculate_results_from_PSDs(psd_directory_path, feature_key, normalize=normalize)
 
-        saver.save_feature_summary_episode(result_rows, entropy_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Shannon Entropy")
 
-    @register_feature("shannon_entropy")
+    @register_feature_calculator("shannon_entropy")
     def calculate_shannon_entropy(self, psd_df: pd.DataFrame, normalize=True) -> float:
         """
         Calculates the Shannon entropy of a PSD.
@@ -158,6 +178,8 @@ class EEGFeatureExtractor(MLObject):
 
         return entropy
 
+    @register_feature_extractor("spectral_skewness", default_params={"normalize": True, "n_method": "clip",
+                                                                     "lower_bound": 0, "upper_bound": 1})
     def extraxt_spectral_skewness(self, normalize=True, n_method="clip", lower_bound=0, upper_bound=1):
         """
         Iterates over all PSD CSVs in the Feature PSD folder, calculates spectral Skewness,
@@ -176,17 +198,16 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "spectral_skewness"
-        skewness_name = saver.return_feature_name(feature_key)
 
         # Calculate results for PSDs
         result_rows = self.calculate_results_from_PSDs(psd_directory_path, feature_key,
                                                        normalize=normalize, n_method=n_method,
                                                        lower_bound=lower_bound, upper_bound=upper_bound)
 
-        saver.save_feature_summary_episode(result_rows, skewness_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Spectral Skewness")
 
-    @register_feature("spectral_skewness")
+    @register_feature_calculator("spectral_skewness")
     def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize=True, n_method="clip",
                                     lower_bound=0, upper_bound=1) -> float:
         """
@@ -230,6 +251,8 @@ class EEGFeatureExtractor(MLObject):
 
         return skewness
 
+    @register_feature_extractor("spectral_kurtosis", default_params={"normalize": True, "n_method": "clip",
+                                                                     "lower_bound": 0, "upper_bound": 1})
     def extraxt_spectral_kurtosis(self, normalize=True, n_method="clip", lower_bound=0, upper_bound=1):
         """
         Iterates over all PSD CSVs in the Feature PSD folder, calculates spectral Kurtosis,
@@ -249,17 +272,16 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "spectral_kurtosis"
-        kurtosis_name = saver.return_feature_name(feature_key)
 
         # Calculate results for PSDs
         result_rows = self.calculate_results_from_PSDs(psd_directory_path, feature_key,
                                                        normalize=normalize, n_method=n_method,
                                                        lower_bound=lower_bound, upper_bound=upper_bound)
 
-        saver.save_feature_summary_episode(result_rows, kurtosis_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Spectral Kurtosis")
 
-    @register_feature("spectral_kurtosis")
+    @register_feature_calculator("spectral_kurtosis")
     def calculate_spectral_kurtosis(self, psd_df: pd.DataFrame, normalize=True, n_method="clip",
                                     lower_bound=0, upper_bound=1) -> float:
         """
@@ -302,6 +324,7 @@ class EEGFeatureExtractor(MLObject):
 
         return kurtosis
 
+    @register_feature_extractor("mean", default_params={"channel": 1})
     def extract_mean(self, channel=1):
         """
         Calculates the mean value of EEG signal for given channel of each episode from the subdirectory
@@ -316,16 +339,15 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "mean"
-        mean_name = saver.return_feature_name(feature_key)
 
         # Calculate results for epochs
         result_rows = self.calculate_results_from_epochs(epochs, feature_key)
 
-        saver.save_feature_summary_episode(result_rows, mean_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Mean of EEG-signals")
 
     @staticmethod
-    @register_feature("mean")
+    @register_feature_calculator("mean")
     def calculate_mean(signal: np.ndarray) -> floating:
         """
         Calculates the mean value of EEG signal.
@@ -335,6 +357,7 @@ class EEGFeatureExtractor(MLObject):
         """
         return np.mean(signal)
 
+    @register_feature_extractor("variance", default_params={"channel": 1})
     def extract_variance(self, channel=1):
         """
         Calculates the variance of EEG signal for given channel of each episode from the subdirectory
@@ -349,16 +372,15 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "variance"
-        variance_name = saver.return_feature_name(feature_key)
 
         # Calculate results for epochs
         result_rows = self.calculate_results_from_epochs(epochs, feature_key)
 
-        saver.save_feature_summary_episode(result_rows, variance_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Variance of EEG-signals")
 
     @staticmethod
-    @register_feature("variance")
+    @register_feature_calculator("variance")
     def calculate_variance(signal: np.ndarray) -> floating:
         """
         Computes the variance of the EEG signal.
@@ -368,6 +390,7 @@ class EEGFeatureExtractor(MLObject):
         """
         return np.var(signal)
 
+    @register_feature_extractor("amplitude", default_params={"channel": 1})
     def extract_amplitude(self, channel=1):
         """
         Calculates the peak-to-peak Amplitude of EEG signal for given channel of each episode from the subdirectory
@@ -382,16 +405,15 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "amplitude"
-        amplitude_name = saver.return_feature_name(feature_key)
 
         # Calculate results for epochs
         result_rows = self.calculate_results_from_epochs(epochs, feature_key)
 
-        saver.save_feature_summary_episode(result_rows, amplitude_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Amplitude of EEG-signals")
 
     @staticmethod
-    @register_feature("amplitude")
+    @register_feature_calculator("amplitude")
     def calculate_amplitude(signal: np.ndarray) -> float:
         """
         Computes the peak-to-peak amplitude of the EEG signal.
@@ -401,6 +423,7 @@ class EEGFeatureExtractor(MLObject):
         """
         return np.ptp(signal)  # equivalent to max - min
 
+    @register_feature_extractor("sample_entropy", default_params={"channel": 1, "emb_dim": 2, "tolerance": 0.2})
     def extract_sample_entropy(self, channel=1, emb_dim: int = 2, tolerance: float = 0.2):
         """
         Calculates the sample entropy of EEG signal for given channel of each episode from the subdirectory
@@ -417,16 +440,15 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "sample_entropy"
-        sampen_name = saver.return_feature_name(feature_key)
 
         # Calculate results for epochs
         result_rows = self.calculate_results_from_epochs(epochs, feature_key, emb_dim=emb_dim, tolerance=tolerance)
 
-        saver.save_feature_summary_episode(result_rows, sampen_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Sample Entropy of EEG-signals")
 
     @staticmethod
-    @register_feature("sample_entropy")
+    @register_feature_calculator("sample_entropy")
     def calculate_sample_entropy(signal: np.ndarray, emb_dim: int = 2, tolerance: float = 0.2) -> float:
         """
         Computes the sample entropy of the EEG signal.
@@ -438,6 +460,8 @@ class EEGFeatureExtractor(MLObject):
         """
         return sampen(signal, emb_dim=emb_dim, tolerance=tolerance * np.std(signal))
 
+    @register_feature_extractor("permutation_entropy", default_params={"channel": 1, "order": 3,
+                                                                       "delay": 1, "normalize": True})
     def extract_permutation_entropy(self, channel=1, order: int = 3, delay: int = 1, normalize: bool = True):
         """
         Calculates the permutation entropy of EEG signal for given channel of each episode from the subdirectory
@@ -455,17 +479,16 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "permutation_entropy"
-        permen_name = saver.return_feature_name(feature_key)
 
         # Calculate results for epochs
         result_rows = self.calculate_results_from_epochs(epochs, feature_key,
                                                          order=order, delay=delay, normalize=normalize)
 
-        saver.save_feature_summary_episode(result_rows, permen_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Permutation Entropy of EEG-signals")
 
     @staticmethod
-    @register_feature("permutation_entropy")
+    @register_feature_calculator("permutation_entropy")
     def calculate_permutation_entropy(signal: np.ndarray, order: int = 3, delay: int = 1,
                                       normalize: bool = True) -> float:
         """
@@ -479,6 +502,7 @@ class EEGFeatureExtractor(MLObject):
         """
         return perm_entropy(signal, order, delay, normalize)
 
+    @register_feature_extractor("fuzzy_entropy", default_params={"channel": 1, "m": 2, "r": 0.2, "n": 2})
     def extract_fuzzy_entropy(self, channel=1, m: int = 2, r: float = 0.2, n: int = 2):
         """
         Calculates the fuzzy entropy of EEG signal for given channel of each episode from the subdirectory
@@ -496,16 +520,15 @@ class EEGFeatureExtractor(MLObject):
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "fuzzy_entropy"
-        fuzzen_name = saver.return_feature_name(feature_key)
 
         # Calculate results for epochs
         result_rows = self.calculate_results_from_epochs(epochs, feature_key, m=m, r=r, n=n)
 
-        saver.save_feature_summary_episode(result_rows, fuzzen_name, self.parameter_dict)
+        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Fuzzy Entropy of EEG-signals")
 
     @staticmethod
-    @register_feature("fuzzy_entropy")
+    @register_feature_calculator("fuzzy_entropy")
     def calculate_fuzzy_entropy(signal: np.ndarray, m: int = 2, r: float = 0.2, n: int = 2) -> float:
         """
         Computes fuzzy entropy of EEG-signal.

@@ -1,6 +1,6 @@
 # finding-a-gold-standard
 This Repo is for the codebase adjacent to the Bachelor Thesis from me - Jesús Nieto Reyes. The 
-Thesis revolves around the question of how to improve the detction and analysis of Burst 
+Thesis revolves around the question of how to improve the detection and analysis of Burst 
 Suppression Patterns. The investigation here will focus on the connection between unusually 
 high BIS Values, which are sometimes associated with Burst Suppression Patterns.
 
@@ -18,7 +18,7 @@ Dataset from [VitalDB](https://vitaldb.net/dataset/)
 # Python Section
 **TO-DO**
 - [ ] Find solution for organization of filtered and raw EEG PSDs
-- [ ] Plot it to find filtering sweet spot
+- [x] Plot it to find filtering sweet spot
   - [ ] (Optional) Implement Method to get filtering Parameters based on Ringing and Attenuation slope
 - [ ] Implement the Rest of the Features
   - [x] Add missing docstrings
@@ -27,7 +27,7 @@ Dataset from [VitalDB](https://vitaldb.net/dataset/)
 - [ ] Implement train and test set functions
 - [ ] Implement SVM
 - [ ] Implement modular Workflow
-- [ ] 
+- [ ] Implement Pipeline subworkflows
 
 # Matlab Section
 **TO-DO**

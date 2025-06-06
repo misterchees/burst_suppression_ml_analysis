@@ -19,7 +19,7 @@ def load_psd_with_start_end_resultid(directory_path: str, filename: str) \
     psd_fullpath = PathUtils.create_anypath(directory_path, filename)
     print(f"Processing {psd_fullpath}")
     # Validation of single episode PSD name structure
-    name_parts = filename.split(".")
+    name_parts = filename.split(".")[0].split("_")
     if len(name_parts) != 4 and name_parts[0] != "PSD":
         raise ValueError(f"Name of file {filename} has no typical structure for single episode PSD")
     metadata = filename.replace(".csv", "").split("_")[1:]  # PSD_0_1_2.csv -> ['0','1','2']

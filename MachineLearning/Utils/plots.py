@@ -51,13 +51,15 @@ class Plots:
         return fig, ax
 
     @staticmethod
-    def plot_psd(fig_and_ax, freqs, power, title="Power Spectral Density", log_scale=False):
+    def plot_psd(fig_and_ax, freqs, power, label, color="blue", title="Power Spectral Density", log_scale=False):
         """
         Plots a Power Spectral Density (PSD).
         :param fig_and_ax: A Tuple with the figure and axes objects. For plotting in subplot grids
         :param freqs: (array-like) frequencies in Hz
         :param power: (array-like) Power of frequencies in V²
-        :param title: Titel des Plots
+        :param label: (str) label of the plot
+        :param color: (str) color of the plot
+        :param title: title of the plot
         :param log_scale: If True, then power axis will be logarithmic
         :return: Figure and Axes of plot (if show=True)
         """
@@ -66,14 +68,15 @@ class Plots:
         else:
             fig, ax = plt.subplots(figsize=(10, 5))
         if log_scale:
-            ax.semilogy(freqs, power)
+            ax.semilogy(freqs, power, label=label, color=color)
         else:
-            ax.plot(freqs, power)
+            ax.plot(freqs, power, label=label, color=color)
         ax.set_xlabel("Frequenz [Hz]")
         ax.set_ylabel("Power [V²/Hz]" if not log_scale else "log(Power[V²/Hz])")
         ax.set_title(title)
         ax.grid(True)
         ax.set_xlim([min(freqs), max(freqs)])
+        ax.legend()
 
         return fig, ax
 
@@ -91,7 +94,6 @@ class Plots:
         fig, axs = plt.subplots(rows, cols, figsize=figsize)
         axs = axs.flatten() if n_plots > 1 else [axs]
         return fig, axs[:n_plots]
-
 
     @staticmethod
     def align_axis(preserve_ax, rescale_ax, scale_x=False, scale_y=True, min_max_scale=False):
