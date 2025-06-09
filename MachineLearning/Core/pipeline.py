@@ -23,21 +23,28 @@ class Pipeline:
         """ Applies filtering to all EEGs specified by the id-list in this class"""
         self.filtering.filter_multiple_eeg(eeg_list=self.result_ids)
 
-    def feature_extraction(self, all_features: bool, **kwargs):
+    def feature_extraction(self, all_features: bool, *custom_feature_args):
+        """
+        Extracts defined features from all EEGs in current result_ids subset.
+        :param all_features: If True will extract all features implemented in FeatureExtractor, else will
+        only extract features in custom_feature_dict.
+        :param custom_feature_args: list of features to be extracted (List entries have to be feature keys)
+        :return:
+        """
         feature_functions = self.features.feature_extractors
 
         # Calls all feature extraction functions
         if all_features:
             for function in feature_functions.values():
                 function(self.features)
-        # calls all functions specified in kwargs by function keys
+        # calls all functions specified in custom_feature_dict by function keys
         else:
             # validate keys
             feature_keys = self.feature_utils.return_all_features_dict().keys()
-            for key in kwargs:
+            for key in custom_feature_args:
                 if key not in feature_keys:
                     raise ValueError(f"'{key}' is no valid feature key. Valid keys are: {feature_keys}")
-            for function_key in kwargs.values():
+            for function_key in custom_feature_args:
                 feature_functions[function_key](self.features)
 
     def set_result_ids(self, initial_data_key: str):

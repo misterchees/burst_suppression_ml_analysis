@@ -92,10 +92,13 @@ class SaveResult(IOCore):
         """
         # save as CSV in subfolder with prefix
         result_df = pd.DataFrame(results)
+        feature_name = self.return_feature_name(feature_key)
+
         subdir_of_feature = self.level2_subdir_path("features", feature_key)
-        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name(feature_key, parameters)
+        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name(feature_name, parameters)
         subdir_of_file = PathUtils.create_anypath(subdir_of_feature, abcd_subdir)
-        fullpath = PathUtils.create_csv_fullpath(subdir_of_feature, feature_key, parameters)
+        fullpath = PathUtils.create_csv_fullpath(subdir_of_feature, feature_name, parameters)
+
         os.makedirs(subdir_of_file, exist_ok=True)
         result_df.to_csv(fullpath, index=False)  # write without row index
 

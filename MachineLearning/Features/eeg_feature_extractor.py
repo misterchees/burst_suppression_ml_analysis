@@ -13,6 +13,7 @@ from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resul
 from MachineLearning.Utils.math_utils import MathUtils
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.feature_function import FeatureFunction
+from MachineLearning.Utils.epochs import Epochs
 
 # Registries for feature functions. One for the calculators and one for the extractors
 feature_calculators_registry = {}
@@ -52,6 +53,7 @@ class EEGFeatureExtractor(MLObject):
     data_loader = LoadData()
     result_saver = SaveResult()
     feature_utils = FeatureUtils()
+    epoch_obj = Epochs()
 
     def __init__(self):
         super().__init__()
@@ -335,7 +337,8 @@ class EEGFeatureExtractor(MLObject):
         saver = self.result_saver
 
         # Get all Episodes (default= filtered episodes)
-        epochs = self.feature_utils.return_faw_eeg_epochs(self.parameter_dict, channel=channel)
+        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
+        epochs = self.epoch_obj.epoch_times
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "mean"
@@ -346,9 +349,8 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Mean of EEG-signals")
 
-    @staticmethod
     @register_feature_calculator("mean")
-    def calculate_mean(signal: np.ndarray) -> floating:
+    def calculate_mean(self, signal: np.ndarray) -> floating:
         """
         Calculates the mean value of EEG signal.
 
@@ -368,7 +370,8 @@ class EEGFeatureExtractor(MLObject):
         saver = self.result_saver
 
         # Get all Episodes (default= filtered episodes)
-        epochs = self.feature_utils.return_faw_eeg_epochs(self.parameter_dict, channel=channel)
+        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
+        epochs = self.epoch_obj.epoch_times
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "variance"
@@ -379,9 +382,8 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Variance of EEG-signals")
 
-    @staticmethod
     @register_feature_calculator("variance")
-    def calculate_variance(signal: np.ndarray) -> floating:
+    def calculate_variance(self, signal: np.ndarray) -> floating:
         """
         Computes the variance of the EEG signal.
 
@@ -401,7 +403,8 @@ class EEGFeatureExtractor(MLObject):
         saver = self.result_saver
 
         # Get all Episodes (default= filtered episodes)
-        epochs = self.feature_utils.return_faw_eeg_epochs(self.parameter_dict, channel=channel)
+        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
+        epochs = self.epoch_obj.epoch_times
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "amplitude"
@@ -412,9 +415,8 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Amplitude of EEG-signals")
 
-    @staticmethod
     @register_feature_calculator("amplitude")
-    def calculate_amplitude(signal: np.ndarray) -> float:
+    def calculate_amplitude(self, signal: np.ndarray) -> float:
         """
         Computes the peak-to-peak amplitude of the EEG signal.
 
@@ -436,7 +438,8 @@ class EEGFeatureExtractor(MLObject):
         saver = self.result_saver
 
         # Get all Episodes (default= filtered episodes)
-        epochs = self.feature_utils.return_faw_eeg_epochs(self.parameter_dict, channel=channel)
+        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
+        epochs = self.epoch_obj.epoch_times
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "sample_entropy"
@@ -447,9 +450,8 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Sample Entropy of EEG-signals")
 
-    @staticmethod
     @register_feature_calculator("sample_entropy")
-    def calculate_sample_entropy(signal: np.ndarray, emb_dim: int = 2, tolerance: float = 0.2) -> float:
+    def calculate_sample_entropy(self, signal: np.ndarray, emb_dim: int = 2, tolerance: float = 0.2) -> float:
         """
         Computes the sample entropy of the EEG signal.
 
@@ -475,7 +477,8 @@ class EEGFeatureExtractor(MLObject):
         saver = self.result_saver
 
         # Get all Episodes (default= filtered episodes)
-        epochs = self.feature_utils.return_faw_eeg_epochs(self.parameter_dict, channel=channel)
+        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
+        epochs = self.epoch_obj.epoch_times
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "permutation_entropy"
@@ -487,9 +490,8 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Permutation Entropy of EEG-signals")
 
-    @staticmethod
     @register_feature_calculator("permutation_entropy")
-    def calculate_permutation_entropy(signal: np.ndarray, order: int = 3, delay: int = 1,
+    def calculate_permutation_entropy(self, signal: np.ndarray, order: int = 3, delay: int = 1,
                                       normalize: bool = True) -> float:
         """
         Computes the permutation entropy of the EEG signal.
@@ -516,7 +518,8 @@ class EEGFeatureExtractor(MLObject):
         saver = self.result_saver
 
         # Get all Episodes (default= filtered episodes)
-        epochs = self.feature_utils.return_faw_eeg_epochs(self.parameter_dict, channel=channel)
+        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
+        epochs = self.epoch_obj.epoch_times
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "fuzzy_entropy"
@@ -527,9 +530,8 @@ class EEGFeatureExtractor(MLObject):
         saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
         print(f"Succesfully calculated and saved Fuzzy Entropy of EEG-signals")
 
-    @staticmethod
     @register_feature_calculator("fuzzy_entropy")
-    def calculate_fuzzy_entropy(signal: np.ndarray, m: int = 2, r: float = 0.2, n: int = 2) -> float:
+    def calculate_fuzzy_entropy(self, signal: np.ndarray, m: int = 2, r: float = 0.2, n: int = 2) -> float:
         """
         Computes fuzzy entropy of EEG-signal.
 
@@ -558,10 +560,13 @@ class EEGFeatureExtractor(MLObject):
         # Load function for this feature
         func = self.feature_functions[feature_key]
 
+        # get feature name
+        feature_name = self.io_instance.return_feature_name(feature_key)
+
         all_rows = []
         for start, end, result_id, fs, eeg_segment in epochs:
             value = func(self, eeg_segment, **kwargs)
-            all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_key: value})
+            all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
 
         return all_rows
 
@@ -572,6 +577,9 @@ class EEGFeatureExtractor(MLObject):
 
         # Load function for this feature
         func = self.feature_functions[feature_key]
+
+        # get feature name
+        feature_name = self.io_instance.return_feature_name(feature_key)
 
         all_rows = []
 
@@ -585,5 +593,5 @@ class EEGFeatureExtractor(MLObject):
                 if isinstance(value, dict):
                     all_rows.append({"Start": start, "End": end, "ResultID": result_id, **value})
                 else:
-                    all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_key: value})
+                    all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
         return all_rows

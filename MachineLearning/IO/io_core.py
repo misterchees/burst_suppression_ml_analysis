@@ -18,8 +18,10 @@ class IOCore:
         """
         # retrieve subdir keys
         valid_subdirs = self.path_config["base_dir"]["subdirs"].keys()
+
         if subdir_key not in valid_subdirs:
             raise ValueError(f"Invalid lvl1 subdir key: {subdir_key}. Valid subdir keys are {valid_subdirs}")
+
         base_dir = self.path_config["base_dir"]["path_name"]
         subdir = self.path_config["base_dir"]["subdirs"][subdir_key]["path_name"]
         return PathUtils.create_anypath(base_dir, subdir)
@@ -35,8 +37,10 @@ class IOCore:
         lvl_1_subdir = self.level1_subdir_path(subdir_lvl_1_key)
         # retrieve subdir keys
         valid_lvl2_subdirs = self.path_config["base_dir"]["subdirs"][subdir_lvl_1_key]["subdirs"].keys()
+
         if subdir_lvl_2_key not in valid_lvl2_subdirs:
             raise ValueError(f"Invalid lvl2 subdir key: {subdir_lvl_2_key}. Valid subdir keys are {valid_lvl2_subdirs}")
+
         lvl_2_subdir = self.path_config["base_dir"]["subdirs"][subdir_lvl_1_key]["subdirs"][subdir_lvl_2_key]
         return PathUtils.create_anypath(lvl_1_subdir, lvl_2_subdir)
 

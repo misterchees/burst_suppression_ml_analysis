@@ -1,9 +1,3 @@
-from matplotlib import pyplot as plt
-from MachineLearning.Utils.plots import Plots
-from MachineLearning.Preprocessing.filtering import Filtering
-from MachineLearning.Utils.config_loader import load_config
-from MachineLearning.IO.load_data import LoadData
-from MachineLearning.Evaluation.comparison import Comparison
 from MachineLearning.Core.pipeline import Pipeline
 
 # compare plots
@@ -11,7 +5,7 @@ from MachineLearning.Core.pipeline import Pipeline
 # comp.compare_filtered_and_unfiltered_eeg(10, y_scale="raw")
 
 pipeline = Pipeline()
-pipeline.feature_extraction(False, bandpower="bandpower")
+pipeline.feature_extraction(False, "variance", "amplitude", "sample_entropy", "permutation_entropy")
 
 # orders = [2, 4, 6, 8, 10]
 # fig, axes = Plots.create_subplot_grid(len(orders), cols=1, figsize=(10, 3 * len(orders)))

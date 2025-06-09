@@ -35,7 +35,7 @@ class LoadData(io_core.IOCore):
     def __init__(self):
         super().__init__()
 
-    def load_faw_csv_as_df(self, parameters: dict) -> pd.DataFrame:
+    def load_faw_times_as_df(self, parameters: dict) -> pd.DataFrame:
         """
         Assembles a path to the csv-file of interest depending on passed parameters
         in the Fake-Awake (FAW) directory and loads it into a Pandas DataFrame.
@@ -51,6 +51,11 @@ class LoadData(io_core.IOCore):
         df = pd.read_csv(csv_fullpath)
         return df
 
+    def load_grouped_faw_times(self, parameters: dict) -> dict[int, list[tuple[int, int]]]:
+        epoch_times_df = self.load_faw_times_as_df(parameters)
+        grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
+        return grouped_epoch_times
+
     def return_eeg_tuple(self, result_id: int, filtered=True) -> Tuple[int, np.ndarray]:
         """
         Assembles a path to the EEG File of interest, specified by the patient ID and
@@ -61,9 +66,10 @@ class LoadData(io_core.IOCore):
         :return: a tuple (fs, eeg). fs -> sampling frequency; eeg -> an EEG samples array with two channels
         """
         if filtered:
-            return self.return_filtered_eeg_tuple(result_id)
+            fs, eeg = self.return_filtered_eeg_tuple(result_id)
         else:
-            return self.return_raw_eeg_tuple(result_id)
+            fs, eeg = self.return_raw_eeg_tuple(result_id)
+        return fs, eeg
 
     def return_raw_eeg_tuple(self, result_id: int) -> Tuple[int, np.ndarray]:
         """
@@ -95,7 +101,7 @@ class LoadData(io_core.IOCore):
         :param result_id: The patient ID
         :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
         """
-        # Assemble Path to directory with .mat files
+        # Assemble Path to directory with .csv files
         filtered_eeg_dir = self.level1_subdir_path("filtered_data")
 
         filepath = os.path.join(filtered_eeg_dir, f"{result_id}.csv")
@@ -114,3 +120,76 @@ class LoadData(io_core.IOCore):
         raw_eeg = df[eeg_cols["eeg_channels"]].to_numpy()
 
         return fs, raw_eeg
+
+    def read_eeg_epochs_from_csv(self, result_id: int, epochs: list, channel: int) -> tuple[int, dict]:
+        """
+        Reads only selected EEG segments (epochs) for a given channel from a CSV file with
+        a header comment and sampling rate.
+
+        :param result_id: Patient ID to determine path to the filtered EEG CSV file.
+        :param epochs: List of (start_time, end_time) tuples in seconds.
+        :param channel: EEG channel to extract (1 or 2).
+        :returns: Tuple of (sampling rate as int, dict of (start, end) -> EEG segment as ndarray)
+        """
+        # Step 0: Assemble Path to directory with .csv files
+        filtered_eeg_dir = self.level1_subdir_path("filtered_data")
+
+        filepath = os.path.join(filtered_eeg_dir, f"{result_id}.csv")
+        if not os.path.isfile(filepath):
+            raise FileNotFoundError(f"File not found: {filepath}")
+
+        # Step 1: Read sampling rate (fs) from the first comment line
+        with open(filepath, 'r') as f:
+            first_line = f.readline().strip()
+            if not first_line.startswith("# fs = "):
+                raise ValueError("Missing or malformed sampling rate comment line.")
+            fs = int(first_line.replace("# fs = ", "").strip())
+
+        # Step 2: Compute required data row indices (account for header lines)
+        index_offset = 2  # One comment line and one header line
+        required_rows = set()
+        sample_ranges = []
+
+        for start, end in epochs:
+            start_row = int(start * fs) + index_offset
+            end_row = int(end * fs) + index_offset
+            sample_ranges.append((start_row, end_row))
+            required_rows.update(range(start_row, end_row))
+
+        # Step 3: Build row-skipping function for pandas
+        def skiprows(i):
+            return i != 1 and i not in required_rows  # 1 is the header line, keep it
+
+        # Step 4: Read only selected rows and the requested channel
+        col = str(channel)  # 1 -> '1'
+        df = pd.read_csv(filepath, usecols=[col], skiprows=skiprows)
+
+        # Step 5: Extract segments from the DataFrame
+        values = df[col].to_numpy()
+        segments = {}
+        cursor = 0
+
+        # create output dict as segments ((start, end): segment)
+        for (start_sec, end_sec), (start_row, end_row) in zip(epochs, sample_ranges):
+            num_samples = end_row - start_row
+            segment = values[cursor:cursor + num_samples]
+            segments[(start_sec, end_sec)] = segment
+            cursor += num_samples
+
+        return fs, segments
+
+    @staticmethod
+    def group_epochs_by_result_id(all_epochs_df: pd.DataFrame) -> dict[int, list[tuple[int, int]]]:
+        """
+        Groups epoch start/end times by ResultID into a dictionary.
+
+        :param all_epochs_df: DataFrame with columns 'Start', 'End', 'ResultID'
+        containing epochs from different patients
+        :returns: Dictionary {ResultID: [(start1, end1), (start2, end2), ...]}
+        """
+        grouped = (
+            all_epochs_df.groupby("ResultID")[["Start", "End"]]
+            .apply(lambda x: [tuple(row) for row in x.to_numpy()])
+            .to_dict()
+        )
+        return grouped
