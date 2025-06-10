@@ -1,13 +1,13 @@
+import os
+
 from MachineLearning.Utils.path_utils import PathUtils
 from MachineLearning.Utils.config_loader import load_config
 
 
 class IOCore:
-    path_config = load_config("path_config.yaml")
-    data_names = load_config("data_names_config.yaml")
-
     def __init__(self, **kwargs):
-        pass
+        self.path_config = load_config("path_config.yaml")
+        self.data_names = load_config("data_names_config.yaml")
 
     def level1_subdir_path(self, subdir_key: str) -> str:
         """
@@ -58,6 +58,32 @@ class IOCore:
     def return_feature_name(self, feature_key: str) -> str:
         """Returns the name of the feature for given key from path_config"""
         return self.path_config["base_dir"]["subdirs"]["features"]["subdirs"][feature_key]
+
+    def return_all_feature_names(self) -> list:
+        """Returns a list of all feature names available in path_config"""
+        return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].values())
+
+    def return_all_feature_keys(self) -> list:
+        return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].keys())
+
+    def return_lvl2_parameter_file_path(self, parameters: dict, foldername_key: str) -> str:
+        """
+        Returns a file path to a csv file for given foldername key from path_config (2 nodes away from base directory)
+        and given parameters. It creates all necessary folders if not already present.
+        :param parameters: Parameters for the episodes
+        :param foldername_key: The key of the feature
+        :return: Path to the feature csv file
+        """
+        feature_name = self.return_feature_name(foldername_key)
+        subdir_of_feature = self.level2_subdir_path("features", foldername_key)
+        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name(feature_name, parameters)
+        subdir_of_file = PathUtils.create_anypath(subdir_of_feature, abcd_subdir)
+        fullpath = PathUtils.return_csv_fullpath(subdir_of_feature, feature_name, parameters)
+
+        # create subfolder if it doesn't exist
+        os.makedirs(subdir_of_file, exist_ok=True)
+
+        return fullpath
 
     def set_attributes(self, **kwargs):
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",

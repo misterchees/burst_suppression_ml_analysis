@@ -17,7 +17,7 @@ class MLObject:
         """
         Create an instance with new values for the parameters
 
-        :param kwargs: Any parameter(s) with value
+        :param kwargs: Any keyword parameter(s)
         """
         # copy of parameters for this instance
         self.parameter = self.parameter_dict.copy()
@@ -30,7 +30,7 @@ class MLObject:
         """
         Sets any number of the attributes of the EEGFeatureExtractor.
 
-        :param kwargs: Any parameter(s) with value
+        :param kwargs: Any keyword parameter(s)
         """
         # copy of parameters for these instance
         self.parameter = self.parameter_dict.copy()

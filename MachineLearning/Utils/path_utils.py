@@ -13,7 +13,7 @@ class PathUtils:
         return str(os.path.join(*path_parts))
 
     @staticmethod
-    def create_csv_fullpath(directory, prefix, parameters: dict) -> str:
+    def return_csv_fullpath(directory, prefix, parameters: dict) -> str:
         """
         Calculates and returns a fullpath string variable to the desired csv defined by the class parameters
         merged_episodes, refractory time, min_episode_length, mac_threshold, bis_threshold, overlap

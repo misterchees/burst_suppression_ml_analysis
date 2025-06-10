@@ -28,5 +28,11 @@ base_dir: # basic directory for all data in this project
             path_name: "Plots"
         filtered_data: # subdirectory for filtered data
             path_name: "Filtered"
+        test_and_train_data: # subdirectory for test training sets
+            path_name: "Test_and_train"
+            subdirs:
+                feature_sets: "Feature_sets" # Aggregated features
+                splits: "Splits" # Test and train sets derived from aggregated feature datapool
+
     files:
         metadata: "metadata_vitaldb.csv" # File with metadata for all patients

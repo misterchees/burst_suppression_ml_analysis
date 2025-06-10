@@ -5,8 +5,6 @@ from MachineLearning.Utils.filter_utils import FilterUtils
 
 
 class Filtering:
-    loader = LoadData()
-    saver = SaveResult()
 
     def __init__(self):
         pass
@@ -23,7 +21,8 @@ class Filtering:
         for result_id in eeg_list:
             self.butterworth(result_id, lowcut, highcut, order)
 
-    def butterworth(self, result_id: int, lowcut, highcut, order):
+    @staticmethod
+    def butterworth(result_id: int, lowcut, highcut, order):
         """
         Applies butterworth bandpass filtering to raw-EEG specified by the result ID and saves the result in
         the filtered subdirectory
@@ -32,8 +31,9 @@ class Filtering:
         :param highcut: Upper bound of the bandpass filter (Hz)
         :param order: Order of the bandpass filter -> How steep is the power transition to the filtered frequencies
         """
-        loader = self.loader
-        saver = self.saver
+        loader = LoadData()
+        saver = SaveResult()
+
         # Extract information from .mat file
         print(f"Filtering of EEG from Patient ID: {result_id} in progress")
         fs, raw_eeg = loader.return_eeg_tuple(result_id=result_id, filtered=False)

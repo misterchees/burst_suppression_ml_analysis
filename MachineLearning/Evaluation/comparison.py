@@ -5,8 +5,6 @@ from MachineLearning.Utils.plots import Plots
 
 
 class Comparison:
-    loader = LoadData()
-    transforms = Transforms()
 
     def __init__(self):
         pass
@@ -23,17 +21,19 @@ class Comparison:
         :param same_plot: Boolean to enable/disable plotting both curves into the same plot. Ignores y_scale.
         farthest limits of both EEGs.
         """
+        loader = LoadData()
+        transforms = Transforms()
         # Load EEGs from same Patient ID to compare
-        fs_raw, raw_eegs = self.loader.return_eeg_tuple(result_id, False)
-        fs_filt, filtered_eegs = self.loader.return_eeg_tuple(result_id, True)
+        fs_raw, raw_eegs = loader.return_eeg_tuple(result_id, False)
+        fs_filt, filtered_eegs = loader.return_eeg_tuple(result_id, True)
 
         # Extract EEG of given channel
         raw_eeg = raw_eegs[:, channel - 1]
         filtered_eeg = filtered_eegs[:, channel - 1]
 
         # Create PSD for both
-        raw_freq, raw_power = self.transforms.return_psd(raw_eeg, fs_raw)
-        filt_freq, filt_power = self.transforms.return_psd(filtered_eeg, fs_filt)
+        raw_freq, raw_power = transforms.return_psd(raw_eeg, fs_raw)
+        filt_freq, filt_power = transforms.return_psd(filtered_eeg, fs_filt)
 
         if same_plot:
             # Create one plot and write second plot into it with different color and label

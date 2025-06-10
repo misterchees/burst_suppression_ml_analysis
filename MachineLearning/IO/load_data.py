@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import scipy.io
 
-import MachineLearning.IO.io_core as io_core
+from MachineLearning.IO.io_core import IOCore
 from MachineLearning.Utils.path_utils import PathUtils
 
 
@@ -31,7 +31,7 @@ def load_psd_with_start_end_resultid(directory_path: str, filename: str) \
     return psd_dataframe, start, end, result_id
 
 
-class LoadData(io_core.IOCore):
+class LoadData(IOCore):
     def __init__(self):
         super().__init__()
 
@@ -43,7 +43,7 @@ class LoadData(io_core.IOCore):
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
         faw_dir = self.level1_subdir_path("faw")
-        csv_fullpath = PathUtils.create_csv_fullpath(faw_dir, "result", parameters)
+        csv_fullpath = PathUtils.return_csv_fullpath(faw_dir, "result", parameters)
         # validate fullpath
         if not os.path.isfile(csv_fullpath):
             raise FileNotFoundError(f"CSV not found: {csv_fullpath}")

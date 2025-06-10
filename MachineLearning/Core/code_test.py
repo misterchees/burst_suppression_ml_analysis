@@ -1,11 +1,19 @@
-from MachineLearning.Core.pipeline import Pipeline
+from MachineLearning.IO.io_core import IOCore
+
+io_core = IOCore()
+feature_names = list(io_core.return_all_feature_keys())
+print(feature_names)
+
+psds_folder_name = io_core.return_feature_name("psds")
+feature_names.remove(psds_folder_name)
+print(feature_names)
 
 # compare plots
 # comp = Comparison()
 # comp.compare_filtered_and_unfiltered_eeg(10, y_scale="raw")
 
-pipeline = Pipeline()
-pipeline.feature_extraction(False, "variance", "amplitude", "sample_entropy", "permutation_entropy")
+# pipeline = Pipeline()
+# pipeline.feature_extraction(False, "variance", "amplitude", "sample_entropy", "permutation_entropy")
 
 # orders = [2, 4, 6, 8, 10]
 # fig, axes = Plots.create_subplot_grid(len(orders), cols=1, figsize=(10, 3 * len(orders)))

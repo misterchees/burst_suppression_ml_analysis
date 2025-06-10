@@ -1,15 +1,58 @@
+import pandas as pd
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 
 
 class FeatureUtils:
-    data_loader = LoadData()
-    result_saver = SaveResult()
+    @staticmethod
+    def combine_feature_tables(parameters: dict, all_features: bool = False, *features: str):
+        """
+        Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
+        and saves it to the feature_sets directory.
 
-    def combine_features(self):
-        pass
+        :param parameters: Parameters of the episodes from which the features are. Defines subfolder of features.
+        :param all_features: If True, combine all available features found in the features directory.
+        :param features: Specific feature keys to include (used only if all_features=False).
+        """
+        loader = LoadData()
+        saver = SaveResult()
+        # Step 1: Determine which features to include
+        if all_features:
+            feature_keys = loader.return_all_feature_keys()
+        else:
+            if not features:
+                raise ValueError("You must provide at least one feature name or set all_features=True.")
+            feature_keys = list(features)
 
-    def return_faw_eeg_epochs(self, parameters: dict, filtered=True, channel=1) -> list:
+        # Remove PSDs since it is just the basis of the features, but no feature itself
+        feature_keys.remove("psds")
+
+        # Step 2: Load feature CSVs and merge on Start, End, ResultID
+        merged_df = None
+
+        for feature in feature_keys:
+            feature_path = loader.return_lvl2_parameter_file_path(parameters, feature)
+            df = pd.read_csv(feature_path)
+
+            # Merge or initialize
+            if merged_df is None:
+                merged_df = df
+            else:
+                # Only keep one copy of Start, End, ResultID (must match)
+                merged_df = pd.merge(merged_df, df, on=["Start", "End", "ResultID"], how="inner")
+
+        # Check if merged file is empty
+        if merged_df is None or merged_df.empty:
+            raise ValueError("No features were combined – possibly no files found or empty inputs.")
+
+        # Step 3: Sort for consistency
+        merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
+
+        # Step 4: Save to feature_sets directory
+        saver.save_combined_features(parameters, merged_df)
+
+    @staticmethod
+    def return_faw_eeg_epochs(parameters: dict, filtered=True, channel=1) -> list:
         """
         Takes parameters for fake awakeness (faw) and returns a list of all epochs (+ metadata) of this list
 
@@ -19,7 +62,7 @@ class FeatureUtils:
         :return: List of Tuples. Every Tuple is structured -> (start(s), end(s), result_id, fs, eeg epochs (samples))
         """
 
-        data_loader = self.data_loader
+        data_loader = LoadData()
         output_list = []
 
         # Load FAW Episode times based on current parameters and grouped by result ID
@@ -39,5 +82,8 @@ class FeatureUtils:
 
         return output_list
 
-    def return_all_features_dict(self):
-        return self.data_loader.path_config["base_dir"]["subdirs"]["features"]["subdirs"]
+    @staticmethod
+    def return_all_features_dict() -> dict:
+        """Returns all features as a dictionary"""
+        data_loader = LoadData()
+        return data_loader.path_config["base_dir"]["subdirs"]["features"]["subdirs"]

@@ -1,5 +1,5 @@
-import numpy as np
 import os
+import numpy as np
 import pandas as pd
 from MachineLearning.IO.io_core import IOCore
 from MachineLearning.Utils.path_utils import PathUtils
@@ -92,14 +92,8 @@ class SaveResult(IOCore):
         """
         # save as CSV in subfolder with prefix
         result_df = pd.DataFrame(results)
-        feature_name = self.return_feature_name(feature_key)
 
-        subdir_of_feature = self.level2_subdir_path("features", feature_key)
-        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name(feature_name, parameters)
-        subdir_of_file = PathUtils.create_anypath(subdir_of_feature, abcd_subdir)
-        fullpath = PathUtils.create_csv_fullpath(subdir_of_feature, feature_name, parameters)
-
-        os.makedirs(subdir_of_file, exist_ok=True)
+        fullpath = self.return_lvl2_parameter_file_path(parameters, feature_key)
         result_df.to_csv(fullpath, index=False)  # write without row index
 
     def save_filtered_eeg(self, filtered_eeg: np.ndarray, fs: int, result_id: int):
@@ -122,3 +116,8 @@ class SaveResult(IOCore):
             df.to_csv(f, index=False, float_format="%.4f")
 
         print(f"Successfully saved filtered EEG to {fullpath}")
+
+    def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame):
+        fullpath = self.return_lvl2_parameter_file_path(parameters, "feature_sets")
+        merged_df.to_csv(fullpath, index=False)
+        print(f"Combined feature set saved to: {fullpath}")

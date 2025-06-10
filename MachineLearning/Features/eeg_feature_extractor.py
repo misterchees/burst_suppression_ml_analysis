@@ -8,10 +8,8 @@ from numpy import floating
 
 from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.save_result import SaveResult
-from MachineLearning.IO.io_core import IOCore
 from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resultid
 from MachineLearning.Utils.math_utils import MathUtils
-from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.feature_function import FeatureFunction
 from MachineLearning.Utils.epochs import Epochs
 
@@ -49,10 +47,8 @@ def register_feature_extractor(name, default_params=None):
 
 
 class EEGFeatureExtractor(MLObject):
-    io_instance = IOCore()
     data_loader = LoadData()
     result_saver = SaveResult()
-    feature_utils = FeatureUtils()
     epoch_obj = Epochs()
 
     def __init__(self):
@@ -95,10 +91,10 @@ class EEGFeatureExtractor(MLObject):
         :return: dict of relative power values per band
         """
 
-        io_stuff = self.io_instance
+        loader = self.data_loader
         frequency_bands = self.param_config["frequency_bands"]
         # column names
-        psd_cols = io_stuff.data_names["psd_files"]
+        psd_cols = loader.data_names["psd_files"]
         freq_col = psd_cols["psd_freq_col"]
         power_col = psd_cols["psd_power_col"]
 
@@ -158,7 +154,7 @@ class EEGFeatureExtractor(MLObject):
         """
 
         # columns
-        power_col = self.io_instance.data_names["psd_files"]["psd_power_col"]
+        power_col = self.data_loader.data_names["psd_files"]["psd_power_col"]
 
         # get all powers and calculate total power
         power = psd_df[power_col].values
@@ -223,7 +219,7 @@ class EEGFeatureExtractor(MLObject):
         :param upper_bound: Upper bound of normalization range, referred to as b
         :return: Skewness as float (normalized if requested)
         """
-        io_stuff = self.io_instance
+        io_stuff = self.data_loader
 
         # get frequencies and power
         psd_cols = io_stuff.data_names["psd_files"]
@@ -297,7 +293,7 @@ class EEGFeatureExtractor(MLObject):
         :param upper_bound: Upper bound of normalization range, referred to as b
         :return: Spectral kurtosis as float (normalized if requested)
         """
-        io_stuff = self.io_instance
+        io_stuff = self.data_loader
 
         # get frequencies and power
         psd_cols = io_stuff.data_names["psd_files"]
@@ -561,7 +557,7 @@ class EEGFeatureExtractor(MLObject):
         func = self.feature_functions[feature_key]
 
         # get feature name
-        feature_name = self.io_instance.return_feature_name(feature_key)
+        feature_name = self.data_loader.return_feature_name(feature_key)
 
         all_rows = []
         for start, end, result_id, fs, eeg_segment in epochs:
@@ -579,7 +575,7 @@ class EEGFeatureExtractor(MLObject):
         func = self.feature_functions[feature_key]
 
         # get feature name
-        feature_name = self.io_instance.return_feature_name(feature_key)
+        feature_name = self.data_loader.return_feature_name(feature_key)
 
         all_rows = []
 

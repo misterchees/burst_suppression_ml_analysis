@@ -6,8 +6,6 @@ from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
 
 class Pipeline:
     result_ids = []
-    io_core = IOCore()
-    filtering = Filtering()
     features = EEGFeatureExtractor()
     feature_utils = FeatureUtils()
 
@@ -16,12 +14,14 @@ class Pipeline:
         Sets subset of Patient IDs, i.e. subdirectory of initial data
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
         """
-        path_to_subdir = self.io_core.level2_subdir_path("initial_data", initial_data_key)
+        io_core = IOCore()
+        path_to_subdir = io_core.level2_subdir_path("initial_data", initial_data_key)
         self.result_ids = PathUtils.return_all_result_ids(path_to_subdir)
 
     def raw_eeg_filtering(self):
         """ Applies filtering to all EEGs specified by the id-list in this class"""
-        self.filtering.filter_multiple_eeg(eeg_list=self.result_ids)
+        filtering = Filtering()
+        filtering.filter_multiple_eeg(eeg_list=self.result_ids)
 
     def feature_extraction(self, all_features: bool, *custom_feature_args):
         """
@@ -52,5 +52,6 @@ class Pipeline:
         Sets subset of Patient IDs, i.e. subdirectory of initial data
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
         """
-        path_to_subdir = self.io_core.level2_subdir_path("initial_data", initial_data_key)
+        io_core = IOCore()
+        path_to_subdir = io_core.level2_subdir_path("initial_data", initial_data_key)
         self.result_ids = PathUtils.return_all_result_ids(path_to_subdir)
