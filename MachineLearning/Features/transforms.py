@@ -9,8 +9,8 @@ from scipy.signal import welch
 
 class Transforms(MLObject):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, faw: bool, awake: bool):
+        super().__init__(faw, awake)
 
     def transform_eeg_episodes_to_psd(self, channel=1, nperseg_seconds=2, filtered=True):
         """
@@ -22,20 +22,27 @@ class Transforms(MLObject):
         :param nperseg_seconds: Length of window for Welch in seconds (usually: 1 or 2)
         """
         # instances for IO classes to load and save
-        feature_utils = FeatureUtils()
         result_saver = SaveResult()
 
-        epoch_list = feature_utils.return_faw_eeg_epochs(self.parameter_dict, filtered, channel)
+        # Update epochs
+        self.update_current_epochs(channel)
 
-        for start_time, end_time, result_id, fs, eeg_segment in epoch_list:
-            # calculate welch PSD
-            frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
+        if self.faw:
+            for start_time, end_time, result_id, fs, eeg_segment in self.faw_epochs.epoch_times:
+                # calculate welch PSD
+                frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
 
-            result_saver.save_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
+                result_saver.save_faw_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
+        if self.awake:
+            for start_time, end_time, result_id, fs, eeg_segment in self.awake_epochs.epoch_times:
+                # calculate welch PSD
+                frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
+
+                result_saver.save_awake_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
 
     def transform_eeg_to_psd(self, result_id: int, channel=1, nperseg_seconds=2):
         """
-        Calculates a PSDs for a raw EEG from a patient specified by result id .
+        Calculates a PSD for a raw EEG from a patient specified by result id .
         :param result_id: Patient id
         :param channel: EEG-Channel (options: 1, 2)
         :param nperseg_seconds: Length of window for Welch in seconds (usually: 1 or 2)

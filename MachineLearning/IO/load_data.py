@@ -56,6 +56,41 @@ class LoadData(IOCore):
         grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
         return grouped_epoch_times
 
+    def load_awake_times_as_df(self, parameters: dict) -> pd.DataFrame:
+        """
+        Reads a CSV file with 'caseid' and 'anestart' columns and generates epochs
+        based on a fixed epoch length.
+
+        :param parameters: Parameters for episodes. Contains length of each epoch.
+        :returns: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
+        """
+        csv_path = self.return_file_from_basedir("awake_times")
+        input_df = pd.read_csv(csv_path)
+        epoch_length = int(parameters["fixed_window_size"])
+
+        all_epochs = []
+
+        for _, row in input_df.iterrows():
+            caseid = row['caseid']
+            anestart = row['anestart']
+            num_epochs = int(anestart // epoch_length)  # segment into epochs based on episode length
+
+            for i in range(num_epochs):
+                start = i * epoch_length
+                end = start + epoch_length
+                all_epochs.append({
+                    'Start': start,
+                    'End': end,
+                    'ResultID': caseid
+                })
+
+        return pd.DataFrame(all_epochs)
+
+    def load_grouped_awake_times(self, parameters: dict) -> dict[int, list[tuple[int, int]]]:
+        epoch_times_df = self.load_awake_times_as_df(parameters)
+        grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
+        return grouped_epoch_times
+
     def return_eeg_tuple(self, result_id: int, filtered=True) -> Tuple[int, np.ndarray]:
         """
         Assembles a path to the EEG File of interest, specified by the patient ID and
@@ -193,3 +228,10 @@ class LoadData(IOCore):
             .to_dict()
         )
         return grouped
+
+    def return_file_from_basedir(self, file_key: str) -> str:
+        """Returns a path to a file in base directory"""
+        base_dir = self.path_config["base_dir"]["path_name"]
+        file_name = self.path_config["base_dir"]["files"][file_key]
+        file_path = PathUtils.create_anypath(base_dir, file_name)
+        return file_path

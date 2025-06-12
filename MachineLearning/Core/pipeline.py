@@ -6,7 +6,7 @@ from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
 
 class Pipeline:
     result_ids = []
-    features = EEGFeatureExtractor()
+    feature_extractor = EEGFeatureExtractor()
     feature_utils = FeatureUtils()
 
     def __init__(self, initial_data_key: str = "raw_eeg_mat"):
@@ -31,12 +31,12 @@ class Pipeline:
         :param custom_feature_args: list of features to be extracted (List entries have to be feature keys)
         :return:
         """
-        feature_functions = self.features.feature_extractors
+        feature_functions = self.feature_extractor.feature_extract_funcs
 
         # Calls all feature extraction functions
         if all_features:
             for function in feature_functions.values():
-                function(self.features)
+                function(self.feature_extractor)
         # calls all functions specified in custom_feature_dict by function keys
         else:
             # validate keys
@@ -45,7 +45,13 @@ class Pipeline:
                 if key not in feature_keys:
                     raise ValueError(f"'{key}' is no valid feature key. Valid keys are: {feature_keys}")
             for function_key in custom_feature_args:
-                feature_functions[function_key](self.features)
+                feature_functions[function_key](self.feature_extractor)
+
+    def combine_all_features(self):
+        self.feature_extractor.combine_all_features()
+
+    def combine_features(self, *features):
+        self.feature_extractor.combine_features(*features)
 
     def set_result_ids(self, initial_data_key: str):
         """

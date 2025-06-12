@@ -10,8 +10,8 @@ from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resultid
 from MachineLearning.Utils.math_utils import MathUtils
+from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.feature_function import FeatureFunction
-from MachineLearning.Utils.epochs import Epochs
 
 # Registries for feature functions. One for the calculators and one for the extractors
 feature_calculators_registry = {}
@@ -49,13 +49,17 @@ def register_feature_extractor(name, default_params=None):
 class EEGFeatureExtractor(MLObject):
     data_loader = LoadData()
     result_saver = SaveResult()
-    epoch_obj = Epochs()
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, faw: bool, awake: bool):
+        """
+        Create a FeatureExtractor object.
+        :param faw: Boolean value to indicate if instance currently handles fake awake (True) or awake (False) data.
+        :param awake: Boolean value to indicate if instance currently handles awake data.
+        """
+        super().__init__(faw, awake)
         # initialize registries
-        self.feature_functions = feature_calculators_registry
-        self.feature_extractors = feature_extractors_registry
+        self.feature_calc_funcs = feature_calculators_registry
+        self.feature_extract_funcs = feature_extractors_registry
 
     @register_feature_extractor("bandpower", default_params={"normalize_to": "bands"})
     def extract_relative_bandpower(self, normalize_to="bands"):
@@ -65,20 +69,12 @@ class EEGFeatureExtractor(MLObject):
         :param normalize_to: 'total' → normalize to total PSD power (default);
                             'bands' → normalize only to sum of power in specified bands
         """
-        loader = self.data_loader
-        saver = self.result_saver
-        # create path to directory with PSDs (specified by class attributes)
-        psd_dir = loader.psd_path_with_parameters(self.parameter_dict)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "bandpower"
 
-        # Output
-        all_rows = self.calculate_results_from_PSDs(psd_dir, feature_key, normalize_to=normalize_to)
-
-        # save as CSV in bandpower subfolder
-        saver.save_feature_summary_episode(all_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved bandpowers")
+        # Extract and save feature
+        self.extract_feature_from_PSDs(feature_key, normalize_to=normalize_to)
 
     @register_feature_calculator("bandpower")
     def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="bands") -> dict:
@@ -129,19 +125,12 @@ class EEGFeatureExtractor(MLObject):
 
         :param normalize: Normalize Entropy to [0,1] (default: True)
         """
-        loader = self.data_loader
-        saver = self.result_saver
-        # create path to directory with PSDs (specified by class attributes)
-        psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "shannon_entropy"
 
-        # Calculate results for PSDs
-        result_rows = self.calculate_results_from_PSDs(psd_directory_path, feature_key, normalize=normalize)
-
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Shannon Entropy")
+        # Extract and save feature
+        self.extract_feature_from_PSDs(feature_key, normalize=normalize)
 
     @register_feature_calculator("shannon_entropy")
     def calculate_shannon_entropy(self, psd_df: pd.DataFrame, normalize=True) -> float:
@@ -189,21 +178,12 @@ class EEGFeatureExtractor(MLObject):
         :param lower_bound: Lower bound of normalization range, referred to as a
         :param upper_bound: Upper bound of normalization range, referred to as b
         """
-        loader = self.data_loader
-        saver = self.result_saver
-        # create path to directory with PSDs (specified by class attributes)
-        psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
-
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "spectral_skewness"
 
-        # Calculate results for PSDs
-        result_rows = self.calculate_results_from_PSDs(psd_directory_path, feature_key,
-                                                       normalize=normalize, n_method=n_method,
-                                                       lower_bound=lower_bound, upper_bound=upper_bound)
-
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Spectral Skewness")
+        # Extract and save feature
+        self.extract_feature_from_PSDs(feature_key, normalize=normalize, n_method=n_method,
+                                       lower_bound=lower_bound, upper_bound=upper_bound)
 
     @register_feature_calculator("spectral_skewness")
     def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize=True, n_method="clip",
@@ -242,7 +222,7 @@ class EEGFeatureExtractor(MLObject):
         if normalize:
             if n_method == "tanh":
                 skewness = MathUtils.scaled_tanh(skewness, out_min=lower_bound, out_max=upper_bound)
-            elif normalize == "clip":
+            elif n_method == "clip":
                 skewness = np.clip(skewness, lower_bound, upper_bound)
         else:
             raise ValueError(f"Normalization method '{n_method}' not supported")
@@ -263,21 +243,12 @@ class EEGFeatureExtractor(MLObject):
         :param upper_bound: Upper bound of normalization range, referred to as b
         :return: Spectral kurtosis as float
         """
-        loader = self.data_loader
-        saver = self.result_saver
-        # create path to directory with PSDs (specified by class attributes)
-        psd_directory_path = loader.psd_path_with_parameters(self.parameter_dict)
-
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "spectral_kurtosis"
 
         # Calculate results for PSDs
-        result_rows = self.calculate_results_from_PSDs(psd_directory_path, feature_key,
-                                                       normalize=normalize, n_method=n_method,
-                                                       lower_bound=lower_bound, upper_bound=upper_bound)
-
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Spectral Kurtosis")
+        self.extract_feature_from_PSDs(feature_key, normalize=normalize, n_method=n_method,
+                                       lower_bound=lower_bound, upper_bound=upper_bound)
 
     @register_feature_calculator("spectral_kurtosis")
     def calculate_spectral_kurtosis(self, psd_df: pd.DataFrame, normalize=True, n_method="clip",
@@ -315,7 +286,7 @@ class EEGFeatureExtractor(MLObject):
         if normalize:
             if n_method == "tanh":
                 kurtosis = MathUtils.scaled_tanh(kurtosis, out_min=lower_bound, out_max=upper_bound)
-            elif normalize == "clip":
+            elif n_method == "clip":
                 kurtosis = np.clip(kurtosis, lower_bound, upper_bound)
         else:
             raise ValueError(f"Normalization method '{n_method}' not supported")
@@ -330,20 +301,16 @@ class EEGFeatureExtractor(MLObject):
 
         :param channel: channel of the EEG; valid options -> 1 or 2
         """
-        saver = self.result_saver
 
-        # Get all Episodes (default= filtered episodes)
-        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
-        epochs = self.epoch_obj.epoch_times
+        # Get all Episodes (default = filtered episodes)
+        self.update_current_epochs(channel)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "mean"
 
-        # Calculate results for epochs
-        result_rows = self.calculate_results_from_epochs(epochs, feature_key)
+        # Calculate and save results for epochs
+        self.extract_feature_from_EEG(feature_key)
 
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Mean of EEG-signals")
 
     @register_feature_calculator("mean")
     def calculate_mean(self, signal: np.ndarray) -> floating:
@@ -363,20 +330,15 @@ class EEGFeatureExtractor(MLObject):
 
         :param channel: channel of the EEG; valid options -> 1 or 2
         """
-        saver = self.result_saver
 
         # Get all Episodes (default= filtered episodes)
-        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
-        epochs = self.epoch_obj.epoch_times
+        self.update_current_epochs(channel)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "variance"
 
-        # Calculate results for epochs
-        result_rows = self.calculate_results_from_epochs(epochs, feature_key)
-
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Variance of EEG-signals")
+        # Calculate and save results for epochs
+        self.extract_feature_from_EEG(feature_key)
 
     @register_feature_calculator("variance")
     def calculate_variance(self, signal: np.ndarray) -> floating:
@@ -396,20 +358,14 @@ class EEGFeatureExtractor(MLObject):
 
         :param channel: channel of the EEG; valid options -> 1 or 2
         """
-        saver = self.result_saver
-
         # Get all Episodes (default= filtered episodes)
-        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
-        epochs = self.epoch_obj.epoch_times
+        self.update_current_epochs(channel)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "amplitude"
 
-        # Calculate results for epochs
-        result_rows = self.calculate_results_from_epochs(epochs, feature_key)
-
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Amplitude of EEG-signals")
+        # Calculate and save results for epochs
+        self.extract_feature_from_EEG(feature_key)
 
     @register_feature_calculator("amplitude")
     def calculate_amplitude(self, signal: np.ndarray) -> float:
@@ -431,20 +387,14 @@ class EEGFeatureExtractor(MLObject):
         :param emb_dim: Embedding dimension (default 2).
         :param tolerance: Tolerance as a fraction of std (default 0.2).
         """
-        saver = self.result_saver
-
         # Get all Episodes (default= filtered episodes)
-        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
-        epochs = self.epoch_obj.epoch_times
+        self.update_current_epochs(channel)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "sample_entropy"
 
-        # Calculate results for epochs
-        result_rows = self.calculate_results_from_epochs(epochs, feature_key, emb_dim=emb_dim, tolerance=tolerance)
-
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Sample Entropy of EEG-signals")
+        # Calculate and save results for epochs
+        self.extract_feature_from_EEG(feature_key, emb_dim=emb_dim, tolerance=tolerance)
 
     @register_feature_calculator("sample_entropy")
     def calculate_sample_entropy(self, signal: np.ndarray, emb_dim: int = 2, tolerance: float = 0.2) -> float:
@@ -470,21 +420,14 @@ class EEGFeatureExtractor(MLObject):
         :param delay: Delay between elements in embedded vectors (default 1).
         :param normalize: Whether to normalize the entropy (default True).
         """
-        saver = self.result_saver
-
         # Get all Episodes (default= filtered episodes)
-        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
-        epochs = self.epoch_obj.epoch_times
+        self.update_current_epochs(channel)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "permutation_entropy"
 
-        # Calculate results for epochs
-        result_rows = self.calculate_results_from_epochs(epochs, feature_key,
-                                                         order=order, delay=delay, normalize=normalize)
-
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Permutation Entropy of EEG-signals")
+        # Calculate and save results for epochs
+        self.extract_feature_from_EEG(feature_key, order=order, delay=delay, normalize=normalize)
 
     @register_feature_calculator("permutation_entropy")
     def calculate_permutation_entropy(self, signal: np.ndarray, order: int = 3, delay: int = 1,
@@ -511,20 +454,14 @@ class EEGFeatureExtractor(MLObject):
         :param r: Tolerance (relative to std).
         :param n: Fuzziness parameter.
         """
-        saver = self.result_saver
-
         # Get all Episodes (default= filtered episodes)
-        self.epoch_obj.update_if_necessary(self.parameter_dict, channel)
-        epochs = self.epoch_obj.epoch_times
+        self.update_current_epochs(channel)
 
         # retrieve name of feature -> will be the name for subdirectory and column
         feature_key = "fuzzy_entropy"
 
-        # Calculate results for epochs
-        result_rows = self.calculate_results_from_epochs(epochs, feature_key, m=m, r=r, n=n)
-
-        saver.save_feature_summary_episode(result_rows, feature_key, self.parameter_dict)
-        print(f"Succesfully calculated and saved Fuzzy Entropy of EEG-signals")
+        # Calculate and save results for epochs
+        self.extract_feature_from_EEG(feature_key, m=m, r=r, n=n)
 
     @register_feature_calculator("fuzzy_entropy")
     def calculate_fuzzy_entropy(self, signal: np.ndarray, m: int = 2, r: float = 0.2, n: int = 2) -> float:
@@ -541,53 +478,86 @@ class EEGFeatureExtractor(MLObject):
         result = FuzzEn(signal, m, std_r, n)
         return result['FuzzEn']
 
-    def calculate_results_from_epochs(self, epochs: list, feature_key: str, **kwargs) -> list:
+    def extract_feature_from_EEG(self, feature_key: str, **kwargs):
         """
         Helper function to automate calculation of feature defined by feature key.
 
-        :param epochs: List of epochs with metadata.
         :param feature_key: Key that defines directory, feature name in file and feature function applied
         :param kwargs: Optional additional parameters for feature function
         :return: A list of metadata und the feature itself
         """
-        if feature_key not in self.feature_functions:
+        if feature_key not in self.feature_calc_funcs:
             raise ValueError(f"Feature '{feature_key}' not found.")
 
         # Load function for this feature
-        func = self.feature_functions[feature_key]
+        func = self.feature_calc_funcs[feature_key]
 
         # get feature name
         feature_name = self.data_loader.return_feature_name(feature_key)
 
-        all_rows = []
-        for start, end, result_id, fs, eeg_segment in epochs:
-            value = func(self, eeg_segment, **kwargs)
-            all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
+        faw_all_rows = []
+        awake_all_rows = []
+        if self.faw:
+            for start, end, result_id, fs, eeg_segment in self.faw_epochs.epoch_times:
+                value = func(self, eeg_segment, **kwargs)
+                faw_all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
+            self.result_saver.save_faw_feature_summary_episode(faw_all_rows, feature_key, self.parameter_dict)
+            print(f"Succesfully calculated and saved {feature_name} of fake awake EEG-signals")
 
-        return all_rows
+        if self.awake:
+            for start, end, result_id, fs, eeg_segment in self.awake_epochs.epoch_times:
+                value = func(self, eeg_segment, **kwargs)
+                faw_all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
+            self.result_saver.save_awake_feature_summary_episode(awake_all_rows, feature_key, self.parameter_dict)
+            print(f"Succesfully calculated and saved {feature_name} of true awake EEG-signals")
 
-    def calculate_results_from_PSDs(self, psd_directory_path: str, feature_key: str, **kwargs) -> list:
+    def extract_feature_from_PSDs(self, feature_key: str, **kwargs):
 
-        if feature_key not in self.feature_functions:
+        if feature_key not in self.feature_calc_funcs:
             raise ValueError(f"Feature '{feature_key}' not found.")
 
         # Load function for this feature
-        func = self.feature_functions[feature_key]
+        func = self.feature_calc_funcs[feature_key]
 
         # get feature name
         feature_name = self.data_loader.return_feature_name(feature_key)
 
-        all_rows = []
+        faw_all_rows = []
+        awake_all_rows = []
+        if self.faw:
+            psd_directory_path = self.data_loader.psd_folder_path(self.parameter_dict)
+            for psd_file in os.listdir(psd_directory_path):
+                if psd_file.endswith(".csv"):
+                    psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_directory_path, psd_file)
 
-        for psd_file in os.listdir(psd_directory_path):
-            if psd_file.endswith(".csv"):
-                psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_directory_path, psd_file)
+                    # Calculate feature with feature function
+                    value = func(self, psd_df, **kwargs)
+                    # For features that return multiple values (as a dict)
+                    if isinstance(value, dict):
+                        faw_all_rows.append({"Start": start, "End": end, "ResultID": result_id, **value})
+                    else:
+                        faw_all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
+            self.result_saver.save_faw_feature_summary_episode(faw_all_rows, feature_key, self.parameter_dict)
+            print(f"Succesfully calculated and saved {feature_name} for fake awake PSDs")
 
-                # Calculate feature with feature function
-                value = func(self, psd_df, **kwargs)
-                # For features that return multiple values (as a dict)
-                if isinstance(value, dict):
-                    all_rows.append({"Start": start, "End": end, "ResultID": result_id, **value})
-                else:
-                    all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
-        return all_rows
+        if self.awake:
+            psd_directory_path = self.data_loader.psd_folder_path(self.parameter_dict, False)
+            for psd_file in os.listdir(psd_directory_path):
+                if psd_file.endswith(".csv"):
+                    psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_directory_path, psd_file)
+
+                    # Calculate feature with feature function
+                    value = func(self, psd_df, **kwargs)
+                    # For features that return multiple values (as a dict)
+                    if isinstance(value, dict):
+                        awake_all_rows.append({"Start": start, "End": end, "ResultID": result_id, **value})
+                    else:
+                        awake_all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
+            self.result_saver.save_awake_feature_summary_episode(awake_all_rows, feature_key, self.parameter_dict)
+            print(f"Succesfully calculated and saved {feature_name} for awake PSDs")
+
+    def combine_all_features(self):
+        FeatureUtils.combine_features(self.parameter_dict)
+
+    def combine_features(self, *features):
+        FeatureUtils.combine_features(self.parameter_dict, False, *features)

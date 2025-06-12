@@ -13,7 +13,6 @@ base_dir: # basic directory for all data in this project
             path_name: "Features"
             subdirs:
                 psds: "PSDs" # PSDs for frequency domain features
-                all_features: "All_features" # Folder where all features are integrated
                 bandpower: "Rel_bandpower" # Relative bandpowers of alpha, beta, gamma, theta, delta
                 shannon_entropy: "Shannon_entropy" # spectral shannon entropy
                 spectral_skewness: "Spectral_skewness" # spectral skewness
@@ -36,3 +35,4 @@ base_dir: # basic directory for all data in this project
 
     files:
         metadata: "metadata_vitaldb.csv" # File with metadata for all patients
+        awake_times: "anestart_analysis_results" # File with timeframes of awakeness for all patients

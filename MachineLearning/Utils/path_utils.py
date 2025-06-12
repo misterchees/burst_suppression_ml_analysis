@@ -27,15 +27,15 @@ class PathUtils:
         """
 
         # Assemble path from given parameters with structure dir/prefix_A_B_C_D_subfolder/Summary_Episodes_X_Y_file
-        subfolder_name = PathUtils.create_A_B_C_D_subfolder_name(prefix, parameters)
-        x_y_name = PathUtils.create_X_Y_subfolder_name(parameters)
+        subfolder_name = PathUtils.create_A_B_C_D_name(prefix, parameters)
+        x_y_name = PathUtils.create_X_Y_name(parameters)
         csv_name = f"{x_y_name}.csv"
         return str(os.path.join(directory, subfolder_name, csv_name))
 
     @staticmethod
-    def create_A_B_C_D_subfolder_name(prefix, parameters: dict) -> str:
+    def create_A_B_C_D_name(prefix, parameters: dict) -> str:
         """
-        Calculates and returns a subfolder name variable defined by the class attributes,
+        Calculates and returns a name variable defined by the class attributes,
         refractory time, min_episode_length, mac_threshold and bis_threshold.
         Example: result_70_080_20_5
 
@@ -55,9 +55,9 @@ class PathUtils:
         return f"{prefix}_{bis_threshold}_{mac_threshold}_{min_episode_length}_{refractory_time}"
 
     @staticmethod
-    def create_X_Y_subfolder_name(parameters: dict) -> str:
+    def create_X_Y_name(parameters: dict) -> str:
         """
-        Calculates and returns a subfolder name variable defined by the class attributes:
+        Calculates and returns a name variable defined by the class attributes:
         merged_episodes, fixed_window_size and overlap.
         Example: Summary_Episode_20_000
 
@@ -76,6 +76,11 @@ class PathUtils:
         # leave 2 digits after decimal point and remove it afterward: 0.5 -> 050, 0.25 -> 025 etc.
         overlap = f"{overlap:.2f}".replace(".", "")
         return f"{episode_name}_{fixed_window_size}_{overlap}"
+
+    @staticmethod
+    def create_awake_file_name(parameters: dict) -> str:
+        epoch_length = parameters["fixed_window_size"]
+        return f"Awake_{epoch_length}"
 
     @staticmethod
     def return_all_result_ids(directory: str) -> list:

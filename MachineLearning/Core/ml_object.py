@@ -1,4 +1,5 @@
 from MachineLearning.Utils.config_loader import load_config
+from MachineLearning.Utils.epochs import Epochs
 
 
 class MLObject:
@@ -11,14 +12,25 @@ class MLObject:
         "fixed_window_size": 20,  # exact window length (options: 5, 6, 7, 8, 9, 10, 15, 20)
         "overlap": 0.0  # window overlap (options: 0.0, 0.25, 0.5)
     }
+
     param_config = load_config("parameters_config.yaml")
 
-    def __init__(self, **kwargs):
+    faw: bool
+    awake: bool
+    faw_epochs = Epochs()
+    awake_epochs = Epochs()
+
+    def __init__(self, faw: bool, awake: bool, **kwargs):
         """
         Create an instance with new values for the parameters
 
         :param kwargs: Any keyword parameter(s)
+        :param faw: Boolean value to indicate if instance currently handles fake awake data.
+        :param awake: Boolean value to indicate if instance currently handles awake data.
         """
+        self.faw = faw
+        self.awake = awake
+
         # copy of parameters for this instance
         self.parameter = self.parameter_dict.copy()
 
@@ -26,15 +38,27 @@ class MLObject:
             if key in self.parameter:
                 self.parameter[key] = kwargs[key]
 
-    def set_attributes(self, **kwargs):
+    def set_attributes(self, faw: bool, awake: bool, **kwargs):
         """
         Sets any number of the attributes of the EEGFeatureExtractor.
 
         :param kwargs: Any keyword parameter(s)
+        :param faw: Boolean value to indicate if instance currently handles fake awake (True) or awake (False) data.
+        :param awake: Boolean value to indicate if instance currently handles awake data.
         """
+        self.faw = faw
+        self.awake = awake
+
         # copy of parameters for these instance
         self.parameter = self.parameter_dict.copy()
 
         for key in kwargs:
             if key in self.parameter:
                 self.parameter[key] = kwargs[key]
+
+    def update_current_epochs(self, channel):
+        # Get all Episodes for awake and fake awake epochs if necessary (default = filtered episodes)
+        if self.faw:
+            self.faw_epochs.update_if_necessary(self.parameter_dict, channel)
+        if self.awake:
+            self.awake_epochs.update_if_necessary(self.parameter_dict, channel, faw=False)

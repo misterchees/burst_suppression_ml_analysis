@@ -9,8 +9,8 @@ class SaveResult(IOCore):
     def __init__(self):
         super().__init__()
 
-    def save_psd(self, frequencies: np.ndarray, power: np.ndarray,
-                 parameters: dict, start: int, end: int, result_id: int):
+    def save_faw_psd(self, frequencies: np.ndarray, power: np.ndarray,
+                     parameters: dict, start: int, end: int, result_id: int):
         """
         Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end and result_id.
         :param frequencies: Frequencies from the PSD
@@ -23,13 +23,48 @@ class SaveResult(IOCore):
 
         # assemble path to directory
         psd_dir = self.level2_subdir_path("features", "psds")
-        abcd_subdir = PathUtils.create_A_B_C_D_subfolder_name("PSD", parameters)
-        xy_subdir = PathUtils.create_X_Y_subfolder_name(parameters)
+        abcd_subdir = PathUtils.create_A_B_C_D_name("PSD", parameters)
+        xy_subdir = PathUtils.create_X_Y_name(parameters)
         psd_dir_fullpath = PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
 
         # make sure directory exists
         os.makedirs(psd_dir_fullpath, exist_ok=True)
 
+        self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
+
+    def save_awake_psd(self, frequencies: np.ndarray, power: np.ndarray,
+                       parameters: dict, start: int, end: int, result_id: int):
+        """
+        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end and result_id.
+        :param frequencies: Frequencies from the PSD
+        :param power: Power of the Frequencies from the PSD
+        :param parameters: A dictionary with all episode parameters from the project
+        :param start: Start time of episode, from which the PSD was calculated
+        :param end: End time of episode, from which the PSD was calculated.
+        :param result_id: Patient ID
+        """
+
+        # assemble path to directory
+        psd_dir = self.return_folder_name("features", "psds")
+        psd_subfolder = PathUtils.create_awake_file_name(parameters)
+        psd_dir_fullpath = PathUtils.create_anypath(psd_dir, psd_subfolder)
+
+        # make sure directory exists
+        os.makedirs(psd_dir_fullpath, exist_ok=True)
+
+        self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
+
+    def save_psd_in_given_directory(self, frequencies: np.ndarray, power: np.ndarray,
+                                    start: int, end: int, result_id: int, psd_dir_fullpath: str):
+        """
+        Saves PSD data of EEG in a given directory with a name specified by start, end and result_id.
+        :param frequencies: Frequencies from the PSD
+        :param power: Power of the Frequencies from the PSD
+        :param start: Start time of episode, from which the PSD was calculated
+        :param end: End time of episode, from which the PSD was calculated.
+        :param result_id: Patient ID
+        :param psd_dir_fullpath: Directory where the PSD will be saved.
+        """
         # create dataframe from PSD data
         psd_cols = self.data_names["psd_files"]
         psd_df = pd.DataFrame({
@@ -83,9 +118,9 @@ class SaveResult(IOCore):
 
         print(f"Single episode PSD saved: {fullpath}")
 
-    def save_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
+    def save_faw_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
         """
-        Saves a csv with all episodes of a given parameter combination
+        Saves a csv with all fake awake episodes of a given parameter combination
         :param results: list of results
         :param feature_key: key of the subdirectory in path_config, where the summary episode will be saved
         :param parameters: parameters for the episode -> define the subfolder names
@@ -93,8 +128,22 @@ class SaveResult(IOCore):
         # save as CSV in subfolder with prefix
         result_df = pd.DataFrame(results)
 
-        fullpath = self.return_lvl2_parameter_file_path(parameters, feature_key)
+        fullpath = self.return_lvl2_parameter_file_path(parameters, "features", feature_key)
         result_df.to_csv(fullpath, index=False)  # write without row index
+
+    def save_awake_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
+        """
+        Saves a csv with all awake episodes of a given parameter combination.
+        :param results: list of results
+        :param feature_key: key of the subdirectory in path_config, where the summary episode will be saved
+        :param parameters: parameters for the episode -> define the file name
+        """
+        result_df = pd.DataFrame(results)
+
+        directory_path = self.return_folder_name("features", feature_key)
+        filename = PathUtils.create_awake_file_name(parameters)
+        fullpath = PathUtils.create_anypath(directory_path, f"{filename}.csv")
+        result_df.to_csv(fullpath, index=False)
 
     def save_filtered_eeg(self, filtered_eeg: np.ndarray, fs: int, result_id: int):
         """
@@ -118,6 +167,6 @@ class SaveResult(IOCore):
         print(f"Successfully saved filtered EEG to {fullpath}")
 
     def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame):
-        fullpath = self.return_lvl2_parameter_file_path(parameters, "feature_sets")
+        fullpath = self.return_lvl2_parameter_file_path(parameters, "test_and_train_data", "feature_sets")
         merged_df.to_csv(fullpath, index=False)
         print(f"Combined feature set saved to: {fullpath}")

@@ -1,12 +1,3 @@
-from MachineLearning.IO.io_core import IOCore
-
-io_core = IOCore()
-feature_names = list(io_core.return_all_feature_keys())
-print(feature_names)
-
-psds_folder_name = io_core.return_feature_name("psds")
-feature_names.remove(psds_folder_name)
-print(feature_names)
 
 # compare plots
 # comp = Comparison()
