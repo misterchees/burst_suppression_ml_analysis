@@ -45,7 +45,7 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir = self.return_folder_name("features", "psds")
+        psd_dir = self.return_folder_path("features", "psds")
         psd_subfolder = PathUtils.create_awake_file_name(parameters)
         psd_dir_fullpath = PathUtils.create_anypath(psd_dir, psd_subfolder)
 
@@ -128,7 +128,7 @@ class SaveResult(IOCore):
         # save as CSV in subfolder with prefix
         result_df = pd.DataFrame(results)
 
-        fullpath = self.return_lvl2_parameter_file_path(parameters, "features", feature_key)
+        fullpath = self.return_faw_file_fullpath(parameters, "features", feature_key)
         result_df.to_csv(fullpath, index=False)  # write without row index
 
     def save_awake_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
@@ -140,7 +140,7 @@ class SaveResult(IOCore):
         """
         result_df = pd.DataFrame(results)
 
-        directory_path = self.return_folder_name("features", feature_key)
+        directory_path = self.return_folder_path("features", feature_key)
         filename = PathUtils.create_awake_file_name(parameters)
         fullpath = PathUtils.create_anypath(directory_path, f"{filename}.csv")
         result_df.to_csv(fullpath, index=False)
@@ -166,7 +166,16 @@ class SaveResult(IOCore):
 
         print(f"Successfully saved filtered EEG to {fullpath}")
 
-    def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame):
-        fullpath = self.return_lvl2_parameter_file_path(parameters, "test_and_train_data", "feature_sets")
+    def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame, faw=True):
+        """
+        Saves a dataframe of combined features to a specified folder.
+        :param parameters: parameters for the features -> define the subfolder names
+        :param merged_df: Dataframe of all features combined to save
+        :param faw: Flag to indicate if features are from faw or awake
+        """
+        if faw:
+            fullpath = self.return_faw_file_fullpath(parameters, "test_and_train_data", "feature_sets")
+        else:
+            fullpath = self.return_awake_file_fullpath(parameters, "test_and_train_data", "feature_sets")
         merged_df.to_csv(fullpath, index=False)
         print(f"Combined feature set saved to: {fullpath}")

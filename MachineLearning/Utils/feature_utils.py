@@ -5,13 +5,14 @@ from MachineLearning.IO.save_result import SaveResult
 
 class FeatureUtils:
     @staticmethod
-    def combine_features(parameters: dict, all_features=True, *features: str):
+    def combine_features(parameters: dict, all_features=True, faw=True, *features: str):
         """
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.
 
         :param parameters: Parameters of the episodes from which the features are. Defines subfolder of features.
         :param all_features: If True, combine all available features found in the features directory.
+        :param faw: If True, combine faw features, else combine awake features.
         :param features: Specific feature keys to include (used only if all_features=False).
         """
         loader = LoadData()
@@ -33,8 +34,12 @@ class FeatureUtils:
 
         for feature in feature_keys:
             try:
-                print(f"Merging feature {feature}...")
-                feature_path = loader.return_lvl2_parameter_file_path(parameters, "features", feature, False)
+                print(f"Merging feature {loader.return_feature_name(feature)}...")
+                # loads faw or awake feature
+                if faw:
+                    feature_path = loader.return_faw_file_fullpath(parameters, "features", feature, False)
+                else:
+                    feature_path = loader.return_awake_file_fullpath(parameters, "features", feature)
                 df = pd.read_csv(feature_path)
                 # Merge or initialize
                 if merged_df is None:
@@ -55,7 +60,7 @@ class FeatureUtils:
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
 
         # Step 4: Save to feature_sets directory
-        saver.save_combined_features(parameters, merged_df)
+        saver.save_combined_features(parameters, merged_df, faw)
 
     @staticmethod
     def return_eeg_epochs(parameters: dict, filtered=True, channel=1, faw=True) -> list:

@@ -2,19 +2,15 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 
 
 class Epochs:
-    feature_utils = FeatureUtils()
-    epoch_times = []  # List of epochs
 
-    def __init__(self, parameters: dict = None, channel: int = None, filtered: bool = True, faw: bool = True):
+    def __init__(self, parameters: dict = None, channel: int = None, filtered=True, faw=True):
+        self.epoch_times = []  # Epochs of current parameters
+        self.parameters = parameters  # Parameters of epochs containing metadata
         if parameters:
-            self.epoch_times = self.feature_utils.return_eeg_epochs(parameters, channel=channel)
-            self.parameters = parameters  # Parameters of epochs containing metadata
-        if channel:
-            self.channel = channel  # Determines the channel of the EEG, from where the epochs are
-        if filtered:
-            self.filtered = filtered  # Determines if epochs are from filtered or raw EEG
-        if faw:
-            self.faw = faw  # Determines if epochs from fake awakeness or true awakeness
+            self.epoch_times = FeatureUtils.return_eeg_epochs(parameters, channel=channel, faw=faw)
+        self.channel = channel  # Determines the channel of the EEG, from where the epochs are
+        self.filtered = filtered  # Determines if epochs are from filtered or raw EEG
+        self.faw = faw  # Determines if epochs from fake awakeness or true awakeness
 
     def is_empty(self) -> bool:
         return not self.epoch_times
@@ -32,13 +28,10 @@ class Epochs:
                 or filtered != self.filtered or faw != self.faw):
             self.update_epochs(parameters, channel, filtered, faw)
 
-    def update_epochs(self, parameters: dict = None, channel: int = None, filtered: bool = True, faw: bool = True):
+    def update_epochs(self, parameters: dict = None, channel: int = None, filtered=True, faw=True):
         if parameters:
-            self.epoch_times = self.feature_utils.return_eeg_epochs(parameters, channel=channel)
-            self.parameters = parameters
-        if channel:
-            self.channel = channel
-        if filtered:
-            self.filtered = filtered
-        if faw:
-            self.faw = faw
+            self.epoch_times = FeatureUtils.return_eeg_epochs(parameters, channel=channel, faw=faw)
+        self.parameters = parameters
+        self.channel = channel
+        self.filtered = filtered
+        self.faw = faw

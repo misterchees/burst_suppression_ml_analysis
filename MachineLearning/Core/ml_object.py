@@ -37,8 +37,9 @@ class MLObject:
         for key in kwargs:
             if key in self.parameter:
                 self.parameter[key] = kwargs[key]
+        print(f"Parameters: {self.parameter}. Flags: faw={self.faw}, awake={self.awake}")
 
-    def set_attributes(self, faw: bool, awake: bool, **kwargs):
+    def set_attributes(self, faw: bool = None, awake: bool = None, **kwargs):
         """
         Sets any number of the attributes of the EEGFeatureExtractor.
 
@@ -46,8 +47,10 @@ class MLObject:
         :param faw: Boolean value to indicate if instance currently handles fake awake (True) or awake (False) data.
         :param awake: Boolean value to indicate if instance currently handles awake data.
         """
-        self.faw = faw
-        self.awake = awake
+        if faw:
+            self.faw = faw
+        if awake:
+            self.awake = awake
 
         # copy of parameters for these instance
         self.parameter = self.parameter_dict.copy()
@@ -56,7 +59,7 @@ class MLObject:
             if key in self.parameter:
                 self.parameter[key] = kwargs[key]
 
-    def update_current_epochs(self, channel):
+    def update_current_epochs(self, channel: int):
         # Get all Episodes for awake and fake awake epochs if necessary (default = filtered episodes)
         if self.faw:
             self.faw_epochs.update_if_necessary(self.parameter_dict, channel)

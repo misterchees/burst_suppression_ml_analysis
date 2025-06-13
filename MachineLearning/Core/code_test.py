@@ -1,30 +1,15 @@
+from MachineLearning.Utils.epochs import Epochs
+from MachineLearning.Core.ml_object import MLObject
 
-# compare plots
-# comp = Comparison()
-# comp.compare_filtered_and_unfiltered_eeg(10, y_scale="raw")
+ml_object = MLObject(False, True)
+print("Updating epochs 1")
+ml_object.update_current_epochs(1)
+print("Updating epochs 2")
+ml_object.update_current_epochs(1)
+print("Updating epochs 3")
+ml_object.set_attributes(channel=2)
+ml_object.update_current_epochs(1)
 
-# pipeline = Pipeline()
-# pipeline.feature_extraction(False, "variance", "amplitude", "sample_entropy", "permutation_entropy")
 
-# orders = [2, 4, 6, 8, 10]
-# fig, axes = Plots.create_subplot_grid(len(orders), cols=1, figsize=(10, 3 * len(orders)))
-# for idx, order in enumerate(orders):
-#     cur_fig_and_ax = (fig, axes[idx])
-#     Plots.plot_butterworth_filtering(fig_and_ax=cur_fig_and_ax, order=orders[idx])
-#
-# fig.tight_layout()
-# plt.show()
 
-# filtering = Filtering()
-# filtering.butterworth(1)
 
-# loader = LoadData()
-# freq, power = loader.return_raw_eeg_tuple(1)
-# filt_freq, filt_power = loader.return_filtered_eeg_tuple(1)
-
-# fig, axes = Plots.create_subplot_grid(2, cols=1, figsize=(10, 6))
-# Plots.plot_psd((fig, axes[0]), freq, power)
-# Plots.plot_psd((fig, axes[1]), filt_freq, filt_power)
-
-# fig.tight_layout()
-# plt.show()

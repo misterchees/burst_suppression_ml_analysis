@@ -57,9 +57,7 @@ class IOCore:
             xy_subdir = PathUtils.create_X_Y_name(parameters)
             output_path = PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
         else:
-            psd_dir = self.return_folder_name("features", "psds")
-            psd_subfolder = PathUtils.create_awake_file_name(parameters)
-            output_path = PathUtils.create_anypath(psd_dir, psd_subfolder)
+            output_path = self.return_awake_file_fullpath(parameters, "features", "psds")
 
         return output_path
 
@@ -88,6 +86,26 @@ class IOCore:
         else:
             return current_node
 
+    def return_folder_path(self, *folder_keys: str) -> str:
+        """
+        Returns a fullpath to the last folder given in folder keys, following all folders along the way.
+        :param folder_keys: Keys to assemble the path of folders
+        :return: Fullpath as string
+        """
+        root = self.path_config["base_dir"]
+        current_node = root
+        nodes = []
+        for key in folder_keys:
+            current_node = current_node["subdirs"][key]
+            # If it's a leaf in the yaml config, then its key:value, else it's key:dict with name in key = path_name
+            if isinstance(current_node, dict):
+                nodes.append(current_node["path_name"])
+            else:
+                nodes.append(current_node)
+
+        fullpath = PathUtils.create_anypath(root["path_name"], *nodes)
+        return fullpath
+
     def return_all_feature_names(self) -> list:
         """Returns a list of all feature names available in path_config"""
         return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].values())
@@ -95,8 +113,8 @@ class IOCore:
     def return_all_feature_keys(self) -> list:
         return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].keys())
 
-    def return_lvl2_parameter_file_path(self, parameters: dict, subdir_lvl1_key: str, subdir_lvl2_key: str,
-                                        create_subdirs=True) -> str:
+    def return_faw_file_fullpath(self, parameters: dict, subdir_lvl1_key: str, subdir_lvl2_key: str,
+                                 create_subdirs=True) -> str:
         """
         Returns a file path to a csv file for given foldername keys from path_config (2 nodes away from base directory)
         and given parameters. It creates all necessary folders if not already present.
@@ -107,7 +125,7 @@ class IOCore:
         :return: Path to the feature csv file
         """
         folder_name = self.return_folder_name(subdir_lvl1_key, subdir_lvl2_key)
-        folder_path = self.level2_subdir_path(subdir_lvl1_key, subdir_lvl2_key)
+        folder_path = self.return_folder_path(subdir_lvl1_key, subdir_lvl2_key)
         abcd_subdir = PathUtils.create_A_B_C_D_name(folder_name, parameters)
         subdir_of_file = PathUtils.create_anypath(folder_path, abcd_subdir)
         fullpath = PathUtils.return_csv_fullpath(folder_path, folder_name, parameters)
@@ -117,6 +135,20 @@ class IOCore:
             os.makedirs(subdir_of_file, exist_ok=True)
 
         return fullpath
+
+    def return_awake_file_fullpath(self, parameters: dict, *folder_keys) -> str:
+        """
+        Creates a filepath for an awake file depending on parameters and folder keys, where the keys determine
+        the folder and the parameters determine the name of the file.
+        :param parameters: parameters of the file
+        :param folder_keys: keys that determine the folder. Every key is one level deeper in the directory structure
+        :return:
+        """
+        folder_dir = self.return_folder_path(*folder_keys)
+        psd_subfolder = PathUtils.create_awake_file_name(parameters)
+        output_path = PathUtils.create_anypath(folder_dir, f"{psd_subfolder}.csv")
+
+        return output_path
 
     def set_attributes(self, **kwargs):
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",

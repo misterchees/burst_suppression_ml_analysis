@@ -64,7 +64,7 @@ class LoadData(IOCore):
         :param parameters: Parameters for episodes. Contains length of each epoch.
         :returns: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
         """
-        csv_path = self.return_file_from_basedir("awake_times")
+        csv_path = self.return_csv_file_from_basedir("awake_times")
         input_df = pd.read_csv(csv_path)
         epoch_length = int(parameters["fixed_window_size"])
 
@@ -229,9 +229,9 @@ class LoadData(IOCore):
         )
         return grouped
 
-    def return_file_from_basedir(self, file_key: str) -> str:
+    def return_csv_file_from_basedir(self, file_key: str) -> str:
         """Returns a path to a file in base directory"""
         base_dir = self.path_config["base_dir"]["path_name"]
         file_name = self.path_config["base_dir"]["files"][file_key]
-        file_path = PathUtils.create_anypath(base_dir, file_name)
+        file_path = PathUtils.create_anypath(base_dir, f"{file_name}.csv")
         return file_path

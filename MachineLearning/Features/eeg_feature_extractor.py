@@ -507,7 +507,7 @@ class EEGFeatureExtractor(MLObject):
         if self.awake:
             for start, end, result_id, fs, eeg_segment in self.awake_epochs.epoch_times:
                 value = func(self, eeg_segment, **kwargs)
-                faw_all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
+                awake_all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
             self.result_saver.save_awake_feature_summary_episode(awake_all_rows, feature_key, self.parameter_dict)
             print(f"Succesfully calculated and saved {feature_name} of true awake EEG-signals")
 
@@ -557,7 +557,13 @@ class EEGFeatureExtractor(MLObject):
             print(f"Succesfully calculated and saved {feature_name} for awake PSDs")
 
     def combine_all_features(self):
-        FeatureUtils.combine_features(self.parameter_dict)
+        if self.faw:
+            FeatureUtils.combine_features(self.parameter_dict)
+        if self.awake:
+            FeatureUtils.combine_features(self.parameter_dict, faw=False)
 
     def combine_features(self, *features):
-        FeatureUtils.combine_features(self.parameter_dict, False, *features)
+        if self.faw:
+            FeatureUtils.combine_features(self.parameter_dict, False, *features)
+        if self.awake:
+            FeatureUtils.combine_features(self.parameter_dict, False, False, *features)
