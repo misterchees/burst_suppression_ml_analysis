@@ -76,3 +76,8 @@ class SplitManager:
         self.test_df.to_csv(test_fullpath, index=False)
 
         print("Split saving successful")
+
+    def return_split_paths(self):
+        train_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "train")
+        test_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "test")
+        return train_fullpath, test_fullpath

@@ -22,14 +22,9 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir = self.level2_subdir_path("features", "psds")
-        abcd_subdir = PathUtils.return_A_B_C_D_name("PSD", parameters)
-        xy_subdir = PathUtils.return_X_Y_name(parameters)
-        psd_dir_fullpath = PathUtils.return_anypath(psd_dir, abcd_subdir, xy_subdir)
+        psd_dir_fullpath = self.return_all_parameter_fullpath(parameters, False, True, "features", "psds")
 
-        # make sure directory exists
-        os.makedirs(psd_dir_fullpath, exist_ok=True)
-
+        # Save file in directory
         self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
 
     def save_awake_psd(self, frequencies: np.ndarray, power: np.ndarray,
@@ -90,7 +85,7 @@ class SaveResult(IOCore):
         :param result_id: Patient ID corresponding to EEG.
         """
         # assemble path to directory
-        psd_dir = self.level2_subdir_path("features", "psds")
+        psd_dir = self.return_folder_path("features", "psds")
 
         if filtered:
             filter_prefix = "filtered"
@@ -155,7 +150,7 @@ class SaveResult(IOCore):
         """
         channels = self.data_names["eeg_files"]["eeg_channels"]
         df = pd.DataFrame(filtered_eeg, columns=channels)
-        filtered_eeg_subdir = self.level1_subdir_path("filtered_data")
+        filtered_eeg_subdir = self.return_folder_path("filtered_data")
         os.makedirs(os.path.dirname(filtered_eeg_subdir), exist_ok=True)
         fullpath = PathUtils.return_anypath(filtered_eeg_subdir, f"{result_id}.csv")
 

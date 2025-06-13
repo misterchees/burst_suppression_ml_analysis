@@ -42,8 +42,9 @@ class LoadData(IOCore):
         :param parameters: A dictionary with all episode parameters from the project
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
-        faw_dir = self.level1_subdir_path("faw")
-        csv_fullpath = PathUtils.return_csv_fullpath(faw_dir, "result", parameters)
+        faw_dir = self.return_folder_path("faw")
+        parameter_dir = PathUtils.return_A_B_C_D_X_Y_path("result", parameters)
+        csv_fullpath = PathUtils.return_anypath(faw_dir, f"{parameter_dir}.csv")
         # validate fullpath
         if not os.path.isfile(csv_fullpath):
             raise FileNotFoundError(f"CSV not found: {csv_fullpath}")
@@ -116,7 +117,7 @@ class LoadData(IOCore):
         """
 
         # Assemble Path to directory with .mat files
-        vitaldb_eeg_dir = self.level2_subdir_path("initial_data", "raw_eeg_mat")
+        vitaldb_eeg_dir = self.return_folder_path("initial_data", "raw_eeg_mat")
 
         mat_file_path = os.path.join(vitaldb_eeg_dir, f"{result_id}.mat")
         if not os.path.isfile(mat_file_path):
@@ -137,7 +138,7 @@ class LoadData(IOCore):
         :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
         """
         # Assemble Path to directory with .csv files
-        filtered_eeg_dir = self.level1_subdir_path("filtered_data")
+        filtered_eeg_dir = self.return_folder_path("filtered_data")
 
         filepath = os.path.join(filtered_eeg_dir, f"{result_id}.csv")
         if not os.path.isfile(filepath):
@@ -167,7 +168,7 @@ class LoadData(IOCore):
         :returns: Tuple of (sampling rate as int, dict of (start, end) -> EEG segment as ndarray)
         """
         # Step 0: Assemble Path to directory with .csv files
-        filtered_eeg_dir = self.level1_subdir_path("filtered_data")
+        filtered_eeg_dir = self.return_folder_path("filtered_data")
 
         filepath = os.path.join(filtered_eeg_dir, f"{result_id}.csv")
         if not os.path.isfile(filepath):

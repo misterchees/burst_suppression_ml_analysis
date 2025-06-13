@@ -12,7 +12,7 @@ base_dir: # basic directory for all data in this project
         features: # subdirectory for features and related data (like PSDs for freq domain features)
             path_name: "Features"
             subdirs:
-                psds: "PSDs" # PSDs for frequency domain features
+                psds: "PSD" # PSDs for frequency domain features
                 bandpower: "Rel_bandpower" # Relative bandpowers of alpha, beta, gamma, theta, delta
                 shannon_entropy: "Shannon_entropy" # spectral shannon entropy
                 spectral_skewness: "Spectral_skewness" # spectral skewness

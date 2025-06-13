@@ -13,26 +13,6 @@ class PathUtils:
         return str(os.path.join(*path_parts))
 
     @staticmethod
-    def return_csv_fullpath(directory, prefix: str, parameters: dict) -> str:
-        """
-        Calculates and returns a fullpath string variable to the desired csv defined by the class parameters
-        merged_episodes, refractory time, min_episode_length, mac_threshold, bis_threshold, overlap
-        and fixed_window_size.
-        Example: result_70_080_20_5\\Summary_Episodes_20_000.csv
-
-        :param parameters: A dictionary with all mentioned parameters
-        :param directory: Initial Directory for the fullpath.
-        :param prefix: Prefix of the subfolder name variable.
-        :return: Fullpath string variable.
-        """
-
-        # Assemble path from given parameters with structure dir/prefix_A_B_C_D_subfolder/Summary_Episodes_X_Y_file
-        subfolder_name = PathUtils.return_A_B_C_D_name(prefix, parameters)
-        x_y_name = PathUtils.return_X_Y_name(parameters)
-        csv_name = f"{x_y_name}.csv"
-        return str(os.path.join(directory, subfolder_name, csv_name))
-
-    @staticmethod
     def return_A_B_C_D_name(prefix, parameters: dict) -> str:
         """
         Calculates and returns a name variable defined by the class attributes,

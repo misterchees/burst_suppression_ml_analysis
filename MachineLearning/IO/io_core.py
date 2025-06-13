@@ -9,41 +9,6 @@ class IOCore:
         self.path_config = load_config("path_config.yaml")
         self.data_names = load_config("data_names_config.yaml")
 
-    def level1_subdir_path(self, subdir_key: str) -> str:
-        """
-        Returns a path to any direct subdirectory (defined by <subdir>) from the base directory of all data.
-        See path_config for more information.
-        :param subdir_key: key that stores the name of the subdirectory.
-        :return: path to the subdirectory
-        """
-        # retrieve subdir keys
-        valid_subdirs = self.path_config["base_dir"]["subdirs"].keys()
-
-        if subdir_key not in valid_subdirs:
-            raise ValueError(f"Invalid lvl1 subdir key: {subdir_key}. Valid subdir keys are {valid_subdirs}")
-
-        base_dir = self.path_config["base_dir"]["path_name"]
-        subdir = self.path_config["base_dir"]["subdirs"][subdir_key]["path_name"]
-        return PathUtils.return_anypath(base_dir, subdir)
-
-    def level2_subdir_path(self, subdir_lvl_1_key: str, subdir_lvl_2_key) -> str:
-        """
-        Returns a path to any subdirectory two nodes away from the base directory of all data.
-        See path_config for more information.
-        :param subdir_lvl_1_key: key that stores the name of the direct subdirectory ot the base directory.
-        :param subdir_lvl_2_key: key that stores the name of the direct subdirectory ot the lvl1 subdirectory.
-        :return: path to the subdirectory
-        """
-        lvl_1_subdir = self.level1_subdir_path(subdir_lvl_1_key)
-        # retrieve subdir keys
-        valid_lvl2_subdirs = self.path_config["base_dir"]["subdirs"][subdir_lvl_1_key]["subdirs"].keys()
-
-        if subdir_lvl_2_key not in valid_lvl2_subdirs:
-            raise ValueError(f"Invalid lvl2 subdir key: {subdir_lvl_2_key}. Valid subdir keys are {valid_lvl2_subdirs}")
-
-        lvl_2_subdir = self.path_config["base_dir"]["subdirs"][subdir_lvl_1_key]["subdirs"][subdir_lvl_2_key]
-        return PathUtils.return_anypath(lvl_1_subdir, lvl_2_subdir)
-
     def psd_folder_path(self, parameters: dict, faw=True) -> str:
         """
         Returns a path to the PSD directory, with the current parameters specified in <parameters>.
@@ -52,10 +17,7 @@ class IOCore:
         :return: Path to the PSD directory
         """
         if faw:
-            psd_dir = self.level2_subdir_path("features", "psds")
-            abcd_subdir = PathUtils.return_A_B_C_D_name("PSD", parameters)
-            xy_subdir = PathUtils.return_X_Y_name(parameters)
-            output_path = PathUtils.return_anypath(psd_dir, abcd_subdir, xy_subdir)
+            output_path = self.return_all_parameter_fullpath(parameters, False, True,"features", "psds")
         else:
             output_path = self.return_awake_file_fullpath(parameters, "features", "psds")
 
@@ -124,16 +86,9 @@ class IOCore:
         :param create_subdirs: If True will create all subdirectories necessary of returned path.
         :return: Path to the feature csv file
         """
-        folder_name = self.return_folder_name(subdir_lvl1_key, subdir_lvl2_key)
-        folder_path = self.return_folder_path(subdir_lvl1_key, subdir_lvl2_key)
-        abcd_subdir = PathUtils.return_A_B_C_D_name(folder_name, parameters)
-        subdir_of_file = PathUtils.return_anypath(folder_path, abcd_subdir)
-        fullpath = PathUtils.return_csv_fullpath(folder_path, folder_name, parameters)
 
-        # create subfolder if it doesn't exist
-        if create_subdirs:
-            os.makedirs(subdir_of_file, exist_ok=True)
-
+        fullpath = self.return_all_parameter_fullpath(parameters, True, create_subdirs,
+                                                      subdir_lvl1_key, subdir_lvl2_key)
         return fullpath
 
     def return_awake_file_fullpath(self, parameters: dict, *folder_keys) -> str:
@@ -151,18 +106,42 @@ class IOCore:
         return output_path
 
     def return_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> str:
-        split_folder = self.return_folder_path("test_and_train_data", "splits")
-        split_folder_name = self.return_folder_name("test_and_train_data", "splits")
-        abcd_xy_subfolder_path = PathUtils.return_A_B_C_D_X_Y_path(split_folder_name, parameters)
-        full_folder_path = PathUtils.return_anypath(split_folder, abcd_xy_subfolder_path)
 
-        if create_subdirs:
-            os.makedirs(full_folder_path, exist_ok=True)
+        full_folder_path = self.return_all_parameter_fullpath(parameters, False, create_subdirs,
+                                                              "test_and_train_data", "splits")
 
         if train_or_test != "train" and train_or_test != "test":
             raise ValueError(f"train_or_test must be either 'train' or 'test'")
 
         return PathUtils.return_anypath(full_folder_path, f"{train_or_test}_split.csv")
+
+    def return_all_parameter_fullpath(self, parameters: dict, xy_file: bool, create_dirs: bool,
+                                      *folder_parts: str) -> str:
+        """
+        Returns a fullpath that is of following structure:
+        folder1/folder2/...folderN/<folderN name_A_B_C_D/<episode Name>_X_Y
+        :param parameters: Dictionary of parameters that defines A,B,C,D,X,Y
+        :param xy_file: Flag to determine, if last node is a csv. -> fullpath ends then with .../<episode Name>_X_Y.csv
+        :param create_dirs: Flag to create the necessary folders if not already present.
+        :param folder_parts: Keys of folders from path_config, that define folder1 to folderN
+        :return: Returns a fullpath of above description.
+        """
+        dir_first_part = self.return_folder_path(*folder_parts)
+        prefix_name = self.return_folder_name(*folder_parts)
+        if not xy_file:
+            dir_abcd_xy_part = PathUtils.return_A_B_C_D_X_Y_path(prefix_name, parameters)
+            folder_path = PathUtils.return_anypath(dir_first_part, dir_abcd_xy_part)
+            fullpath = folder_path
+        else:
+            dir_abcd_part = PathUtils.return_A_B_C_D_name(prefix_name, parameters)
+            folder_path = PathUtils.return_anypath(dir_first_part, dir_abcd_part)
+            xy_part = PathUtils.return_X_Y_name(parameters)
+            fullpath = PathUtils.return_anypath(folder_path, f"{xy_part}.csv")
+
+        if create_dirs:
+            os.makedirs(folder_path, exist_ok=True)
+
+        return fullpath
 
     def set_attributes(self, **kwargs):
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",

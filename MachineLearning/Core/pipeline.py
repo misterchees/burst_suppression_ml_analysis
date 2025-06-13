@@ -19,7 +19,7 @@ class Pipeline:
         io_core = IOCore()
         self.feature_extractor = EEGFeatureExtractor(faw, awake)
         self.transformer = Transforms(faw, awake)
-        path_to_subdir = io_core.level2_subdir_path("initial_data", initial_data_key)
+        path_to_subdir = io_core.return_folder_path("initial_data", initial_data_key)
         self.result_ids = PathUtils.return_all_result_ids(path_to_subdir)
 
     def raw_eeg_filtering(self):
@@ -74,7 +74,7 @@ class Pipeline:
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
         """
         io_core = IOCore()
-        path_to_subdir = io_core.level2_subdir_path("initial_data", initial_data_key)
+        path_to_subdir = io_core.return_folder_path("initial_data", initial_data_key)
         self.result_ids = PathUtils.return_all_result_ids(path_to_subdir)
 
     def get_current_parameters(self) -> dict:
