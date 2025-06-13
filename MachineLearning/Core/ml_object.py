@@ -22,7 +22,7 @@ class MLObject:
 
     def __init__(self, faw: bool, awake: bool, **kwargs):
         """
-        Create an instance with new values for the parameters
+        Create an instance with global values for Epochs, flags and parameters.
 
         :param kwargs: Any keyword parameter(s)
         :param faw: Boolean value to indicate if instance currently handles fake awake data.
@@ -31,13 +31,10 @@ class MLObject:
         self.faw = faw
         self.awake = awake
 
-        # copy of parameters for this instance
-        self.parameter = self.parameter_dict.copy()
-
         for key in kwargs:
-            if key in self.parameter:
-                self.parameter[key] = kwargs[key]
-        print(f"Parameters: {self.parameter}. Flags: faw={self.faw}, awake={self.awake}")
+            if key in self.parameter_dict:
+                self.parameter_dict[key] = kwargs[key]
+        print(f"Parameters: {self.parameter_dict}. Flags: faw={self.faw}, awake={self.awake}")
 
     def set_attributes(self, faw: bool = None, awake: bool = None, **kwargs):
         """
@@ -52,12 +49,10 @@ class MLObject:
         if awake:
             self.awake = awake
 
-        # copy of parameters for these instance
-        self.parameter = self.parameter_dict.copy()
-
         for key in kwargs:
-            if key in self.parameter:
-                self.parameter[key] = kwargs[key]
+            if key in self.parameter_dict:
+                print(f"Changing {key} from {self.parameter_dict[key]} to {kwargs[key]} ")
+                self.parameter_dict[key] = kwargs[key]
 
     def update_current_epochs(self, channel: int):
         # Get all Episodes for awake and fake awake epochs if necessary (default = filtered episodes)

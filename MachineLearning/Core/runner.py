@@ -13,8 +13,8 @@ def run():
     # pipeline.transform_eeg_to_psd()
     # pipeline.feature_extraction(False, "amplitude", "mean", "variance")
     # pipeline.combine_all_features()
-    pipeline.combine_features("mean", "variance", "bandpower", "spectral_skewness",
-                              "spectral_kurtosis", "shannon_entropy")
+    # pipeline.combine_features("mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy")
+    pipeline.create_splits(0.15, 42)
 
 
 if __name__ == "__main__":

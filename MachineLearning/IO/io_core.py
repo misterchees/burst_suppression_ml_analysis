@@ -24,7 +24,7 @@ class IOCore:
 
         base_dir = self.path_config["base_dir"]["path_name"]
         subdir = self.path_config["base_dir"]["subdirs"][subdir_key]["path_name"]
-        return PathUtils.create_anypath(base_dir, subdir)
+        return PathUtils.return_anypath(base_dir, subdir)
 
     def level2_subdir_path(self, subdir_lvl_1_key: str, subdir_lvl_2_key) -> str:
         """
@@ -42,7 +42,7 @@ class IOCore:
             raise ValueError(f"Invalid lvl2 subdir key: {subdir_lvl_2_key}. Valid subdir keys are {valid_lvl2_subdirs}")
 
         lvl_2_subdir = self.path_config["base_dir"]["subdirs"][subdir_lvl_1_key]["subdirs"][subdir_lvl_2_key]
-        return PathUtils.create_anypath(lvl_1_subdir, lvl_2_subdir)
+        return PathUtils.return_anypath(lvl_1_subdir, lvl_2_subdir)
 
     def psd_folder_path(self, parameters: dict, faw=True) -> str:
         """
@@ -53,9 +53,9 @@ class IOCore:
         """
         if faw:
             psd_dir = self.level2_subdir_path("features", "psds")
-            abcd_subdir = PathUtils.create_A_B_C_D_name("PSD", parameters)
-            xy_subdir = PathUtils.create_X_Y_name(parameters)
-            output_path = PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
+            abcd_subdir = PathUtils.return_A_B_C_D_name("PSD", parameters)
+            xy_subdir = PathUtils.return_X_Y_name(parameters)
+            output_path = PathUtils.return_anypath(psd_dir, abcd_subdir, xy_subdir)
         else:
             output_path = self.return_awake_file_fullpath(parameters, "features", "psds")
 
@@ -103,7 +103,7 @@ class IOCore:
             else:
                 nodes.append(current_node)
 
-        fullpath = PathUtils.create_anypath(root["path_name"], *nodes)
+        fullpath = PathUtils.return_anypath(root["path_name"], *nodes)
         return fullpath
 
     def return_all_feature_names(self) -> list:
@@ -126,8 +126,8 @@ class IOCore:
         """
         folder_name = self.return_folder_name(subdir_lvl1_key, subdir_lvl2_key)
         folder_path = self.return_folder_path(subdir_lvl1_key, subdir_lvl2_key)
-        abcd_subdir = PathUtils.create_A_B_C_D_name(folder_name, parameters)
-        subdir_of_file = PathUtils.create_anypath(folder_path, abcd_subdir)
+        abcd_subdir = PathUtils.return_A_B_C_D_name(folder_name, parameters)
+        subdir_of_file = PathUtils.return_anypath(folder_path, abcd_subdir)
         fullpath = PathUtils.return_csv_fullpath(folder_path, folder_name, parameters)
 
         # create subfolder if it doesn't exist
@@ -145,10 +145,24 @@ class IOCore:
         :return:
         """
         folder_dir = self.return_folder_path(*folder_keys)
-        psd_subfolder = PathUtils.create_awake_file_name(parameters)
-        output_path = PathUtils.create_anypath(folder_dir, f"{psd_subfolder}.csv")
+        psd_subfolder = PathUtils.return_awake_file_name(parameters)
+        output_path = PathUtils.return_anypath(folder_dir, f"{psd_subfolder}.csv")
 
         return output_path
+
+    def return_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> str:
+        split_folder = self.return_folder_path("test_and_train_data", "splits")
+        split_folder_name = self.return_folder_name("test_and_train_data", "splits")
+        abcd_xy_subfolder_path = PathUtils.return_A_B_C_D_X_Y_path(split_folder_name, parameters)
+        full_folder_path = PathUtils.return_anypath(split_folder, abcd_xy_subfolder_path)
+
+        if create_subdirs:
+            os.makedirs(full_folder_path, exist_ok=True)
+
+        if train_or_test != "train" and train_or_test != "test":
+            raise ValueError(f"train_or_test must be either 'train' or 'test'")
+
+        return PathUtils.return_anypath(full_folder_path, f"{train_or_test}_split.csv")
 
     def set_attributes(self, **kwargs):
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",

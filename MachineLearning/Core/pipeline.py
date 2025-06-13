@@ -3,6 +3,7 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Preprocessing.filtering import Filtering
 from MachineLearning.Features.transforms import Transforms
 from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
+from MachineLearning.Evaluation.split_manager import SplitManager
 
 
 class Pipeline:
@@ -59,6 +60,14 @@ class Pipeline:
     def combine_features(self, *features):
         self.feature_extractor.combine_features(*features)
 
+    def create_splits(self, test_size: float, random_state: int):
+        parameters = self.get_current_parameters()
+        split_manager = SplitManager(parameters, test_size, random_state)
+        split_manager.load_and_validate()
+        split_manager.create_split()
+        split_manager.save()
+
+
     def set_result_ids(self, initial_data_key: str):
         """
         Sets subset of Patient IDs, i.e. subdirectory of initial data
@@ -67,3 +76,7 @@ class Pipeline:
         io_core = IOCore()
         path_to_subdir = io_core.level2_subdir_path("initial_data", initial_data_key)
         self.result_ids = PathUtils.return_all_result_ids(path_to_subdir)
+
+    def get_current_parameters(self) -> dict:
+        # It doesn't matter if taken from feature extractor or filterer
+        return self.feature_extractor.parameter_dict

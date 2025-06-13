@@ -16,7 +16,7 @@ def load_psd_with_start_end_resultid(directory_path: str, filename: str) \
     :param directory_path: The directory of filename
     :return: A tuple structured this way (dataframe, start, end, result_id)
     """
-    psd_fullpath = PathUtils.create_anypath(directory_path, filename)
+    psd_fullpath = PathUtils.return_anypath(directory_path, filename)
     print(f"Processing {psd_fullpath}")
     # Validation of single episode PSD name structure
     name_parts = filename.split(".")[0].split("_")
@@ -233,5 +233,5 @@ class LoadData(IOCore):
         """Returns a path to a file in base directory"""
         base_dir = self.path_config["base_dir"]["path_name"]
         file_name = self.path_config["base_dir"]["files"][file_key]
-        file_path = PathUtils.create_anypath(base_dir, f"{file_name}.csv")
+        file_path = PathUtils.return_anypath(base_dir, f"{file_name}.csv")
         return file_path

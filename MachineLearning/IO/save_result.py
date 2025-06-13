@@ -23,9 +23,9 @@ class SaveResult(IOCore):
 
         # assemble path to directory
         psd_dir = self.level2_subdir_path("features", "psds")
-        abcd_subdir = PathUtils.create_A_B_C_D_name("PSD", parameters)
-        xy_subdir = PathUtils.create_X_Y_name(parameters)
-        psd_dir_fullpath = PathUtils.create_anypath(psd_dir, abcd_subdir, xy_subdir)
+        abcd_subdir = PathUtils.return_A_B_C_D_name("PSD", parameters)
+        xy_subdir = PathUtils.return_X_Y_name(parameters)
+        psd_dir_fullpath = PathUtils.return_anypath(psd_dir, abcd_subdir, xy_subdir)
 
         # make sure directory exists
         os.makedirs(psd_dir_fullpath, exist_ok=True)
@@ -46,8 +46,8 @@ class SaveResult(IOCore):
 
         # assemble path to directory
         psd_dir = self.return_folder_path("features", "psds")
-        psd_subfolder = PathUtils.create_awake_file_name(parameters)
-        psd_dir_fullpath = PathUtils.create_anypath(psd_dir, psd_subfolder)
+        psd_subfolder = PathUtils.return_awake_file_name(parameters)
+        psd_dir_fullpath = PathUtils.return_anypath(psd_dir, psd_subfolder)
 
         # make sure directory exists
         os.makedirs(psd_dir_fullpath, exist_ok=True)
@@ -74,7 +74,7 @@ class SaveResult(IOCore):
 
         # create fullpath with PSD name to save data
         psd_filename = f"PSD_{start}_{end}_{result_id}.csv"
-        fullpath = PathUtils.create_anypath(psd_dir_fullpath, psd_filename)
+        fullpath = PathUtils.return_anypath(psd_dir_fullpath, psd_filename)
 
         # save psd
         psd_df.to_csv(fullpath, index=False)
@@ -98,7 +98,7 @@ class SaveResult(IOCore):
             filter_prefix = "raw"
 
         psd_filename = f"PSD_{filter_prefix}_whole_EEG_{result_id}.csv"
-        whole_eeg_subdir = PathUtils.create_anypath(psd_dir, "whole_EEG_PSD", filter_prefix)
+        whole_eeg_subdir = PathUtils.return_anypath(psd_dir, "whole_EEG_PSD", filter_prefix)
 
         # make sure directory exists
         os.makedirs(whole_eeg_subdir, exist_ok=True)
@@ -111,7 +111,7 @@ class SaveResult(IOCore):
         })
 
         # create fullpath with PSD name to save data
-        fullpath = PathUtils.create_anypath(whole_eeg_subdir, psd_filename)
+        fullpath = PathUtils.return_anypath(whole_eeg_subdir, psd_filename)
 
         # save psd
         psd_df.to_csv(fullpath, index=False)
@@ -141,8 +141,8 @@ class SaveResult(IOCore):
         result_df = pd.DataFrame(results)
 
         directory_path = self.return_folder_path("features", feature_key)
-        filename = PathUtils.create_awake_file_name(parameters)
-        fullpath = PathUtils.create_anypath(directory_path, f"{filename}.csv")
+        filename = PathUtils.return_awake_file_name(parameters)
+        fullpath = PathUtils.return_anypath(directory_path, f"{filename}.csv")
         result_df.to_csv(fullpath, index=False)
 
     def save_filtered_eeg(self, filtered_eeg: np.ndarray, fs: int, result_id: int):
@@ -157,7 +157,7 @@ class SaveResult(IOCore):
         df = pd.DataFrame(filtered_eeg, columns=channels)
         filtered_eeg_subdir = self.level1_subdir_path("filtered_data")
         os.makedirs(os.path.dirname(filtered_eeg_subdir), exist_ok=True)
-        fullpath = PathUtils.create_anypath(filtered_eeg_subdir, f"{result_id}.csv")
+        fullpath = PathUtils.return_anypath(filtered_eeg_subdir, f"{result_id}.csv")
 
         # Write fs as header line, then the rounded data
         with open(fullpath, "w", newline='') as f:

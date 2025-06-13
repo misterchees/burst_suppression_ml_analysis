@@ -4,7 +4,7 @@ import warnings
 
 class PathUtils:
     @staticmethod
-    def create_anypath(*path_parts: str) -> str:
+    def return_anypath(*path_parts: str) -> str:
         """
         Creates any path build from given path_parts.
         :param path_parts: Any number of path parts in the right order to assemble them.
@@ -13,7 +13,7 @@ class PathUtils:
         return str(os.path.join(*path_parts))
 
     @staticmethod
-    def return_csv_fullpath(directory, prefix, parameters: dict) -> str:
+    def return_csv_fullpath(directory, prefix: str, parameters: dict) -> str:
         """
         Calculates and returns a fullpath string variable to the desired csv defined by the class parameters
         merged_episodes, refractory time, min_episode_length, mac_threshold, bis_threshold, overlap
@@ -27,13 +27,13 @@ class PathUtils:
         """
 
         # Assemble path from given parameters with structure dir/prefix_A_B_C_D_subfolder/Summary_Episodes_X_Y_file
-        subfolder_name = PathUtils.create_A_B_C_D_name(prefix, parameters)
-        x_y_name = PathUtils.create_X_Y_name(parameters)
+        subfolder_name = PathUtils.return_A_B_C_D_name(prefix, parameters)
+        x_y_name = PathUtils.return_X_Y_name(parameters)
         csv_name = f"{x_y_name}.csv"
         return str(os.path.join(directory, subfolder_name, csv_name))
 
     @staticmethod
-    def create_A_B_C_D_name(prefix, parameters: dict) -> str:
+    def return_A_B_C_D_name(prefix, parameters: dict) -> str:
         """
         Calculates and returns a name variable defined by the class attributes,
         refractory time, min_episode_length, mac_threshold and bis_threshold.
@@ -55,7 +55,7 @@ class PathUtils:
         return f"{prefix}_{bis_threshold}_{mac_threshold}_{min_episode_length}_{refractory_time}"
 
     @staticmethod
-    def create_X_Y_name(parameters: dict) -> str:
+    def return_X_Y_name(parameters: dict) -> str:
         """
         Calculates and returns a name variable defined by the class attributes:
         merged_episodes, fixed_window_size and overlap.
@@ -78,7 +78,19 @@ class PathUtils:
         return f"{episode_name}_{fixed_window_size}_{overlap}"
 
     @staticmethod
-    def create_awake_file_name(parameters: dict) -> str:
+    def return_A_B_C_D_X_Y_path(prefix: str, parameters: dict) -> str:
+        """
+        Returns a path-like string. For details look into return_A_B_C_D_name and return_X_Y_name functions.
+        :param prefix: prefix of abcd folder
+        :param parameters: parameters that decide about the variables.
+        :return: <prefix>_A_B_C_D\\<Episode>_X_Y
+        """
+        abcd_folder = PathUtils.return_A_B_C_D_name(prefix, parameters)
+        xy_folder = PathUtils.return_X_Y_name(parameters)
+        return str(os.path.join(abcd_folder, xy_folder))
+
+    @staticmethod
+    def return_awake_file_name(parameters: dict) -> str:
         epoch_length = parameters["fixed_window_size"]
         return f"Awake_{epoch_length}"
 

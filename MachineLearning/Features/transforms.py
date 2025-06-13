@@ -3,7 +3,6 @@ from typing import Tuple
 from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
-from MachineLearning.Utils.feature_utils import FeatureUtils
 from scipy.signal import welch
 
 
