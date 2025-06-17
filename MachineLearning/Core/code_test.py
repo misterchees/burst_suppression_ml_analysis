@@ -5,7 +5,7 @@ from MachineLearning.Core.ml_object import MLObject
 import pandas as pd
 
 # Load splits
-ml_object = MLObject(True, True)
+ml_object = MLObject(True, True, True)
 split_manager = SplitManager(ml_object.parameter_dict)
 train_path, test_path = split_manager.return_split_paths()
 train_df = pd.read_csv(train_path)

@@ -8,8 +8,8 @@ from scipy.signal import welch
 
 class Transforms(MLObject):
 
-    def __init__(self, faw: bool, awake: bool):
-        super().__init__(faw, awake)
+    def __init__(self, faw: bool, awake: bool, normal_an: bool):
+        super().__init__(faw, awake, normal_an)
 
     def transform_eeg_episodes_to_psd(self, channel=1, nperseg_seconds=2, filtered=True):
         """
@@ -38,6 +38,12 @@ class Transforms(MLObject):
                 frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
 
                 result_saver.save_awake_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
+        if self.normal_an:
+            for start_time, end_time, result_id, fs, eeg_segment in self.normal_an_epochs.epoch_times:
+                # calculate welch PSD
+                frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
+
+                result_saver.save_normal_an_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
 
     def transform_eeg_to_psd(self, result_id: int, channel=1, nperseg_seconds=2):
         """

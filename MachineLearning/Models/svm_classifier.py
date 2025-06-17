@@ -12,13 +12,13 @@ class SVMClassifier:
         """
         self.model = SVC(**svm_kwargs)
 
-    def train(self, X_train, y_train):
-        self.model.fit(X_train, y_train)
+    def train(self, x_train, y_train):
+        self.model.fit(x_train, y_train)
 
-    def predict(self, X):
-        return self.model.predict(X)
+    def predict(self, x):
+        return self.model.predict(x)
 
-    def predict_proba(self, X):
+    def predict_proba(self, x):
         if hasattr(self.model, "probability") and self.model.probability:
-            return self.model.predict_proba(X)
+            return self.model.predict_proba(x)
         raise AttributeError("SVM was not initialized with probability=True.")

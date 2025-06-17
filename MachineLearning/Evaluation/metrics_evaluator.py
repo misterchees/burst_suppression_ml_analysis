@@ -1,3 +1,4 @@
+import pandas as pd
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
     f1_score, roc_auc_score, confusion_matrix
@@ -20,12 +21,19 @@ class MetricsEvaluator:
         self.y_proba = y_proba
 
     def evaluate(self):
+        cm = confusion_matrix(self.y_true, self.y_pred)
+        cm_df = pd.DataFrame(
+            cm,
+            columns=['Predicted FAW (0)', 'Predicted Awake (1)'],
+            index=['Actual FAW (0)', 'Actual Awake (1)']
+        )
+
         results = {
             "accuracy": accuracy_score(self.y_true, self.y_pred),
             "precision": precision_score(self.y_true, self.y_pred, zero_division=0),
             "recall": recall_score(self.y_true, self.y_pred, zero_division=0),
             "f1": f1_score(self.y_true, self.y_pred, zero_division=0),
-            "confusion_matrix": confusion_matrix(self.y_true, self.y_pred).tolist()
+            "confusion_matrix": cm_df
         }
 
         if self.y_proba is not None:

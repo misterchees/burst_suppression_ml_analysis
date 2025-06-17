@@ -1,4 +1,5 @@
 import os
+import warnings
 
 from MachineLearning.Utils.path_utils import PathUtils
 from MachineLearning.Utils.config_loader import load_config
@@ -9,17 +10,22 @@ class IOCore:
         self.path_config = load_config("path_config.yaml")
         self.data_names = load_config("data_names_config.yaml")
 
-    def psd_folder_path(self, parameters: dict, faw=True) -> str:
+    def psd_folder_path(self, parameters: dict, faw=True, normal_an=False) -> str:
         """
         Returns a path to the PSD directory, with the current parameters specified in <parameters>.
         :param parameters: Current Episode Parameters
         :param faw: Boolean to determine if PSD is from fake awake or true awake
+        :param normal_an: Boolean to determine if PSD is from normal anesthesia.
         :return: Path to the PSD directory
         """
+        if normal_an:
+            output_path = self.return_normal_an_file_fullpath(parameters, False, "features", "psds")
+            return output_path
+
         if faw:
-            output_path = self.return_all_parameter_fullpath(parameters, False, True,"features", "psds")
+            output_path = self.return_all_parameter_fullpath(parameters, False, True, "features", "psds")
         else:
-            output_path = self.return_awake_file_fullpath(parameters, "features", "psds")
+            output_path = self.return_awake_file_fullpath(parameters, False, "features", "psds")
 
         return output_path
 
@@ -91,17 +97,35 @@ class IOCore:
                                                       subdir_lvl1_key, subdir_lvl2_key)
         return fullpath
 
-    def return_awake_file_fullpath(self, parameters: dict, *folder_keys) -> str:
+    def return_awake_file_fullpath(self, parameters: dict, last_node_file=True, *folder_keys) -> str:
         """
         Creates a filepath for an awake file depending on parameters and folder keys, where the keys determine
         the folder and the parameters determine the name of the file.
         :param parameters: parameters of the file
+        :param last_node_file: Is last node a file or a folder. If True File, else Folder
         :param folder_keys: keys that determine the folder. Every key is one level deeper in the directory structure
         :return:
         """
         folder_dir = self.return_folder_path(*folder_keys)
         psd_subfolder = PathUtils.return_awake_file_name(parameters)
-        output_path = PathUtils.return_anypath(folder_dir, f"{psd_subfolder}.csv")
+        last_node = f"{psd_subfolder}.csv" if last_node_file else psd_subfolder
+        output_path = PathUtils.return_anypath(folder_dir, last_node)
+
+        return output_path
+
+    def return_normal_an_file_fullpath(self, parameters: dict, last_node_file=True, *folder_keys) -> str:
+        """
+        Creates a filepath for an awake file depending on parameters and folder keys, where the keys determine
+        the folder and the parameters determine the name of the file.
+        :param parameters: parameters of the file
+        :param last_node_file: Is last node a file or a folder. If True File, else Folder
+        :param folder_keys: keys that determine the folder. Every key is one level deeper in the directory structure
+        :return:
+        """
+        folder_dir = self.return_folder_path(*folder_keys)
+        psd_subfolder = PathUtils.return_normal_an_file_name(parameters)
+        last_node = f"{psd_subfolder}.csv" if last_node_file else psd_subfolder
+        output_path = PathUtils.return_anypath(folder_dir, last_node)
 
         return output_path
 
@@ -147,3 +171,27 @@ class IOCore:
         for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",
                      "filtered_data_subdir", "psds_subdir"]:
             setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))
+
+    def return_all_result_ids(self, initial_data_key: str) -> list:
+        """
+        Returns a list of all result IDs found in a directory specified by initial_data_key.
+        :param initial_data_key: Key of the folder in initial data, that determines the path to the directory.
+        :return: List of all result IDs in directory.
+        """
+
+        result_ids = []
+        directory = self.return_folder_path("initial_data", initial_data_key)
+
+        for file in os.listdir(directory):
+            try:
+                # Try to get Patient ID from filename
+                result_id = int(file.split(".")[0])
+                # Add filename to list
+                result_ids.append(result_id)
+            except TypeError as ex:
+                warnings.warn(f"File: {file} has not the right format. It should be <integer>.<file extension>\n"
+                              f"Error message: {ex}")
+            except Exception as ex:
+                warnings.warn(f"Something went wrong while file: {file} was parsed. Error {ex}")
+
+        return result_ids

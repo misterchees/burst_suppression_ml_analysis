@@ -1,4 +1,8 @@
-from MachineLearning.IO.io_core import IOCore, PathUtils
+import pandas as pd
+from fontTools.misc.classifyTools import Classifier
+
+from MachineLearning.IO.load_data import LoadData, PathUtils
+from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Preprocessing.filtering import Filtering
 from MachineLearning.Features.transforms import Transforms
@@ -9,18 +13,17 @@ from MachineLearning.Evaluation.split_manager import SplitManager
 class Pipeline:
     result_ids = []
 
-    def __init__(self, initial_data_key="raw_eeg_mat", faw=True, awake=True):
+    def __init__(self, initial_data_key="raw_eeg_mat", faw=True, awake=True, normal_an=False):
         """
         Sets subset of Patient IDs, i.e. subdirectory of initial data
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
         :param faw: Flag indicating if pipeline will handle fake awake episodes
         :param awake: Flag indicating if pipeline will handle awake episodes
         """
-        io_core = IOCore()
-        self.feature_extractor = EEGFeatureExtractor(faw, awake)
-        self.transformer = Transforms(faw, awake)
-        path_to_subdir = io_core.return_folder_path("initial_data", initial_data_key)
-        self.result_ids = PathUtils.return_all_result_ids(path_to_subdir)
+        loader = LoadData()
+        self.feature_extractor = EEGFeatureExtractor(faw, awake, normal_an)
+        self.transformer = Transforms(faw, awake, normal_an)
+        self.result_ids = loader.return_all_result_ids(initial_data_key)
 
     def raw_eeg_filtering(self):
         """ Applies filtering to all EEGs specified by the id-list in this class"""
@@ -60,22 +63,66 @@ class Pipeline:
     def combine_features(self, *features):
         self.feature_extractor.combine_features(*features)
 
-    def create_splits(self, test_size: float, random_state: int):
+    def create_splits(self, test_size: float, random_state: int, normal_an=False, split_paths=True):
+        """
+        Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
+        ratios of faw and awake class in both test and train.
+        :param test_size: Float that determines the ratio of test to train. E.g. 0.15 -> test:015/train:0.85
+        :param random_state: Randomness seed, to reproduce the shuffling of the splits.
+        :param normal_an: Flag to set normal anesthesia as faw (dirty fix).
+        :param split_paths: Boolean. if True, this method returns a tuple of paths
+        :return: if split_paths is True, returns: (<train set path>, <test set path>), else doesn't return anything.
+        """
         parameters = self.get_current_parameters()
-        split_manager = SplitManager(parameters, test_size, random_state)
+        split_manager = SplitManager(parameters, test_size, random_state, normal_an)
         split_manager.load_and_validate()
         split_manager.create_split()
         split_manager.save()
 
+        if split_paths:
+            return split_manager.return_split_paths()
+
+    def run_svm_classifier(self, classifier: Classifier = None, save_clf=True):
+
+        parameters = self.get_current_parameters()
+        split_manager = SplitManager(parameters)
+
+        train_path, test_path = split_manager.return_split_paths()
+        train_df = pd.read_csv(train_path)
+        test_df = pd.read_csv(test_path)
+
+        if classifier is not None:
+            loader = LoadData()
+            clf = loader.load_model("svm", parameters)
+        else:
+            from MachineLearning.Models.svm_classifier import SVMClassifier  # Lazy import
+            # Prepare features/labels
+            X_train = train_df.drop(columns=["Start", "End", "ResultID", "label"]).values
+            y_train = train_df["label"].values
+
+            y_test = test_df["label"].values
+
+            # Train model
+            clf = SVMClassifier(probability=True)
+            clf.train(X_train, y_train)
+
+        X_test = test_df.drop(columns=["Start", "End", "ResultID", "label"]).values
+
+        # Predict
+        y_pred = clf.predict(X_test)
+        y_proba = clf.predict_proba(X_test)
+
+        if save_clf:
+            saver = SaveResult()
+            saver.save_model(clf, "svm", parameters)
 
     def set_result_ids(self, initial_data_key: str):
         """
         Sets subset of Patient IDs, i.e. subdirectory of initial data
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
         """
-        io_core = IOCore()
-        path_to_subdir = io_core.return_folder_path("initial_data", initial_data_key)
-        self.result_ids = PathUtils.return_all_result_ids(path_to_subdir)
+        loader = LoadData()
+        self.result_ids = loader.return_all_result_ids(initial_data_key)
 
     def get_current_parameters(self) -> dict:
         # It doesn't matter if taken from feature extractor or filterer

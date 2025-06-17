@@ -2,7 +2,6 @@ import os
 from typing import Tuple
 import numpy as np
 import pandas as pd
-import scipy.io
 
 from MachineLearning.IO.io_core import IOCore
 from MachineLearning.Utils.path_utils import PathUtils
@@ -57,12 +56,13 @@ class LoadData(IOCore):
         grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
         return grouped_epoch_times
 
-    def load_awake_times_as_df(self, parameters: dict) -> pd.DataFrame:
+    def load_awake_times_as_df(self, parameters: dict, transition_time=10) -> pd.DataFrame:
         """
         Reads a CSV file with 'caseid' and 'anestart' columns and generates epochs
         based on a fixed epoch length.
 
         :param parameters: Parameters for episodes. Contains length of each epoch.
+        :param transition_time: The transition time for patient to respond to anesthesia beginning.
         :returns: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
         """
         csv_path = self.return_csv_file_from_basedir("awake_times")
@@ -74,7 +74,7 @@ class LoadData(IOCore):
         for _, row in input_df.iterrows():
             caseid = row['caseid']
             anestart = row['anestart']
-            num_epochs = int(anestart // epoch_length)  # segment into epochs based on episode length
+            num_epochs = int((anestart-transition_time) // epoch_length)  # segment into epochs based on episode length
 
             for i in range(num_epochs):
                 start = i * epoch_length
@@ -89,6 +89,81 @@ class LoadData(IOCore):
 
     def load_grouped_awake_times(self, parameters: dict) -> dict[int, list[tuple[int, int]]]:
         epoch_times_df = self.load_awake_times_as_df(parameters)
+        grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
+        return grouped_epoch_times
+
+    def sample_anesthesia_epochs(self, parameters: dict, num_epochs: int, transition_sec: int = 10,
+                                 safety_margin_min: int = 10, random_state: int = 42) -> pd.DataFrame:
+        """
+        Samples random EEG epochs from anesthesia segments (i.e., neither awake nor FAW).
+
+        :param parameters: Defines length of each epoch.
+        :param num_epochs: Number of total epochs to sample
+        :param transition_sec: Time (in seconds) after anestart before epochs are allowed
+        :param safety_margin_min: Minutes to exclude from end of EEG to avoid flatline segments
+        :param random_state: Random seed for reproducibility
+        :returns: DataFrame with columns Start, End, ResultID
+        """
+        import random
+
+        # set initial data
+        random.seed(random_state)
+        anestart_csv_path = self.return_csv_file_from_basedir("awake_times")
+        epoch_length_sec = int(parameters["fixed_window_size"])
+        filtered_data_dir = self.return_folder_path("filtered_data")
+
+        anestart_df = pd.read_csv(anestart_csv_path)
+        result = []
+
+        # List of all available EEG files
+        eeg_files = [f for f in os.listdir(filtered_data_dir) if f.endswith('.csv')]
+        random.shuffle(eeg_files)
+
+        for eeg_file in eeg_files:
+            result_id = os.path.splitext(eeg_file)[0]
+            eeg_path = os.path.join(filtered_data_dir, eeg_file)
+            try:
+                anestart = anestart_df.loc[anestart_df['caseid'].astype(str) == result_id, 'anestart'].values[0]
+            except IndexError:
+                continue  # skip if no anestart entry
+
+            # Get duration of EEG file
+            with open(eeg_path) as f:
+                num_lines = sum(1 for _ in f) - 1  # minus header
+            eeg_duration = num_lines//128  # assuming 1Hz sampling rate (1 row per second)
+
+            # Compute valid range for sampling
+            start_limit = anestart + transition_sec
+            end_limit = eeg_duration - (safety_margin_min * 60) - epoch_length_sec
+            if end_limit <= start_limit:
+                continue  # skip files where there's not enough space
+
+            # How many epochs can we fit?
+            max_possible_epochs = (end_limit - start_limit) // epoch_length_sec
+            if max_possible_epochs <= 0:
+                continue
+
+            # Sample as many as possible but not more than needed
+            num_to_sample = min(max_possible_epochs, num_epochs - len(result))
+            start_points = random.sample(
+                range(start_limit, end_limit - epoch_length_sec + 1),
+                num_to_sample
+            )
+
+            for start in start_points:
+                result.append({
+                    "Start": start,
+                    "End": start + epoch_length_sec,
+                    "ResultID": result_id
+                })
+
+            if len(result) >= num_epochs:
+                break  # early exit if we've collected enough
+
+        return pd.DataFrame(result)
+
+    def create_grouped_sample_anesthesia_epochs(self, parameters: dict, num_epochs: int) -> dict[int, list[tuple[int, int]]]:
+        epoch_times_df = self.sample_anesthesia_epochs(parameters, num_epochs=num_epochs)
         grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
         return grouped_epoch_times
 
@@ -115,6 +190,8 @@ class LoadData(IOCore):
         :param result_id: The patient ID
         :return: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a raw-EEG samples array with two channels
         """
+        # Lazy import
+        import scipy.io
 
         # Assemble Path to directory with .mat files
         vitaldb_eeg_dir = self.return_folder_path("initial_data", "raw_eeg_mat")
@@ -236,3 +313,17 @@ class LoadData(IOCore):
         file_name = self.path_config["base_dir"]["files"][file_key]
         file_path = PathUtils.return_anypath(base_dir, f"{file_name}.csv")
         return file_path
+
+    def load_model(self, model_key: str, parameters: dict):
+        """
+        Loads a model from a specified path, defined by model_key and parameters.
+        :param model_key: Key of the model (folder)
+        :param parameters: Parameters for the model -> define the subfolder names.
+        """
+
+        from joblib import load
+        full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, "models", model_key)
+        model_file = f"{model_key}.joblib"
+        model_fullpath = PathUtils.return_anypath(full_folder_path, model_file)
+        model = load(model_fullpath)
+        return model

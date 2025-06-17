@@ -50,13 +50,13 @@ class EEGFeatureExtractor(MLObject):
     data_loader = LoadData()
     result_saver = SaveResult()
 
-    def __init__(self, faw: bool, awake: bool):
+    def __init__(self, faw: bool, awake: bool, normal_an: bool):
         """
         Create a FeatureExtractor object.
         :param faw: Boolean value to indicate if instance currently handles fake awake (True) or awake (False) data.
         :param awake: Boolean value to indicate if instance currently handles awake data.
         """
-        super().__init__(faw, awake)
+        super().__init__(faw, awake, normal_an)
         # initialize registries
         self.feature_calc_funcs = feature_calculators_registry
         self.feature_extract_funcs = feature_extractors_registry
@@ -511,6 +511,13 @@ class EEGFeatureExtractor(MLObject):
             self.result_saver.save_awake_feature_summary_episode(awake_all_rows, feature_key, self.parameter_dict)
             print(f"Succesfully calculated and saved {feature_name} of true awake EEG-signals")
 
+        if self.normal_an:
+            for start, end, result_id, fs, eeg_segment in self.normal_an_epochs.epoch_times:
+                value = func(self, eeg_segment, **kwargs)
+                awake_all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
+            self.result_saver.save_normal_an_feature_summary_episode(awake_all_rows, feature_key, self.parameter_dict)
+            print(f"Succesfully calculated and saved {feature_name} of normal anesthesia awake EEG-signals")
+
     def extract_feature_from_PSDs(self, feature_key: str, **kwargs):
 
         if feature_key not in self.feature_calc_funcs:
@@ -556,14 +563,34 @@ class EEGFeatureExtractor(MLObject):
             self.result_saver.save_awake_feature_summary_episode(awake_all_rows, feature_key, self.parameter_dict)
             print(f"Succesfully calculated and saved {feature_name} for awake PSDs")
 
+        if self.normal_an:
+            psd_directory_path = self.data_loader.psd_folder_path(self.parameter_dict, normal_an=True)
+            for psd_file in os.listdir(psd_directory_path):
+                if psd_file.endswith(".csv"):
+                    psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_directory_path, psd_file)
+
+                    # Calculate feature with feature function
+                    value = func(self, psd_df, **kwargs)
+                    # For features that return multiple values (as a dict)
+                    if isinstance(value, dict):
+                        awake_all_rows.append({"Start": start, "End": end, "ResultID": result_id, **value})
+                    else:
+                        awake_all_rows.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
+            self.result_saver.save_normal_an_feature_summary_episode(awake_all_rows, feature_key, self.parameter_dict)
+            print(f"Succesfully calculated and saved {feature_name} for awake PSDs")
+
     def combine_all_features(self):
         if self.faw:
             FeatureUtils.combine_features(self.parameter_dict)
         if self.awake:
             FeatureUtils.combine_features(self.parameter_dict, faw=False)
+        if self.normal_an:
+            FeatureUtils.combine_features(self.parameter_dict, normal_an=True)
 
     def combine_features(self, *features):
         if self.faw:
             FeatureUtils.combine_features(self.parameter_dict, False, *features)
         if self.awake:
-            FeatureUtils.combine_features(self.parameter_dict, False, False, *features)
+            FeatureUtils.combine_features(self.parameter_dict, False, False, False, *features)
+        if self.normal_an:
+            FeatureUtils.combine_features(self.parameter_dict, False, False, True, *features)

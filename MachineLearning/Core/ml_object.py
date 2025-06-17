@@ -17,19 +17,24 @@ class MLObject:
 
     faw: bool
     awake: bool
+    normal_an: bool
+
     faw_epochs = Epochs()
     awake_epochs = Epochs()
+    normal_an_epochs = Epochs()
 
-    def __init__(self, faw: bool, awake: bool, **kwargs):
+    def __init__(self, faw: bool, awake: bool, normal_an: bool, **kwargs):
         """
         Create an instance with global values for Epochs, flags and parameters.
 
         :param kwargs: Any keyword parameter(s)
         :param faw: Boolean value to indicate if instance currently handles fake awake data.
         :param awake: Boolean value to indicate if instance currently handles awake data.
+        :param normal_an: Boolean value to indicate if instance currently handles normal anesthesia data.
         """
         self.faw = faw
         self.awake = awake
+        self.normal_an = normal_an
 
         for key in kwargs:
             if key in self.parameter_dict:
@@ -60,3 +65,9 @@ class MLObject:
             self.faw_epochs.update_if_necessary(self.parameter_dict, channel)
         if self.awake:
             self.awake_epochs.update_if_necessary(self.parameter_dict, channel, faw=False)
+        if self.normal_an:
+            if not self.awake:
+                raise Exception("To compare with anesthesia, awake Episodes must be existent")
+            number_of_epochs = len(self.awake_epochs.epoch_times)
+            self.normal_an_epochs.update_if_necessary(self.parameter_dict, normal_an=self.normal_an,
+                                                      num_an=number_of_epochs, channel=channel)

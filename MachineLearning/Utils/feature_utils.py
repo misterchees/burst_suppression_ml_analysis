@@ -5,7 +5,7 @@ from MachineLearning.IO.save_result import SaveResult
 
 class FeatureUtils:
     @staticmethod
-    def combine_features(parameters: dict, all_features=True, faw=True, *features: str):
+    def combine_features(parameters: dict, all_features=True, faw=True, normal_an=False, *features: str):
         """
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.
@@ -13,6 +13,7 @@ class FeatureUtils:
         :param parameters: Parameters of the episodes from which the features are. Defines subfolder of features.
         :param all_features: If True, combine all available features found in the features directory.
         :param faw: If True, combine faw features, else combine awake features.
+        :param normal_an: If True, combine normal anesthesia features.
         :param features: Specific feature keys to include (used only if all_features=False).
         """
         loader = LoadData()
@@ -39,7 +40,9 @@ class FeatureUtils:
                 if faw:
                     feature_path = loader.return_faw_file_fullpath(parameters, "features", feature, False)
                 else:
-                    feature_path = loader.return_awake_file_fullpath(parameters, "features", feature)
+                    feature_path = loader.return_awake_file_fullpath(parameters, True, "features", feature)
+                if normal_an:
+                    feature_path = loader.return_normal_an_file_fullpath(parameters, True, "features", feature)
                 df = pd.read_csv(feature_path)
                 # Merge or initialize
                 if merged_df is None:
@@ -56,14 +59,18 @@ class FeatureUtils:
         if merged_df is None or merged_df.empty:
             raise ValueError("No features were combined – possibly no files found or empty inputs.")
 
+        # Drop NaN rows, if present
+        merged_df = merged_df.dropna()
+
         # Step 3: Sort for consistency
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
 
         # Step 4: Save to feature_sets directory
-        saver.save_combined_features(parameters, merged_df, faw)
+        saver.save_combined_features(parameters, merged_df, faw, normal_an)
 
     @staticmethod
-    def return_eeg_epochs(parameters: dict, filtered=True, channel=1, faw=True) -> list:
+    def return_eeg_epochs(parameters: dict, filtered=True, channel=1, faw=True,
+                          normal_an=False, num_an: int = None) -> list:
         """
         Takes parameters and returns a list of all epochs (+ metadata) of this list
 
@@ -71,6 +78,8 @@ class FeatureUtils:
         :param filtered: Defines if windows are from filtered EEG (True) or raw EEG (False).
         :param channel: EEG-Channel (options: 1, 2)
         :param faw: If True returns epochs for fake awakeness, else for true awakeness.
+        :param normal_an: Ignores faw and returns epochs for normal anesthesia.
+        :param num_an: Number of epochs for normal anesthesia to return.
         :return: List of Tuples. Every Tuple is structured -> (start(s), end(s), result_id, fs, eeg epochs (samples))
         """
 
@@ -78,12 +87,15 @@ class FeatureUtils:
         output_list = []
 
         # Load Episode times based on current parameters and grouped by result ID
-        if faw:
-            episode_times_df = data_loader.load_grouped_faw_times(parameters)
-        else:
-            episode_times_df = data_loader.load_grouped_awake_times(parameters)
-
-        print(f"Retrieving Epochs for {'fake awakeness' if faw else 'awakeness'} for Parameters: {parameters}")
+        if not normal_an:  # faw or awake
+            if faw:
+                episode_times_df = data_loader.load_grouped_faw_times(parameters)
+            else:
+                episode_times_df = data_loader.load_grouped_awake_times(parameters)
+            print(f"Retrieving Epochs for {'fake awakeness' if faw else 'awakeness'} for Parameters: {parameters}")
+        else:  # Sampling random Epochs from EEG of normal anesthesia
+            episode_times_df = data_loader.create_grouped_sample_anesthesia_epochs(parameters, num_an)
+            print(f"Sampling {num_an} Epochs from normal anesthesia")
 
         for result_id, epoch_list in episode_times_df.items():
             # get times, segments and fs from grouped times list

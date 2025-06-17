@@ -49,6 +49,28 @@ class SaveResult(IOCore):
 
         self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
 
+    def save_normal_an_psd(self, frequencies: np.ndarray, power: np.ndarray,
+                           parameters: dict, start: int, end: int, result_id: int):
+        """
+        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end and result_id.
+        :param frequencies: Frequencies from the PSD
+        :param power: Power of the Frequencies from the PSD
+        :param parameters: A dictionary with all episode parameters from the project
+        :param start: Start time of episode, from which the PSD was calculated
+        :param end: End time of episode, from which the PSD was calculated.
+        :param result_id: Patient ID
+        """
+
+        # assemble path to directory
+        psd_dir = self.return_folder_path("features", "psds")
+        psd_subfolder = PathUtils.return_normal_an_file_name(parameters)
+        psd_dir_fullpath = PathUtils.return_anypath(psd_dir, psd_subfolder)
+
+        # make sure directory exists
+        os.makedirs(psd_dir_fullpath, exist_ok=True)
+
+        self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
+
     def save_psd_in_given_directory(self, frequencies: np.ndarray, power: np.ndarray,
                                     start: int, end: int, result_id: int, psd_dir_fullpath: str):
         """
@@ -140,6 +162,20 @@ class SaveResult(IOCore):
         fullpath = PathUtils.return_anypath(directory_path, f"{filename}.csv")
         result_df.to_csv(fullpath, index=False)
 
+    def save_normal_an_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
+        """
+        Saves a csv with all awake episodes of a given parameter combination.
+        :param results: list of results
+        :param feature_key: key of the subdirectory in path_config, where the summary episode will be saved
+        :param parameters: parameters for the episode -> define the file name
+        """
+        result_df = pd.DataFrame(results)
+
+        directory_path = self.return_folder_path("features", feature_key)
+        filename = PathUtils.return_normal_an_file_name(parameters)
+        fullpath = PathUtils.return_anypath(directory_path, f"{filename}.csv")
+        result_df.to_csv(fullpath, index=False)
+
     def save_filtered_eeg(self, filtered_eeg: np.ndarray, fs: int, result_id: int):
         """
         Saves a filtered EEG as a <result_id>.csv. Assuming the EEG has only 2 channels, these
@@ -161,16 +197,35 @@ class SaveResult(IOCore):
 
         print(f"Successfully saved filtered EEG to {fullpath}")
 
-    def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame, faw=True):
+    def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame, faw=True, normal_an=False):
         """
         Saves a dataframe of combined features to a specified folder.
         :param parameters: parameters for the features -> define the subfolder names
         :param merged_df: Dataframe of all features combined to save
         :param faw: Flag to indicate if features are from faw or awake
+        :param normal_an: Flat to indicate if features are from normal anesthesia
         """
         if faw:
             fullpath = self.return_faw_file_fullpath(parameters, "test_and_train_data", "feature_sets")
         else:
-            fullpath = self.return_awake_file_fullpath(parameters, "test_and_train_data", "feature_sets")
+            fullpath = self.return_awake_file_fullpath(parameters, True, "test_and_train_data", "feature_sets")
+        if normal_an:
+            fullpath = self.return_normal_an_file_fullpath(parameters, True, "test_and_train_data", "feature_sets")
         merged_df.to_csv(fullpath, index=False)
         print(f"Combined feature set saved to: {fullpath}")
+
+    def save_model(self, model, model_key: str, parameters: dict):
+        """
+        Saves a model to a specified folder.
+        :param model: The model to be saved.
+        :param model_key: Key of the model (name)
+        :param parameters: Parameters for the model -> define the subfolder names.
+        """
+
+        from joblib import dump
+        full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, "models", model_key)
+        model_file = f"{model_key}.joblib"
+        fullpath = PathUtils.return_anypath(full_folder_path, model_file)
+        dump(model, fullpath)
+
+
