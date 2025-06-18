@@ -22,7 +22,7 @@ class Comparison:
         farthest limits of both EEGs.
         """
         loader = LoadData()
-        transforms = Transforms()
+        transforms = Transforms(False, False, False)
         # Load EEGs from same Patient ID to compare
         fs_raw, raw_eegs = loader.return_eeg_tuple(result_id, False)
         fs_filt, filtered_eegs = loader.return_eeg_tuple(result_id, True)
@@ -68,9 +68,3 @@ class Comparison:
                                  f"Valid options are: 'raw', 'filtered' or 'min-max'")
 
         plt.show()
-
-
-
-
-
-

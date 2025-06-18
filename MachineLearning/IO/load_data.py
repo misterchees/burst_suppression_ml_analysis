@@ -122,10 +122,12 @@ class LoadData(IOCore):
         for eeg_file in eeg_files:
             result_id = os.path.splitext(eeg_file)[0]
             eeg_path = os.path.join(filtered_data_dir, eeg_file)
-            try:
-                anestart = anestart_df.loc[anestart_df['caseid'].astype(str) == result_id, 'anestart'].values[0]
-            except IndexError:
-                continue  # skip if no anestart entry
+            match = anestart_df.loc[anestart_df['caseid'].astype(str) == result_id, 'anestart']
+            if not match.empty:
+                anestart = match.values[0]
+            else:
+                # Default to safety margin if anestart is not available
+                anestart = safety_margin_min * 60
 
             # Get duration of EEG file
             with open(eeg_path) as f:

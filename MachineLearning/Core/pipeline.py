@@ -115,6 +115,7 @@ class Pipeline:
         if save_clf:
             saver = SaveResult()
             saver.save_model(clf, "svm", parameters)
+        return y_pred, y_test, y_proba
 
     def set_result_ids(self, initial_data_key: str):
         """
@@ -125,5 +126,6 @@ class Pipeline:
         self.result_ids = loader.return_all_result_ids(initial_data_key)
 
     def get_current_parameters(self) -> dict:
+        """Returns the current parameters as a dictionary."""
         # It doesn't matter if taken from feature extractor or filterer
         return self.feature_extractor.parameter_dict

@@ -1,8 +1,13 @@
+"""
+Here is the place to test any code.
+"""
+
+import pandas as pd
 from MachineLearning.Models.svm_classifier import SVMClassifier
 from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
 from MachineLearning.Evaluation.split_manager import SplitManager
 from MachineLearning.Core.ml_object import MLObject
-import pandas as pd
+
 
 # Load splits
 ml_object = MLObject(True, True, True)

@@ -1,3 +1,6 @@
+"""
+This module provides a metrics evaluator class for machine learning models.
+"""
 import pandas as pd
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score,
@@ -21,6 +24,7 @@ class MetricsEvaluator:
         self.y_proba = y_proba
 
     def evaluate(self):
+        """Returns metrics for prediction and ground truth values in this class."""
         cm = confusion_matrix(self.y_true, self.y_pred)
         cm_df = pd.DataFrame(
             cm,

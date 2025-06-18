@@ -1,5 +1,7 @@
+"""Contains the SplitManager class."""
 import pandas as pd
 from MachineLearning.IO.io_core import IOCore
+from MachineLearning.Utils.split_utils import SplitUtils
 
 
 class SplitManager:
@@ -25,6 +27,7 @@ class SplitManager:
         self.test_df = None
 
     def load_and_validate(self):
+        """Loads both csv Files, each of them containing data of one class."""
         print(f"Loading awake data from {self.awake_path}\n Loading faw data from {self.faw_path}")
         awake_df = pd.read_csv(self.awake_path)
         faw_df = pd.read_csv(self.faw_path)
@@ -37,60 +40,63 @@ class SplitManager:
         print("Loading successful")
 
     def create_split(self):
-        import numpy as np
-        from sklearn.model_selection import train_test_split
+        """
+         Creates splits in the following fashion:
+         1. Split on patient level in a way, that samples (epochs) are close to test/train ratio.
+         2. Balance both classes to ratio of 50/50 on sample level
+         3. Ensure that test/train ratio is still present on sample level. Optionally Downsize set that surpasses ratio.
+         4. Sorts rows by ascending order of "label", "ResultID", "Start" in both sets.
+         5. Saves sets to this class. To save them to your folder use the save method.
+        """
 
-        print(f"Creating patient-level balanced sample splits with ratio: "
-              f"({(1 - self.test_size) * 100:.0f}/{self.test_size * 100:.0f})")
+        print(f"Creating Splits. Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
 
-        # Step 1: Unique patient IDs
-        awake_ids = self.awake_df['ResultID'].unique()
-        faw_ids = self.faw_df['ResultID'].unique()
+        # Step 1: Assign labels according to file
+        awake_df = self.awake_df.copy()
+        awake_df["label"] = 1
+        faw_df = self.faw_df.copy()
+        faw_df["label"] = 0
 
-        # Labels for stratified splitting
-        all_ids = np.concatenate([awake_ids, faw_ids])  # Array for ResultIDs
-        labels = np.concatenate([np.ones_like(awake_ids), np.zeros_like(faw_ids)])  # ResultIDs mapped to labels [0,1]
-
-        # Stratify to preserve ratio in test and train and split along labels (resultID in test -> not in train)
-        train_ids, test_ids, _, _ = train_test_split(
-            all_ids, labels, test_size=self.test_size, stratify=labels, random_state=self.random_state
+        # Step 2: Find best split on patient level to reach test/train ratio on sample level
+        train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
+            awake_df=self.awake_df,
+            faw_df=self.faw_df,
+            test_size=self.test_size,
+            tolerance=0.05,
+            random_state=self.random_state
         )
 
-        # Select patients for each set
-        awake_train = self.awake_df[self.awake_df['ResultID'].isin(train_ids)].copy()
-        faw_train = self.faw_df[self.faw_df['ResultID'].isin(train_ids)].copy()
+        # Step 3: Split Epochs along Patient IDs
+        train_df = pd.concat([
+            awake_df[awake_df["ResultID"].isin(train_ids)],
+            faw_df[faw_df["ResultID"].isin(train_ids)]
+        ], ignore_index=True)
 
-        awake_test = self.awake_df[self.awake_df['ResultID'].isin(test_ids)].copy()
-        faw_test = self.faw_df[self.faw_df['ResultID'].isin(test_ids)].copy()
+        test_df = pd.concat([
+            awake_df[awake_df["ResultID"].isin(test_ids)],
+            faw_df[faw_df["ResultID"].isin(test_ids)]
+        ], ignore_index=True)
 
-        # Step 2: Balance each set by sample count (truncate to the smallest class)
-        def balance_samples(df1, df2, label1, label2):
-            df1 = df1.copy()
-            df2 = df2.copy()
-            df1['label'] = label1
-            df2['label'] = label2
+        # Step 4: Balance both classes in test and train to 50/50
+        test_df_balanced = SplitUtils.balance_classes(test_df, self.random_state)
+        train_df_balanced = SplitUtils.balance_classes(train_df, self.random_state)
 
-            min_len = min(len(df1), len(df2))
-            df1 = df1.sample(n=min_len, random_state=self.random_state)
-            df2 = df2.sample(n=min_len, random_state=self.random_state)
+        # Step 5: Ensure that sample split has the correct ratio by adjusting to smaller set
+        test_df_balanced, train_df_balanced = SplitUtils.adjust_splits_to_ratio(test_df_balanced, train_df_balanced,
+                                                                                self.test_size, self.random_state)
 
-            return pd.concat([df1, df2], ignore_index=True).sample(frac=1, random_state=self.random_state).reset_index(
-                drop=True)
+        # Step 6: Sort rows
+        self.train_df = train_df_balanced.sort_values(by=["label", "ResultID", "Start"]).reset_index(drop=True)
+        self.test_df = test_df_balanced.sort_values(by=["label", "ResultID", "Start"]).reset_index(drop=True)
 
-        self.train_df = balance_samples(awake_train, faw_train, 1, 0)
-        self.test_df = balance_samples(awake_test, faw_test, 1, 0)
-
-        # Sort splits
-        self.train_df = self.train_df.sort_values(by=["label", "ResultID", "Start"], ascending=[False, True, True])
-        self.test_df = self.test_df.sort_values(by=["label", "ResultID", "Start"], ascending=[False, True, True])
-
-        print(f"Split creation successful.")
-        print(f"Train set: {len(self.train_df)} samples, Test set: {len(self.test_df)} samples")
+        print("Split creation successful.")
+        print(f"Train set size: {len(self.train_df)}, Test set size: {len(self.test_df)}")
         print(
             f"Class distribution in train: awake={sum(self.train_df.label == 1)}, faw={sum(self.train_df.label == 0)}")
         print(f"Class distribution in test:  awake={sum(self.test_df.label == 1)}, faw={sum(self.test_df.label == 0)}")
 
     def save(self):
+        """Saves created train and test splits to a folder defined by current parameters."""
         train_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "train")
         test_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "test")
 
@@ -101,6 +107,7 @@ class SplitManager:
         print("Split saving successful")
 
     def return_split_paths(self):
+        """Returns a tuple of paths to the train-test-split. Tuple -> (train_path, test_path)"""
         train_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "train")
         test_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "test")
         return train_fullpath, test_fullpath

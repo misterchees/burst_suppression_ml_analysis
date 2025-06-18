@@ -1,8 +1,15 @@
+"""
+Module containing MlObject class.
+"""
 from MachineLearning.Utils.config_loader import load_config
 from MachineLearning.Utils.epochs import Epochs
 
 
 class MLObject:
+    """
+    Superclass for all machine learning objects. Especially Feature Extractor and Transformer.
+    Manages Epochs that are analyzed.
+    """
     parameter_dict = {
         "merged_episodes": False,  # flag to determine if episodes are merged
         "bis_threshold": 70,  # lower threshold on BIS value (options: 70)
@@ -60,6 +67,10 @@ class MLObject:
                 self.parameter_dict[key] = kwargs[key]
 
     def update_current_epochs(self, channel: int):
+        """
+        Calls the update function of all epoch objects.
+        :param channel: current channel of the EEG from where the epochs are.
+        """
         # Get all Episodes for awake and fake awake epochs if necessary (default = filtered episodes)
         if self.faw:
             self.faw_epochs.update_if_necessary(self.parameter_dict, channel)
