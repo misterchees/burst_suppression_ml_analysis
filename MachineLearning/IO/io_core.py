@@ -1,32 +1,27 @@
+"""This module contains the IOCore class"""
 import os
 import warnings
-
 from MachineLearning.Utils.path_utils import PathUtils
 from MachineLearning.Utils.config_loader import load_config
 
 
 class IOCore:
+    """
+    This class is a superclass for all classes that mainly manage IO stuff. It provides functions that are
+    useful for saving and loading data, which is mostly path manipulation methods.
+    """
     def __init__(self, **kwargs):
         self.path_config = load_config("path_config.yaml")
         self.data_names = load_config("data_names_config.yaml")
 
-    def psd_folder_path(self, parameters: dict, faw=True, normal_an=False) -> str:
+    def psd_folder_path(self, parameters: dict, epoch_type: str) -> str:
         """
         Returns a path to the PSD directory, with the current parameters specified in <parameters>.
         :param parameters: Current Episode Parameters
-        :param faw: Boolean to determine if PSD is from fake awake or true awake
-        :param normal_an: Boolean to determine if PSD is from normal anesthesia.
+        :param epoch_type: Type of Episode, that influences the path.
         :return: Path to the PSD directory
         """
-        if normal_an:
-            output_path = self.return_normal_an_file_fullpath(parameters, False, "features", "psds")
-            return output_path
-
-        if faw:
-            output_path = self.return_all_parameter_fullpath(parameters, False, True, "features", "psds")
-        else:
-            output_path = self.return_awake_file_fullpath(parameters, False, "features", "psds")
-
+        output_path = self.return_file_fullpath(parameters, False, True, epoch_type, "features", "psds")
         return output_path
 
     def return_feature_name(self, feature_key: str) -> str:
@@ -74,85 +69,64 @@ class IOCore:
         fullpath = PathUtils.return_anypath(root["path_name"], *nodes)
         return fullpath
 
-    def return_all_feature_names(self) -> list:
-        """Returns a list of all feature names available in path_config"""
-        return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].values())
-
     def return_all_feature_keys(self) -> list:
         return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].keys())
 
-    def return_faw_file_fullpath(self, parameters: dict, subdir_lvl1_key: str, subdir_lvl2_key: str,
-                                 create_subdirs=True) -> str:
+    def return_file_fullpath(self, parameters: dict, last_node_file: bool, create_subdirs: bool,
+                             file_type: str, *folder_keys: str) -> str:
         """
-        Returns a file path to a csv file for given foldername keys from path_config (2 nodes away from base directory)
-        and given parameters. It creates all necessary folders if not already present.
-        :param parameters: Parameters for the episodes
-        :param subdir_lvl1_key: The key for the subdirectory of the base directory.
-        :param subdir_lvl2_key: The key for the subdirectory of the lvl1 subdirectory.
-        :param create_subdirs: If True will create all subdirectories necessary of returned path.
-        :return: Path to the feature csv file
+        Returns a filepath depending on given parameters.
+        :param parameters: Defines last subfolders and the filename containing metadata.
+        :param last_node_file: If True, the last node of the path is a (csv)file, else a folder.
+        :param create_subdirs: If true, will create all subdirectories necessary of returned path.
+        :param file_type: Defines together with parameters the last subfolders and file. Valid options are:
+        'normal_an', 'faw' and 'awake'
+        :param folder_keys: Keys that define the first part of the path from the base directory.
+        :return: The filepath as a String.
         """
+        if file_type == "faw":
+            fullpath = self.return_all_parameter_fullpath(parameters, last_node_file, create_subdirs, *folder_keys)
+        elif file_type == "awake" or file_type == "normal_an":
+            fullpath = self.return_no_parameters_fullpath(parameters, file_type, last_node_file, *folder_keys)
+        else:
+            raise ValueError(f"file_type {file_type} not recognized. Valid options: 'faw', 'awake', 'normal_an'")
 
-        fullpath = self.return_all_parameter_fullpath(parameters, True, create_subdirs,
-                                                      subdir_lvl1_key, subdir_lvl2_key)
         return fullpath
 
-    def return_awake_file_fullpath(self, parameters: dict, last_node_file=True, *folder_keys) -> str:
+    def return_no_parameters_fullpath(self, parameters: dict, file_type: str,
+                                      last_node_file=True, *folder_keys: str) -> str:
         """
-        Creates a filepath for an awake file depending on parameters and folder keys, where the keys determine
-        the folder and the parameters determine the name of the file.
-        :param parameters: parameters of the file
-        :param last_node_file: Is last node a file or a folder. If True File, else Folder
-        :param folder_keys: keys that determine the folder. Every key is one level deeper in the directory structure
-        :return:
-        """
-        folder_dir = self.return_folder_path(*folder_keys)
-        psd_subfolder = PathUtils.return_awake_file_name(parameters)
-        last_node = f"{psd_subfolder}.csv" if last_node_file else psd_subfolder
-        output_path = PathUtils.return_anypath(folder_dir, last_node)
+       Creates a filepath for a file depending on parameters, file type and folder keys,
+       where the keys determine the folder and the parameters determine the name of the file.
+       :param parameters: parameters of the file
+       :param file_type: Type of the file. Valid values are: 'awake' and 'normal_an'
+       :param last_node_file: Is last node a file or a folder. If True File, else Folder
+       :param folder_keys: keys that determine the folder. Every key is one level deeper in the directory structure
+       :return: Path to the csv file
+       """
+        # Get subfolder. Only difference is the file name. Folder is the same.
+        last_node = PathUtils.return_node_name(parameters, file_type)
 
+        folder_dir = self.return_folder_path(*folder_keys)
+        last_node = f"{last_node}.csv" if last_node_file else last_node
+        output_path = PathUtils.return_anypath(folder_dir, last_node)
         return output_path
 
-    def return_normal_an_file_fullpath(self, parameters: dict, last_node_file=True, *folder_keys) -> str:
-        """
-        Creates a filepath for an awake file depending on parameters and folder keys, where the keys determine
-        the folder and the parameters determine the name of the file.
-        :param parameters: parameters of the file
-        :param last_node_file: Is last node a file or a folder. If True File, else Folder
-        :param folder_keys: keys that determine the folder. Every key is one level deeper in the directory structure
-        :return:
-        """
-        folder_dir = self.return_folder_path(*folder_keys)
-        psd_subfolder = PathUtils.return_normal_an_file_name(parameters)
-        last_node = f"{psd_subfolder}.csv" if last_node_file else psd_subfolder
-        output_path = PathUtils.return_anypath(folder_dir, last_node)
-
-        return output_path
-
-    def return_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> str:
-
-        full_folder_path = self.return_all_parameter_fullpath(parameters, False, create_subdirs,
-                                                              "test_and_train_data", "splits")
-
-        if train_or_test != "train" and train_or_test != "test":
-            raise ValueError(f"train_or_test must be either 'train' or 'test'")
-
-        return PathUtils.return_anypath(full_folder_path, f"{train_or_test}_split.csv")
-
-    def return_all_parameter_fullpath(self, parameters: dict, xy_file: bool, create_dirs: bool,
+    def return_all_parameter_fullpath(self, parameters: dict, last_node_file: bool, create_dirs: bool,
                                       *folder_parts: str) -> str:
         """
         Returns a fullpath that is of following structure:
         folder1/folder2/...folderN/<folderN name_A_B_C_D/<episode Name>_X_Y
         :param parameters: Dictionary of parameters that defines A,B,C,D,X,Y
-        :param xy_file: Flag to determine, if last node is a csv. -> fullpath ends then with .../<episode Name>_X_Y.csv
+        :param last_node_file: Flag to determine, if last node is a csv file.
+        -> fullpath ends then with .../<episode Name>_X_Y.csv
         :param create_dirs: Flag to create the necessary folders if not already present.
         :param folder_parts: Keys of folders from path_config, that define folder1 to folderN
         :return: Returns a fullpath of above description.
         """
         dir_first_part = self.return_folder_path(*folder_parts)
         prefix_name = self.return_folder_name(*folder_parts)
-        if not xy_file:
+        if not last_node_file:
             dir_abcd_xy_part = PathUtils.return_A_B_C_D_X_Y_path(prefix_name, parameters)
             folder_path = PathUtils.return_anypath(dir_first_part, dir_abcd_xy_part)
             fullpath = folder_path
@@ -167,10 +141,21 @@ class IOCore:
 
         return fullpath
 
-    def set_attributes(self, **kwargs):
-        for attr in ["data_dir", "faw_subdir", "initial_data_subdir", "features_subdir", "plots_subdir",
-                     "filtered_data_subdir", "psds_subdir"]:
-            setattr(self, attr, kwargs.get(attr, getattr(self.__class__, attr)))
+    def return_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> str:
+        """
+        Returns a fullpath to current train or test file in the split folder.
+        :param parameters: Parameters that determine the subfolder path in the split folder.
+        :param train_or_test: Defines if path leads to a train or test file. Valid options are 'train' and 'test'
+        :param create_subdirs: Flag to create the necessary folders if not already present.
+        :return: The defined fullpath as string.
+        """
+
+        full_folder_path = self.return_all_parameter_fullpath(parameters, False, create_subdirs,
+                                                              "test_and_train_data", "splits")
+
+        if train_or_test != "train" and train_or_test != "test":
+            raise ValueError(f"train_or_test must be either 'train' or 'test'")
+        return PathUtils.return_anypath(full_folder_path, f"{train_or_test}_split.csv")
 
     def return_all_result_ids(self, initial_data_key: str) -> list:
         """

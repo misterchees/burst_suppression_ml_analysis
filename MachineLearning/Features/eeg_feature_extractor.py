@@ -56,13 +56,13 @@ class EEGFeatureExtractor(MLObject):
     data_loader = LoadData()
     result_saver = SaveResult()
 
-    def __init__(self, faw: bool, awake: bool, normal_an: bool):
+    def __init__(self, *epoch_types, **parameter_kwargs):
         """
         Create a FeatureExtractor object.
-        :param faw: Boolean value to indicate if instance currently handles fake awake (True) or awake (False) data.
-        :param awake: Boolean value to indicate if instance currently handles awake data.
+        :param epoch_types: Defines which Epochs will be handled by this instance.
+        :param parameter_kwargs: Keyword arguments to change current parameters.
         """
-        super().__init__(faw, awake, normal_an)
+        super().__init__(*epoch_types, **parameter_kwargs)
         # initialize registries
         self.feature_calc_funcs = feature_calculators_registry
         self.feature_extract_funcs = feature_extractors_registry
@@ -317,7 +317,6 @@ class EEGFeatureExtractor(MLObject):
         # Calculate and save results for epochs
         self.extract_feature_from_EEG(feature_key)
 
-
     @register_feature_calculator("mean")
     def calculate_mean(self, signal: np.ndarray) -> floating:
         """
@@ -499,50 +498,44 @@ class EEGFeatureExtractor(MLObject):
         # get feature name
         feature_name = self.data_loader.return_feature_name(feature_key)
 
-        if self.faw:
-            self.calculate_and_save_feature_from_EEG(feature_key, feature_name, func, "faw", **kwargs)
-        if self.awake:
-            self.calculate_and_save_feature_from_EEG(feature_key, feature_name, func, "awake", **kwargs)
-        if self.normal_an:
-            self.calculate_and_save_feature_from_EEG(feature_key, feature_name, func, "normal_an", **kwargs)
+        for epoch_type in self.epoch_types:
+            self.calculate_and_save_feature_from_EEG(feature_key, feature_name, func, epoch_type, **kwargs)
 
     def calculate_and_save_feature_from_EEG(self, feature_key: str, feature_name: str,
-                                            func, epoch_type: str, **kwargs: str):
+                                            func, epoch_type: str, **func_kwargs: str):
         """
         Calculates a feature directly from EEG and saves it to a file.
         :param feature_key: The key of the feature to calculate.
         :param feature_name: The name of the feature to calculate.
         :param func: The feature calculation function.
         :param epoch_type: The type of epochs to calculate features from. Valid values are 'awake', 'faw' or 'normal_an'
-        :param kwargs:
-        :return:
+        :param func_kwargs: kwargs for func function.
         """
         output_list = []
-        # Determine epochs from which to calculate
+
+        # Determine epochs from which to calculate, saving function and output message
         if epoch_type == "awake":
             epochs = self.awake_epochs.epoch_times
+            message = f"Succesfully calculated and saved {feature_name} of true awake EEG-signals"
+
         elif epoch_type == "faw":
             epochs = self.faw_epochs.epoch_times
+            message = f"Succesfully calculated and saved {feature_name} of fake awake EEG-signals"
+
         elif epoch_type == "normal_an":
             epochs = self.normal_an_epochs.epoch_times
+            message = f"Succesfully calculated and saved {feature_name} of normal anesthesia awake EEG-signals"
         else:
             raise ValueError(f"Epoch type '{epoch_type}' not recognized. Valid types are 'awake', 'faw' or 'normal_an'")
 
         # Calculation of feature from epochs
         for start, end, result_id, fs, eeg_segment in epochs:
-            value = func(self, eeg_segment, **kwargs)
+            value = func(self, eeg_segment, **func_kwargs)
             output_list.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
 
-        # Determine where to save based on epoch type
-        if epoch_type == "awake":
-            self.result_saver.save_awake_feature_summary_episode(output_list, feature_key, self.parameter_dict)
-            print(f"Succesfully calculated and saved {feature_name} of true awake EEG-signals")
-        elif epoch_type == "faw":
-            self.result_saver.save_faw_feature_summary_episode(output_list, feature_key, self.parameter_dict)
-            print(f"Succesfully calculated and saved {feature_name} of fake awake EEG-signals")
-        else:
-            self.result_saver.save_normal_an_feature_summary_episode(output_list, feature_key, self.parameter_dict)
-            print(f"Succesfully calculated and saved {feature_name} of normal anesthesia awake EEG-signals")
+        # Save results and output message
+        self.result_saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
+        print(message)
 
     def extract_feature_from_PSDs(self, feature_key: str, **kwargs):
         """
@@ -560,32 +553,47 @@ class EEGFeatureExtractor(MLObject):
         # get feature name
         feature_name = self.data_loader.return_feature_name(feature_key)
 
-        if self.faw:
-            faw_directory_path = self.data_loader.psd_folder_path(self.parameter_dict)
-            faw_all_rows = self.apply_function_to_all_psds(faw_directory_path, func, feature_name, **kwargs)
-            self.result_saver.save_faw_feature_summary_episode(faw_all_rows, feature_key, self.parameter_dict)
-            print(f"Succesfully calculated and saved {feature_name} for fake awake PSDs")
+        for epoch_type in self.epoch_types:
+            self.calculate_and_save_feature_from_psd(feature_key, feature_name, func, epoch_type, **kwargs)
 
-        if self.awake:
-            awake_directory_path = self.data_loader.psd_folder_path(self.parameter_dict, False)
-            awake_all_rows = self.apply_function_to_all_psds(awake_directory_path, func, feature_name, **kwargs)
-            self.result_saver.save_awake_feature_summary_episode(awake_all_rows, feature_key, self.parameter_dict)
-            print(f"Succesfully calculated and saved {feature_name} for awake PSDs")
+    def calculate_and_save_feature_from_psd(self, feature_key: str, feature_name: str,
+                                            func, epoch_type: str, **func_kwargs: str):
+        """
+        Calculates a feature from psds of each epoch and saves it to a file.
+        :param feature_key: The key of the feature to calculate.
+        :param feature_name: The name of the feature to calculate.
+        :param func: The feature calculation function.
+        :param epoch_type: The type of epochs to calculate features from. Valid values are 'awake', 'faw' or 'normal_an'
+        :param func_kwargs: kwargs for func function.
+        """
 
-        if self.normal_an:
-            psd_directory_path = self.data_loader.psd_folder_path(self.parameter_dict, normal_an=True)
-            normal_an_all_rows = self.apply_function_to_all_psds(psd_directory_path, func, feature_name, **kwargs)
-            self.result_saver.save_normal_an_feature_summary_episode(normal_an_all_rows, feature_key,
-                                                                     self.parameter_dict)
-            print(f"Succesfully calculated and saved {feature_name} for awake PSDs")
+        # Determine epochs from which to calculate, saving function and output message
+        if epoch_type == "awake":
+            dir_path = self.data_loader.psd_folder_path(self.parameter_dict, epoch_type)
+            message = f"Succesfully calculated and saved {feature_name} for awake PSDs"
 
-    def apply_function_to_all_psds(self, psd_directory_path: str, func, feature_name, **kwargs_of_func) -> list:
+        elif epoch_type == "faw":
+            dir_path = self.data_loader.psd_folder_path(self.parameter_dict, epoch_type)
+            message = f"Succesfully calculated and saved {feature_name} for fake awake PSDs"
+
+        elif epoch_type == "normal_an":
+            dir_path = self.data_loader.psd_folder_path(self.parameter_dict, epoch_type)
+            message = f"Succesfully calculated and saved {feature_name} for normal anesthesia PSDs"
+        else:
+            raise ValueError(f"Epoch type '{epoch_type}' not recognized. Valid types are 'awake', 'faw' or 'normal_an'")
+
+        output_list = self.apply_function_to_all_psds(dir_path, func, feature_name, **func_kwargs)
+
+        self.result_saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
+        print(message)
+
+    def apply_function_to_all_psds(self, psd_directory_path: str, func, feature_name, **func_kwargs) -> list:
         """
         Takes a path to a psd_directory and applies given function func to all psd files.
         :param psd_directory_path: Path to psd directory.
         :param func: Given function to be applied.
         :param feature_name: Name of the feature. Will be a column in output list, if feature is single value.
-        :param kwargs_of_func: Optional arguments for feature function.
+        :param func_kwargs: Optional arguments for feature function.
         :return: A list of calculated feature values.
         """
         output_list = []
@@ -594,7 +602,7 @@ class EEGFeatureExtractor(MLObject):
                 psd_df, start, end, result_id = load_psd_with_start_end_resultid(psd_directory_path, psd_file)
 
                 # Calculate feature with feature function
-                value = func(self, psd_df, **kwargs_of_func)
+                value = func(self, psd_df, **func_kwargs)
                 # For features that return multiple values (as a dict)
                 if isinstance(value, dict):
                     output_list.append({"Start": start, "End": end, "ResultID": result_id, **value})
@@ -602,20 +610,11 @@ class EEGFeatureExtractor(MLObject):
                     output_list.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
         return output_list
 
-    def combine_all_features(self):
-        """Combines all features found in features folder of all present Epoch subsets"""
-        if self.faw:
-            FeatureUtils.combine_features(self.parameter_dict)
-        if self.awake:
-            FeatureUtils.combine_features(self.parameter_dict, faw=False)
-        if self.normal_an:
-            FeatureUtils.combine_features(self.parameter_dict, normal_an=True)
-
-    def combine_features(self, *features):
-        """Combines given features of all present Epoch subsets"""
-        if self.faw:
-            FeatureUtils.combine_features(self.parameter_dict, False, True, False, *features)
-        if self.awake:
-            FeatureUtils.combine_features(self.parameter_dict, False, False, False, *features)
-        if self.normal_an:
-            FeatureUtils.combine_features(self.parameter_dict, False, False, True, *features)
+    def combine_features(self, all_features: bool, *features: str):
+        """
+        Combines features of all epochs and saves them together in one file.
+        :param all_features: If True will combine all features in the features folder.
+        :param features: All features to be combined. Is ignored if all_features is True.
+        """
+        for epoch_type in self.epoch_types:
+            FeatureUtils.combine_features(self.parameter_dict, epoch_type, all_features, *features)

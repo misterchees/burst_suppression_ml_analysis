@@ -5,15 +5,14 @@ from MachineLearning.IO.save_result import SaveResult
 
 class FeatureUtils:
     @staticmethod
-    def combine_features(parameters: dict, all_features=True, faw=True, normal_an=False, *features: str):
+    def combine_features(parameters: dict, epoch_type: str, all_features=True, *features: str):
         """
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.
 
         :param parameters: Parameters of the episodes from which the features are. Defines subfolder of features.
         :param all_features: If True, combine all available features found in the features directory.
-        :param faw: If True, combine faw features, else combine awake features.
-        :param normal_an: If True, combine normal anesthesia features.
+        :param epoch_type: Defines the epochs from which the features were calculated. Defines subfolder of features.
         :param features: Specific feature keys to include (used only if all_features=False).
         """
         loader = LoadData()
@@ -36,13 +35,8 @@ class FeatureUtils:
         for feature in feature_keys:
             try:
                 print(f"Merging feature {loader.return_feature_name(feature)}...")
-                # loads faw or awake feature
-                if faw:
-                    feature_path = loader.return_faw_file_fullpath(parameters, "features", feature, False)
-                else:
-                    feature_path = loader.return_awake_file_fullpath(parameters, True, "features", feature)
-                if normal_an:
-                    feature_path = loader.return_normal_an_file_fullpath(parameters, True, "features", feature)
+                # loads feature
+                feature_path = loader.return_file_fullpath(parameters, True, False, epoch_type, "features", feature)
                 df = pd.read_csv(feature_path)
                 # Merge or initialize
                 if merged_df is None:

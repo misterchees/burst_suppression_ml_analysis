@@ -41,7 +41,7 @@ class SaveResult(IOCore):
 
         # assemble path to directory
         psd_dir = self.return_folder_path("features", "psds")
-        psd_subfolder = PathUtils.return_awake_file_name(parameters)
+        psd_subfolder = PathUtils.return_node_name(parameters, "awake")
         psd_dir_fullpath = PathUtils.return_anypath(psd_dir, psd_subfolder)
 
         # make sure directory exists
@@ -63,7 +63,7 @@ class SaveResult(IOCore):
 
         # assemble path to directory
         psd_dir = self.return_folder_path("features", "psds")
-        psd_subfolder = PathUtils.return_normal_an_file_name(parameters)
+        psd_subfolder = PathUtils.return_node_name(parameters, "normal_an")
         psd_dir_fullpath = PathUtils.return_anypath(psd_dir, psd_subfolder)
 
         # make sure directory exists
@@ -135,45 +135,11 @@ class SaveResult(IOCore):
 
         print(f"Single episode PSD saved: {fullpath}")
 
-    def save_faw_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
-        """
-        Saves a csv with all fake awake episodes of a given parameter combination
-        :param results: list of results
-        :param feature_key: key of the subdirectory in path_config, where the summary episode will be saved
-        :param parameters: parameters for the episode -> define the subfolder names
-        """
-        # save as CSV in subfolder with prefix
+    def save_feature_summary_episode(self, results: list, feature_key: str, parameters: dict, episode_type: str):
         result_df = pd.DataFrame(results)
+        fullpath = self.return_file_fullpath(parameters, True, True, episode_type,
+                                             "features", feature_key)
 
-        fullpath = self.return_faw_file_fullpath(parameters, "features", feature_key)
-        result_df.to_csv(fullpath, index=False)  # write without row index
-
-    def save_awake_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
-        """
-        Saves a csv with all awake episodes of a given parameter combination.
-        :param results: list of results
-        :param feature_key: key of the subdirectory in path_config, where the summary episode will be saved
-        :param parameters: parameters for the episode -> define the file name
-        """
-        result_df = pd.DataFrame(results)
-
-        directory_path = self.return_folder_path("features", feature_key)
-        filename = PathUtils.return_awake_file_name(parameters)
-        fullpath = PathUtils.return_anypath(directory_path, f"{filename}.csv")
-        result_df.to_csv(fullpath, index=False)
-
-    def save_normal_an_feature_summary_episode(self, results: list, feature_key: str, parameters: dict):
-        """
-        Saves a csv with all awake episodes of a given parameter combination.
-        :param results: list of results
-        :param feature_key: key of the subdirectory in path_config, where the summary episode will be saved
-        :param parameters: parameters for the episode -> define the file name
-        """
-        result_df = pd.DataFrame(results)
-
-        directory_path = self.return_folder_path("features", feature_key)
-        filename = PathUtils.return_normal_an_file_name(parameters)
-        fullpath = PathUtils.return_anypath(directory_path, f"{filename}.csv")
         result_df.to_csv(fullpath, index=False)
 
     def save_filtered_eeg(self, filtered_eeg: np.ndarray, fs: int, result_id: int):
@@ -197,20 +163,14 @@ class SaveResult(IOCore):
 
         print(f"Successfully saved filtered EEG to {fullpath}")
 
-    def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame, faw=True, normal_an=False):
+    def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame, epoch_type: str):
         """
         Saves a dataframe of combined features to a specified folder.
         :param parameters: parameters for the features -> define the subfolder names
         :param merged_df: Dataframe of all features combined to save
-        :param faw: Flag to indicate if features are from faw or awake
-        :param normal_an: Flat to indicate if features are from normal anesthesia
+        :param epoch_type: Defines the epochs from which the features are calculated.
         """
-        if faw:
-            fullpath = self.return_faw_file_fullpath(parameters, "test_and_train_data", "feature_sets")
-        else:
-            fullpath = self.return_awake_file_fullpath(parameters, True, "test_and_train_data", "feature_sets")
-        if normal_an:
-            fullpath = self.return_normal_an_file_fullpath(parameters, True, "test_and_train_data", "feature_sets")
+        fullpath = self.return_file_fullpath(parameters, True, True, epoch_type, "test_and_train_data", "feature_sets")
         merged_df.to_csv(fullpath, index=False)
         print(f"Combined feature set saved to: {fullpath}")
 

@@ -1,4 +1,8 @@
+"""This module provides the class FeatureFunction"""
+
+
 class FeatureFunction:
+    """This class is to provide a modular possibility to execute any feature function"""
     def __init__(self, func, default_params=None):
         """
         Wraps a feature function with optional default parameters.

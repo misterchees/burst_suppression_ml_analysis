@@ -22,63 +22,61 @@ class MLObject:
 
     param_config = load_config("parameters_config.yaml")
 
-    faw: bool
-    awake: bool
-    normal_an: bool
-
+    VALID_EPOCH_TYPES = ["faw", "awake", "normal_an"]
     faw_epochs = Epochs()
     awake_epochs = Epochs()
     normal_an_epochs = Epochs()
 
-    def __init__(self, faw: bool, awake: bool, normal_an: bool, **kwargs):
+    def __init__(self, *epoch_types, **parameter_kwargs):
         """
         Create an instance with global values for Epochs, flags and parameters.
-
-        :param kwargs: Any keyword parameter(s)
-        :param faw: Boolean value to indicate if instance currently handles fake awake data.
-        :param awake: Boolean value to indicate if instance currently handles awake data.
-        :param normal_an: Boolean value to indicate if instance currently handles normal anesthesia data.
+        :param epoch_types: Defines which Epochs will be handled by this instance. Valid options are:
+        "faw", "awake", "normal_an"
+        :param parameter_kwargs: Any keyword parameter(s)
         """
-        self.faw = faw
-        self.awake = awake
-        self.normal_an = normal_an
+        for element in epoch_types:
+            if element not in self.VALID_EPOCH_TYPES:
+                raise ValueError(f"Invalid epoch type. Valid epoch types are {self.VALID_EPOCH_TYPES}")
+        self.epoch_types = epoch_types
 
-        for key in kwargs:
+        for key in parameter_kwargs:
             if key in self.parameter_dict:
-                self.parameter_dict[key] = kwargs[key]
-        print(f"Parameters: {self.parameter_dict}. Flags: faw={self.faw}, awake={self.awake}")
+                self.parameter_dict[key] = parameter_kwargs[key]
+        print(f"Parameters: {self.parameter_dict}. Epoch_types: {self.epoch_types}")
 
-    def set_attributes(self, faw: bool = None, awake: bool = None, **kwargs):
+    def set_attributes(self, *epoch_types, **parameter_kwargs):
         """
         Sets any number of the attributes of the EEGFeatureExtractor.
 
-        :param kwargs: Any keyword parameter(s)
-        :param faw: Boolean value to indicate if instance currently handles fake awake (True) or awake (False) data.
-        :param awake: Boolean value to indicate if instance currently handles awake data.
+        :param epoch_types: Defines which Epochs will be handled by this instance. Valid options are:
+        "faw", "awake", "normal_an"
+        :param parameter_kwargs: Any keyword parameter(s)
         """
-        if faw:
-            self.faw = faw
-        if awake:
-            self.awake = awake
+        for element in epoch_types:
+            if element not in self.VALID_EPOCH_TYPES:
+                raise ValueError(f"Invalid epoch type. Valid epoch types are {self.VALID_EPOCH_TYPES}")
+        self.epoch_types = epoch_types
 
-        for key in kwargs:
+        for key in parameter_kwargs:
             if key in self.parameter_dict:
-                print(f"Changing {key} from {self.parameter_dict[key]} to {kwargs[key]} ")
-                self.parameter_dict[key] = kwargs[key]
+                print(f"Changing {key} from {self.parameter_dict[key]} to {parameter_kwargs[key]} ")
+                self.parameter_dict[key] = parameter_kwargs[key]
 
     def update_current_epochs(self, channel: int):
         """
         Calls the update function of all epoch objects.
         :param channel: current channel of the EEG from where the epochs are.
         """
-        # Get all Episodes for awake and fake awake epochs if necessary (default = filtered episodes)
-        if self.faw:
-            self.faw_epochs.update_if_necessary(self.parameter_dict, channel)
-        if self.awake:
-            self.awake_epochs.update_if_necessary(self.parameter_dict, channel, faw=False)
-        if self.normal_an:
-            if not self.awake:
-                raise Exception("To compare with anesthesia, awake Episodes must be existent")
-            number_of_epochs = len(self.awake_epochs.epoch_times)
-            self.normal_an_epochs.update_if_necessary(self.parameter_dict, normal_an=self.normal_an,
-                                                      num_an=number_of_epochs, channel=channel)
+        # Get all Episodes for all handled epochs
+        for epoch in self.epoch_types:
+            if epoch == "normal_an":
+                if len(self.epoch_types) <= 1:
+                    raise Exception("To compare with anesthesia, episodes from another type must be present "
+                                    "to align the number of episodes.")
+                number_of_epochs = max(len(self.awake_epochs.epoch_times), len(self.faw_epochs.epoch_times))
+                self.normal_an_epochs.update_if_necessary(self.parameter_dict, normal_an=True,
+                                                          num_an=number_of_epochs, channel=channel)
+            elif epoch == "faw":
+                self.faw_epochs.update_if_necessary(self.parameter_dict, channel=channel, faw=True)
+            else:
+                self.awake_epochs.update_if_necessary(self.parameter_dict, channel=channel, faw=False)

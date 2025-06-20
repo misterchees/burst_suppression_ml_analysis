@@ -69,11 +69,11 @@ class PathUtils:
         return str(os.path.join(abcd_folder, xy_folder))
 
     @staticmethod
-    def return_awake_file_name(parameters: dict) -> str:
+    def return_node_name(parameters: dict, node_type: str) -> str:
         epoch_length = parameters["fixed_window_size"]
-        return f"Awake_{epoch_length}"
+        if node_type == "awake":
+            return f"Awake_{epoch_length}"
+        elif node_type == "normal_an":
+            return f"Normal_ane_{epoch_length}"
+        raise ValueError(f"Unknown node type {node_type}. Valid types are 'awake' and 'normal_an'")
 
-    @staticmethod
-    def return_normal_an_file_name(parameters: dict) -> str:
-        epoch_length = parameters["fixed_window_size"]
-        return f"Normal_ane_{epoch_length}"

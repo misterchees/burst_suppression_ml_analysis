@@ -1,22 +1,30 @@
+"""This module contains the Transforms class."""
 import numpy as np
 from typing import Tuple
+from scipy.signal import welch
 from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
-from scipy.signal import welch
 
 
 class Transforms(MLObject):
+    """
+    This class provides methods to transform EEG data from time domain to frequency domain
+    i.e. calculate frequency periodograms from linear EEG recordings over time.
+    """
+    def __init__(self, *epoch_types, **parameter_kwargs):
+        """
+        Calls the constructor of the MLObject superclass.
+        :param epoch_types: All epoch types, that will be handled by this instance.
+        :param parameter_kwargs: Any keyword parameter(s).
+        """
+        super().__init__(epoch_types, **parameter_kwargs)
 
-    def __init__(self, faw: bool, awake: bool, normal_an: bool):
-        super().__init__(faw, awake, normal_an)
-
-    def transform_eeg_episodes_to_psd(self, channel=1, nperseg_seconds=2, filtered=True):
+    def transform_eeg_episodes_to_psd(self, channel=1, nperseg_seconds=2):
         """
         Calculates PSDs for fake awake EEG windows in specified csv from the pre and saves
         every PSD in a seperate csv file in a defined output directory.
 
-        :param filtered: Defines if windows are from filtered EEG (True) or raw EEG (False).
         :param channel: EEG-Channel (options: 1, 2)
         :param nperseg_seconds: Length of window for Welch in seconds (usually: 1 or 2)
         """
@@ -26,24 +34,37 @@ class Transforms(MLObject):
         # Update epochs
         self.update_current_epochs(channel)
 
-        if self.faw:
-            for start_time, end_time, result_id, fs, eeg_segment in self.faw_epochs.epoch_times:
-                # calculate welch PSD
-                frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
+        # Calculate and save PSDs, depending on epoch type
+        for epoch_type in self.epoch_types:
+            self.calculate_and_save_psd_for_epochs(nperseg_seconds, epoch_type, result_saver)
 
-                result_saver.save_faw_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
-        if self.awake:
-            for start_time, end_time, result_id, fs, eeg_segment in self.awake_epochs.epoch_times:
-                # calculate welch PSD
-                frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
+    def calculate_and_save_psd_for_epochs(self, nperseg_seconds: int, epoch_type: str, result_saver: SaveResult):
+        """
+        Calculates and saves PSDs for defined epochs.
+        :param nperseg_seconds: Length of window for Welch in seconds (usually: 1 or 2)
+        :param epoch_type: Type of epochs from which to calculate PSD.
+        :param result_saver: Result Saver instance.
+        """
+        # Define epochs and saving function based on epoch type
+        if epoch_type == 'faw':
+            epochs = self.faw_epochs.epoch_times
+            saving_func = result_saver.save_faw_psd
 
-                result_saver.save_awake_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
-        if self.normal_an:
-            for start_time, end_time, result_id, fs, eeg_segment in self.normal_an_epochs.epoch_times:
-                # calculate welch PSD
-                frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
+        elif epoch_type == 'awake':
+            epochs = self.awake_epochs.epoch_times
+            saving_func = result_saver.save_awake_psd
 
-                result_saver.save_normal_an_psd(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
+        elif epoch_type == 'normal_an':
+            epochs = self.normal_an_epochs.epoch_times
+            saving_func = result_saver.save_normal_an_psd
+
+        else:
+            raise ValueError(f'Unrecognized epoch type {epoch_type}. Valid types are "faw", "awake", "normal_an"')
+
+        # Calculate and save psd for each epoch
+        for start_time, end_time, result_id, fs, eeg_segment in epochs:
+            frequencies, power = self.return_psd(eeg_segment, fs, nperseg_seconds)
+            saving_func(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
 
     def transform_eeg_to_psd(self, result_id: int, channel=1, nperseg_seconds=2):
         """

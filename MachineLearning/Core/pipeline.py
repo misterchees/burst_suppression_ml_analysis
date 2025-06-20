@@ -13,7 +13,7 @@ from MachineLearning.Evaluation.split_manager import SplitManager
 class Pipeline:
     result_ids = []
 
-    def __init__(self, initial_data_key="raw_eeg_mat", faw=True, awake=True, normal_an=False):
+    def __init__(self, initial_data_key="raw_eeg_mat", *epoch_types):
         """
         Sets subset of Patient IDs, i.e. subdirectory of initial data
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
@@ -21,8 +21,9 @@ class Pipeline:
         :param awake: Flag indicating if pipeline will handle awake episodes
         """
         loader = LoadData()
-        self.feature_extractor = EEGFeatureExtractor(faw, awake, normal_an)
-        self.transformer = Transforms(faw, awake, normal_an)
+
+        self.feature_extractor = EEGFeatureExtractor(*epoch_types)
+        self.transformer = Transforms(*epoch_types)
         self.result_ids = loader.return_all_result_ids(initial_data_key)
 
     def raw_eeg_filtering(self):
@@ -57,11 +58,8 @@ class Pipeline:
             for function_key in custom_feature_args:
                 feature_functions[function_key](self.feature_extractor)
 
-    def combine_all_features(self):
-        self.feature_extractor.combine_all_features()
-
-    def combine_features(self, *features):
-        self.feature_extractor.combine_features(*features)
+    def combine_features(self, all_features: bool, *features):
+        self.feature_extractor.combine_features(all_features, *features)
 
     def create_splits(self, test_size: float, random_state: int, normal_an=False, split_paths=True):
         """
