@@ -10,8 +10,8 @@ from MachineLearning.Core.ml_object import MLObject
 
 
 # Load splits
-ml_object = MLObject(True, True, True)
-split_manager = SplitManager(ml_object.parameter_dict)
+ml_object = MLObject("faw", "awake", "normal_an")
+split_manager = SplitManager(ml_object.parameter_dict, "faw", "awake", 0.15)
 train_path, test_path = split_manager.return_split_paths()
 print(train_path)
 print(test_path)

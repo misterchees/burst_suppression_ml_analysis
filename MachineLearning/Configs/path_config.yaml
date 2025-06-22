@@ -1,6 +1,6 @@
 # A wise man once said, never change the key, always change the value
 base_dir: # basic directory for all data in this project
-    path_name: "C:\\Users\\jesus\\OneDrive\\Dokumente\\Jesús\\Studium\\Fächer - Bioinformatik\\Praktische Arbeit und Bachelorarbeit\\Material\\Daten"
+    path_name: "D:\\Daten"
     subdirs:
         faw: # subdirectory of subsets with episodes of fake awakeness (FAW)
             path_name: "FAW_subsets"
