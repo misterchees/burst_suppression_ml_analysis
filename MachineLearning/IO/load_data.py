@@ -7,15 +7,15 @@ from MachineLearning.IO.io_core import IOCore
 from MachineLearning.Utils.path_utils import PathUtils
 
 
-def load_psd_with_start_end_resultid(directory_path: str, filename: str) \
+def load_psd_with_start_end_resultid(folder_path: str, filename: str) \
         -> Tuple[pd.DataFrame, int, int, int]:
     """
-    Loads a PSD csv file as Dataframe and returns it with metadata from the filename
+    Loads a PSD csv file from given folder as Dataframe and returns it with metadata from the filename
     :param filename: a file with this name structure -> start_end_resultid.csv
-    :param directory_path: The directory of filename
+    :param folder_path: The path to the folder of filename
     :return: A tuple structured this way (dataframe, start, end, result_id)
     """
-    psd_fullpath = PathUtils.return_anypath(directory_path, filename)
+    psd_fullpath = PathUtils.return_anypath(folder_path, filename)
     print(f"Processing {psd_fullpath}")
     # Validation of single episode PSD name structure
     name_parts = filename.split(".")[0].split("_")

@@ -9,11 +9,16 @@ class SVMClassifier:
 
     def __init__(self, **svm_kwargs):
         """
+        Initializes SVM classifier with given parameters.
         :param svm_kwargs: Any parameters passed to sklearn.svm.SVC
         """
         self.model = SVC(**svm_kwargs)
 
     def train(self, x_train, y_train):
+        """
+        Trains the model with given training data.
+        :param x_train: Training data
+        """
         self.model.fit(x_train, y_train)
 
     def predict(self, x):

@@ -70,6 +70,7 @@ class IOCore:
         return fullpath
 
     def return_all_feature_keys(self) -> list:
+        """Returns a list of all features keys from the path config."""
         return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].keys())
 
     def return_file_fullpath(self, parameters: dict, last_node_file: bool, create_subdirs: bool,
