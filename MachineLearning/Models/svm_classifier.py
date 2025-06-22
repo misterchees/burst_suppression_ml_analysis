@@ -1,4 +1,5 @@
 from sklearn.svm import SVC
+from MachineLearning.Models.ParamTuning.svm_grid_search import SVMGridSearch
 
 
 class SVMClassifier:
@@ -22,3 +23,13 @@ class SVMClassifier:
         if hasattr(self.model, "probability") and self.model.probability:
             return self.model.predict_proba(x)
         raise AttributeError("SVM was not initialized with probability=True.")
+
+    def tune_hyperparameters(self, X, y, scoring='accuracy'):
+
+        tuner = SVMGridSearch(self.get_base_model(), X, y, scoring=scoring)
+        tuner.run()
+        self.model = tuner.best_estimator()
+
+    @staticmethod
+    def get_base_model():
+        return SVC()  # oder mit default self-params

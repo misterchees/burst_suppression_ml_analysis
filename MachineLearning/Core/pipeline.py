@@ -1,7 +1,7 @@
 import pandas as pd
 from fontTools.misc.classifyTools import Classifier
 
-from MachineLearning.IO.load_data import LoadData, PathUtils
+from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Preprocessing.filtering import Filtering
