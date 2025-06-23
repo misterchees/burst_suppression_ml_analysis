@@ -18,7 +18,7 @@ class Transforms(MLObject):
         :param epoch_types: All epoch types, that will be handled by this instance.
         :param parameter_kwargs: Any keyword parameter(s).
         """
-        super().__init__(epoch_types, **parameter_kwargs)
+        super().__init__(*epoch_types, **parameter_kwargs)
 
     def transform_eeg_episodes_to_psd(self, channel=1, nperseg_seconds=2):
         """

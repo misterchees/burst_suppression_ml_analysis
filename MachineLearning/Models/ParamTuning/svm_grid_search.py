@@ -1,5 +1,5 @@
 class SVMGridSearch:
-    def __init__(self,svc_model, X, y, cv=5, scoring='accuracy'):
+    def __init__(self, svc_model, X, y, cv=5, scoring='accuracy'):
         self.svc_model = svc_model
         self.X = X
         self.y = y
@@ -9,7 +9,6 @@ class SVMGridSearch:
 
     def run(self, param_grid=None):
         from sklearn.model_selection import GridSearchCV
-        from sklearn.svm import SVC
 
         if param_grid is None:
             param_grid = {

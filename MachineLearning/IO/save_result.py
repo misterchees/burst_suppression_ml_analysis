@@ -174,6 +174,55 @@ class SaveResult(IOCore):
         merged_df.to_csv(fullpath, index=False)
         print(f"Combined feature set saved to: {fullpath}")
 
+    def save_single_split(self, parameters: dict, train_test_tuple: tuple):
+        """
+        Saves created train and test splits to a folder defined by current parameters.
+        :param parameters: Determines saving folder.
+        :param train_test_tuple: Tuple containing the train and test split. Order is (train, test)
+        """
+        train_fullpath = self.return_single_split_folder_fullpath(parameters, "train")
+        test_fullpath = self.return_single_split_folder_fullpath(parameters, "test")
+
+        train_df, test_df = train_test_tuple
+        print(f"Saving train data to {train_fullpath}\n Saving test data to {test_fullpath}")
+        train_df.to_csv(train_fullpath, index=False)
+        test_df.to_csv(test_fullpath, index=False)
+
+        print("Split saving successful")
+
+    def save_cv_splits_to_csv(self, parameters: dict, split_object):
+        """
+        Saves for every fold train and test data as csv file.
+
+        :param parameters: Determines saving folder.
+        :param split_object: A tuple that contains X, y, splits
+        - DataFrame with Features (without label column)
+        - Array with label values
+        - List of (train_idx, test_idx)-Tupels
+        """
+        # Unpack Split Object
+        X, y, splits = split_object
+
+        # Add labels to X
+        X_labeled = X.copy()
+        X_labeled["label"] = y
+
+        total_folds = len(splits)
+
+        for fold_idx, (train_idx, test_idx) in enumerate(splits):
+            train_df = X_labeled.iloc[train_idx]
+            test_df = X_labeled.iloc[test_idx]
+
+            train_path = self.return_folded_split_folder_fullpath(parameters, "train", fold_idx, total_folds)
+            test_path = self.return_folded_split_folder_fullpath(parameters, "test", fold_idx, total_folds)
+
+            train_df.to_csv(train_path, index=False)
+            test_df.to_csv(test_path, index=False)
+
+            print(f"Saved fold {fold_idx + 1}/{total_folds} to:")
+            print(f" - {train_path}")
+            print(f" - {test_path}")
+
     def save_model(self, model, model_key: str, parameters: dict):
         """
         Saves a model to a specified folder.

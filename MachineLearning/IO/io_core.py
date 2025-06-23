@@ -142,7 +142,7 @@ class IOCore:
 
         return fullpath
 
-    def return_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> str:
+    def return_single_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> str:
         """
         Returns a fullpath to current train or test file in the split folder.
         :param parameters: Parameters that determine the subfolder path in the split folder.
@@ -157,6 +157,25 @@ class IOCore:
         if train_or_test != "train" and train_or_test != "test":
             raise ValueError(f"train_or_test must be either 'train' or 'test'")
         return PathUtils.return_anypath(full_folder_path, f"{train_or_test}_split.csv")
+
+    def return_folded_split_folder_fullpath(self, parameters: dict, train_or_test: str,
+                                            fold_idx: int, total_folds: int, create_subdirs=True) -> str:
+        """
+        Returns a fullpath to current train or test file in the split folder.
+        :param parameters: Parameters that determine the subfolder path in the split folder.
+        :param train_or_test: Defines if path leads to a train or test file. Valid options are 'train' and 'test'
+        :param fold_idx: Current fold index
+        :param total_folds: Sum of folds.
+        :param create_subdirs: Flag to create the necessary folders if not already present.
+        :return: The defined fullpath as string.
+        """
+
+        full_folder_path = self.return_all_parameter_fullpath(parameters, False, create_subdirs,
+                                                              "test_and_train_data", "splits")
+
+        if train_or_test != "train" and train_or_test != "test":
+            raise ValueError(f"train_or_test must be either 'train' or 'test'")
+        return PathUtils.return_anypath(full_folder_path, f"{fold_idx}_{total_folds}_{train_or_test}_split.csv")
 
     def return_all_result_ids(self, initial_data_key: str) -> list:
         """

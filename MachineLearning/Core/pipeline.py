@@ -80,7 +80,7 @@ class Pipeline:
         parameters = self.get_current_parameters()
         split_manager = SplitManager(parameters, class_0, class_1, test_size, random_state)
         split_manager.load_and_validate()
-        split_manager.create_split()
+        split_manager.create_single_split()
         split_manager.save()
 
         if split_paths:

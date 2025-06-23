@@ -1,6 +1,7 @@
 """Contains the SplitManager class."""
 import pandas as pd
 from MachineLearning.IO.io_core import IOCore
+from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.split_utils import SplitUtils
 
 
@@ -50,7 +51,7 @@ class SplitManager:
         self.class_0_df = class_0_df
         print("Loading successful")
 
-    def create_split(self):
+    def create_single_split(self, save=True):
         """
          Creates splits in the following fashion:
          1. Split on patient level in a way, that samples (epochs) are close to test/train ratio.
@@ -58,6 +59,8 @@ class SplitManager:
          3. Ensure that test/train ratio is still present on sample level. Optionally Downsize set that surpasses ratio.
          4. Sorts rows by ascending order of "label", "ResultID", "Start" in both sets.
          5. Saves sets to this class. To save them to your folder use the save method.
+
+         :param save: Boolean flag to save the splits in csv files.
         """
 
         print(f"Creating Splits. Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
@@ -100,6 +103,11 @@ class SplitManager:
         self.train_df = train_df_balanced.sort_values(by=["label", "ResultID", "Start"]).reset_index(drop=True)
         self.test_df = test_df_balanced.sort_values(by=["label", "ResultID", "Start"]).reset_index(drop=True)
 
+        # Save if requested
+        if save:
+            test_train = (self.train_df, self.test_df)
+            self.save(test_train)
+
         print("Split creation successful.")
         print(f"Train set size: {len(self.train_df)}, Test set size: {len(self.test_df)}")
         print(f"Class distribution in train: {self.class_1}={sum(self.train_df.label == 1)},"
@@ -107,19 +115,76 @@ class SplitManager:
         print(f"Class distribution in test:  {self.class_1}={sum(self.test_df.label == 1)},"
               f" {self.class_0}={sum(self.test_df.label == 0)}")
 
-    def save(self):
-        """Saves created train and test splits to a folder defined by current parameters."""
-        train_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "train")
-        test_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "test")
+    def create_cv_splits(self, n_splits=5, save=True):
+        """
+        Creates patient-based cross-validation splits for use in GridSearchCV.
+        - Balances each split to have 50/50 class ratio
+        - Returns feature matrix, label vector, and list of (train_idx, test_idx)
 
-        print(f"Saving train data to {train_fullpath}\n Saving test data to {test_fullpath}")
-        self.train_df.to_csv(train_fullpath, index=False)
-        self.test_df.to_csv(test_fullpath, index=False)
+        :param n_splits: Number of CV folds
+        :param save: Boolean flag to save the splits in csv files.
+        :returns: (X, y, splits)
+        """
+        from sklearn.model_selection import KFold
+
+        # Create set of present patient IDs
+        all_ids = pd.concat([self.class_1_df, self.class_0_df])['ResultID'].unique()
+        # create k-fold cross-validator
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.random_state)
+
+        # Create full dataset
+        full_df = pd.concat([self.class_1_df.copy(), self.class_0_df.copy()], ignore_index=True)
+        full_df["label"] = full_df["ResultID"].map(
+            lambda rid: 1 if rid in set(self.class_1_df["ResultID"]) else 0
+        )
+
+        splits = []
+
+        # Split sets based on patient IDs
+        for train_id_idx, test_id_idx in kf.split(all_ids):
+            train_ids = all_ids[train_id_idx]
+            test_ids = all_ids[test_id_idx]
+
+            # split based on patient ID selection of kfold
+            train_df = full_df[full_df["ResultID"].isin(train_ids)].copy()
+            test_df = full_df[full_df["ResultID"].isin(test_ids)].copy()
+
+            # Balancing of classes (50/50)
+            train_df = SplitUtils.balance_classes(train_df, self.random_state)
+            test_df = SplitUtils.balance_classes(test_df, self.random_state)
+
+            # Save indices of distribution
+            train_index = train_df.index.to_numpy()
+            test_index = test_df.index.to_numpy()
+            splits.append((train_index, test_index))  # Save split indices as Tuple -> (train, test)
+
+        # Full Dataset X and y and all splits
+        X = full_df.drop(columns=["label"])
+        y = full_df["label"].values
+
+        # Save if requested
+        if save:
+            split_obj = (X,y,splits)
+            self.save(split_obj)
+
+        return X, y, splits
+
+    def save(self, split_obj):
+        """Save single split or k-fold splits."""
+        saver = SaveResult()
+        try:
+            x, y, split = split_obj
+        except:
+            saver.save_single_split(self.parameters, split_obj)
+            print("Single split saving successful")
+            return
+        saver.save_cv_splits_to_csv(self.parameters, split_obj)
+        print("CV splits saving successful")
 
         print("Split saving successful")
 
     def return_split_paths(self):
         """Returns a tuple of paths to the train-test-split. Tuple -> (train_path, test_path)"""
-        train_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "train")
-        test_fullpath = self.io_core.return_split_folder_fullpath(self.parameters, "test")
+        train_fullpath = self.io_core.return_single_split_folder_fullpath(self.parameters, "train")
+        test_fullpath = self.io_core.return_single_split_folder_fullpath(self.parameters, "test")
         return train_fullpath, test_fullpath

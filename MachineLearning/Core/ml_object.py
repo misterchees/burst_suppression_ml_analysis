@@ -36,7 +36,7 @@ class MLObject:
         """
         for element in epoch_types:
             if element not in self.VALID_EPOCH_TYPES:
-                raise ValueError(f"Invalid epoch type. Valid epoch types are {self.VALID_EPOCH_TYPES}")
+                raise ValueError(f"Invalid epoch type: {element}. Valid epoch types are {self.VALID_EPOCH_TYPES}")
         self.epoch_types = epoch_types
 
         for key in parameter_kwargs:

@@ -2,43 +2,26 @@
 Here is the place to test any code.
 """
 
-import pandas as pd
-from MachineLearning.Models.svm_classifier import SVMClassifier
-from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
+
 from MachineLearning.Evaluation.split_manager import SplitManager
-from MachineLearning.Core.ml_object import MLObject
+from MachineLearning.Models.svm_classifier import SVMClassifier
+from MachineLearning.Models.ParamTuning.svm_grid_search import SVMGridSearch
+
+parameter_dict = {
+        "merged_episodes": False,  # flag to determine if episodes are merged
+        "bis_threshold": 70,  # lower threshold on BIS value (options: 70)
+        "mac_threshold": 0.8,  # lower threshold on MAC value (options: 0.5, 0.6, 0.7, 0.8)
+        "min_episode_length": 20,  # lower threshold on episode length (options: 5, 6, 7, 8, 9, 10, 15, 20)
+        "refractory_time": 5,  # maximum refractory time between episodes in seconds (options: 3, 4, 5)
+        "fixed_window_size": 20,  # exact window length (options: 5, 6, 7, 8, 9, 10, 15, 20)
+        "overlap": 0.0  # window overlap (options: 0.0, 0.25, 0.5)
+    }
 
 
-# Load splits
-ml_object = MLObject("faw", "awake", "normal_an")
-split_manager = SplitManager(ml_object.parameter_dict, "faw", "awake", 0.15)
-train_path, test_path = split_manager.return_split_paths()
-print(train_path)
-print(test_path)
+split_manager = SplitManager(parameter_dict, "faw", "awake", test_size=0.15)
 
-train_df = pd.read_csv(train_path)
-test_df = pd.read_csv(test_path)
 
-# Prepare features/labels
-X_train = train_df.drop(columns=["Start", "End", "ResultID", "label"]).values
-y_train = train_df["label"].values
 
-X_test = test_df.drop(columns=["Start", "End", "ResultID", "label"]).values
-y_test = test_df["label"].values
-
-# Train model
-clf = SVMClassifier(probability=True)
-clf.train(X_train, y_train)
-
-# Predict
-y_pred = clf.predict(X_test)
-y_proba = clf.predict_proba(X_test)
-
-# Evaluate
-evaluator = MetricsEvaluator(y_test, y_pred, y_proba)
-results = evaluator.evaluate()
-
-print(results)
 
 
 """
