@@ -81,12 +81,11 @@ class Pipeline:
         split_manager = SplitManager(parameters, class_0, class_1, test_size, random_state)
         split_manager.load_and_validate()
         split_manager.create_single_split()
-        split_manager.save()
 
         if split_paths:
             return split_manager.return_split_paths()
 
-    def run_svm_classifier(self, train_path: str, test_path: str, classifier: Classifier = None, save_clf=True):
+    def run_svm_classifier(self, train_path: str, test_path: str, classifier: Classifier = None, save_clf=True, **kwargs):
         """
         Runs SVM classifier on train and test sets of given paths. It takes a pretrained Classifier or trains
         the base model if None is given.
@@ -111,7 +110,7 @@ class Pipeline:
             y_train = train_df["label"].values
 
             # Train model
-            clf = SVMClassifier(probability=True)
+            clf = SVMClassifier(probability=True, **kwargs)
             clf.train(X_train, y_train)
 
         X_test = test_df.drop(columns=["Start", "End", "ResultID", "label"]).values

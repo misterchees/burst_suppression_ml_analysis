@@ -1,3 +1,4 @@
+"""Module for the LoadData class, and a psd load function"""
 import os
 from typing import Tuple
 import numpy as np
@@ -31,7 +32,9 @@ def load_psd_with_start_end_resultid(folder_path: str, filename: str) \
 
 
 class LoadData(IOCore):
+    """This class handles the loading of the data in the project"""
     def __init__(self):
+        """Initializes the class with configs from IOCore superclass."""
         super().__init__()
 
     def load_faw_times_as_df(self, parameters: dict) -> pd.DataFrame:
@@ -50,11 +53,6 @@ class LoadData(IOCore):
         # read CSV to DataFrame
         df = pd.read_csv(csv_fullpath)
         return df
-
-    def load_grouped_faw_times(self, parameters: dict) -> dict[int, list[tuple[int, int]]]:
-        epoch_times_df = self.load_faw_times_as_df(parameters)
-        grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
-        return grouped_epoch_times
 
     def load_awake_times_as_df(self, parameters: dict, transition_time=10) -> pd.DataFrame:
         """
@@ -86,11 +84,6 @@ class LoadData(IOCore):
                 })
 
         return pd.DataFrame(all_epochs)
-
-    def load_grouped_awake_times(self, parameters: dict) -> dict[int, list[tuple[int, int]]]:
-        epoch_times_df = self.load_awake_times_as_df(parameters)
-        grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
-        return grouped_epoch_times
 
     def sample_anesthesia_epochs(self, parameters: dict, num_epochs: int, transition_sec: int = 10,
                                  safety_margin_min: int = 10, random_state: int = 42) -> pd.DataFrame:
@@ -164,10 +157,29 @@ class LoadData(IOCore):
 
         return pd.DataFrame(result)
 
-    def create_grouped_sample_anesthesia_epochs(self, parameters: dict, num_epochs: int) -> dict[int, list[tuple[int, int]]]:
-        epoch_times_df = self.sample_anesthesia_epochs(parameters, num_epochs=num_epochs)
+    def return_grouped_epochs(self, parameters: dict, epoch_type: str, num_epochs: int = None
+                              ) -> dict[int, list[tuple[int, int]]]:
+        """
+        Returns EEG snippets (Epochs) based on given parameters.
+        :param parameters: Parameters for episodes containing primary parameters for chosen faw eopchs.
+        :param epoch_type: Defines epoch times.
+        :param num_epochs: Number of anesthesia epochs. Will be ignored if epoch_type is not 'normal_an'
+        :return: Dictionary {ResultID: [(start1, end1), (start2, end2), ...]}
+        """
+        # retrieve epochs based on epoch type
+        if epoch_type == 'awake':
+            epoch_times_df = self.load_awake_times_as_df(parameters)
+        elif epoch_type == 'faw':
+            epoch_times_df = self.load_faw_times_as_df(parameters)
+        elif epoch_type == 'normal_an':
+            epoch_times_df = self.sample_anesthesia_epochs(parameters, num_epochs=num_epochs)
+        else:
+            raise ValueError(f'Epoch type "{epoch_type}" not recognized. Valid options: "awake", "faw", "normal_an"')
+
+        # Group and return epochs
         grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
         return grouped_epoch_times
+
 
     def return_eeg_tuple(self, result_id: int, filtered=True) -> Tuple[int, np.ndarray]:
         """

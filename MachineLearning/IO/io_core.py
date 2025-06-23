@@ -10,7 +10,8 @@ class IOCore:
     This class is a superclass for all classes that mainly manage IO stuff. It provides functions that are
     useful for saving and loading data, which is mostly path manipulation methods.
     """
-    def __init__(self, **kwargs):
+    def __init__(self):
+        """Intializes the IOCore class with the path and data config to handle paths."""
         self.path_config = load_config("path_config.yaml")
         self.data_names = load_config("data_names_config.yaml")
 

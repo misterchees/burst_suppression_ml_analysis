@@ -23,9 +23,9 @@ class MLObject:
     param_config = load_config("parameters_config.yaml")
 
     VALID_EPOCH_TYPES = ["faw", "awake", "normal_an"]
-    faw_epochs = Epochs()
-    awake_epochs = Epochs()
-    normal_an_epochs = Epochs()
+    faw_epochs = Epochs("faw")
+    awake_epochs = Epochs("awake")
+    normal_an_epochs = Epochs("normal_an")
 
     def __init__(self, *epoch_types, **parameter_kwargs):
         """
@@ -74,9 +74,8 @@ class MLObject:
                     raise Exception("To compare with anesthesia, episodes from another type must be present "
                                     "to align the number of episodes.")
                 number_of_epochs = max(len(self.awake_epochs.epoch_times), len(self.faw_epochs.epoch_times))
-                self.normal_an_epochs.update_if_necessary(self.parameter_dict, normal_an=True,
-                                                          num_an=number_of_epochs, channel=channel)
+                self.normal_an_epochs.update_if_necessary(self.parameter_dict, num_an=number_of_epochs, channel=channel)
             elif epoch == "faw":
-                self.faw_epochs.update_if_necessary(self.parameter_dict, channel=channel, faw=True)
+                self.faw_epochs.update_if_necessary(self.parameter_dict, channel=channel)
             else:
-                self.awake_epochs.update_if_necessary(self.parameter_dict, channel=channel, faw=False)
+                self.awake_epochs.update_if_necessary(self.parameter_dict, channel=channel)

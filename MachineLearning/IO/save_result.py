@@ -213,8 +213,8 @@ class SaveResult(IOCore):
             train_df = X_labeled.iloc[train_idx]
             test_df = X_labeled.iloc[test_idx]
 
-            train_path = self.return_folded_split_folder_fullpath(parameters, "train", fold_idx, total_folds)
-            test_path = self.return_folded_split_folder_fullpath(parameters, "test", fold_idx, total_folds)
+            train_path = self.return_folded_split_folder_fullpath(parameters, "train", fold_idx+1, total_folds)
+            test_path = self.return_folded_split_folder_fullpath(parameters, "test", fold_idx+1, total_folds)
 
             train_df.to_csv(train_path, index=False)
             test_df.to_csv(test_path, index=False)

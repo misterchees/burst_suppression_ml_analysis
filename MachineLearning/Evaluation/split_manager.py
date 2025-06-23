@@ -174,14 +174,12 @@ class SplitManager:
         saver = SaveResult()
         try:
             x, y, split = split_obj
-        except:
+        except ValueError:
             saver.save_single_split(self.parameters, split_obj)
             print("Single split saving successful")
             return
         saver.save_cv_splits_to_csv(self.parameters, split_obj)
         print("CV splits saving successful")
-
-        print("Split saving successful")
 
     def return_split_paths(self):
         """Returns a tuple of paths to the train-test-split. Tuple -> (train_path, test_path)"""

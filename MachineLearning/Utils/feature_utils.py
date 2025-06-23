@@ -60,35 +60,29 @@ class FeatureUtils:
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
 
         # Step 4: Save to feature_sets directory
-        saver.save_combined_features(parameters, merged_df, faw, normal_an)
+        saver.save_combined_features(parameters, merged_df, epoch_type)
 
     @staticmethod
-    def return_eeg_epochs(parameters: dict, filtered=True, channel=1, faw=True,
-                          normal_an=False, num_an: int = None) -> list:
+    def return_eeg_epochs(epoch_type: str, parameters: dict, filtered=True, channel=1, num_an: int = None) -> list:
         """
         Takes parameters and returns a list of all epochs (+ metadata) of this list
 
+        :param epoch_type: Type of epoch. Influences from where to retrieve the epochs.
         :param parameters: Defines the directory from where the episodes will be retrieved.
         :param filtered: Defines if windows are from filtered EEG (True) or raw EEG (False).
         :param channel: EEG-Channel (options: 1, 2)
-        :param faw: If True returns epochs for fake awakeness, else for true awakeness.
-        :param normal_an: Ignores faw and returns epochs for normal anesthesia.
-        :param num_an: Number of epochs for normal anesthesia to return.
+        :param num_an: Number of epochs for normal anesthesia to return. Only relevant if epoch_type = 'normal_an'
         :return: List of Tuples. Every Tuple is structured -> (start(s), end(s), result_id, fs, eeg epochs (samples))
         """
 
         data_loader = LoadData()
         output_list = []
 
-        # Load Episode times based on current parameters and grouped by result ID
-        if not normal_an:  # faw or awake
-            if faw:
-                episode_times_df = data_loader.load_grouped_faw_times(parameters)
-            else:
-                episode_times_df = data_loader.load_grouped_awake_times(parameters)
-            print(f"Retrieving Epochs for {'fake awakeness' if faw else 'awakeness'} for Parameters: {parameters}")
-        else:  # Sampling random Epochs from EEG of normal anesthesia
-            episode_times_df = data_loader.create_grouped_sample_anesthesia_epochs(parameters, num_an)
+        # Return Epoch times based on current parameters and grouped by result ID
+        episode_times_df = data_loader.return_grouped_epochs(parameters, epoch_type, num_an)
+        if epoch_type != 'normal_an':
+            print(f"Retrieving Epochs for {epoch_type} for Parameters: {parameters}")
+        else:
             print(f"Sampling {num_an} Epochs from normal anesthesia")
 
         for result_id, epoch_list in episode_times_df.items():
