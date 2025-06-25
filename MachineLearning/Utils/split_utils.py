@@ -14,7 +14,7 @@ class SplitUtils:
                                             tolerance=0.05, max_iter=500, random_state=42,
                                             exclude_ids: Optional[Set[Any]] = None):
         """
-        Splits awaken data into train and test sets along patient IDs. Tries to find the best split by preserving
+        Splits awake and faw data into train and test sets along patient IDs. Tries to find the best split by preserving
         the ratio given by test_size as good as possible. Will throw an exception if the size of splittable samples
         is smaller than the target test sample size.
 
@@ -25,7 +25,7 @@ class SplitUtils:
         :param max_iter: Maximum number of iterations to find the best split.
         :param random_state: Random state for reproducibility.
         :param exclude_ids: Set of IDs to exclude from the split search
-        (e.g. to avoid overlaps with previous folds in CV)
+         (e.g. to avoid overlaps with previous folds in CV)
         :return: Tuple of train and test splits.
         """
 
@@ -185,6 +185,23 @@ class SplitUtils:
         return pd.concat([class_1_sampled, class_0_sampled], ignore_index=True)
 
     @staticmethod
+    def return_train_test_sample_idx(train_ids, test_ids, random_state: int, full_df: pd.DataFrame, test_size: float):
+        train_df, test_df = SplitUtils.return_balanced_split(
+            train_ids=train_ids,
+            test_ids=test_ids,
+            random_state=random_state,
+            full_df=full_df,
+            test_size=test_size
+        )
+
+        # Retrieve sample indices of distribution
+
+        train_idx = train_df["orig_index"].to_numpy()
+        test_idx = test_df["orig_index"].to_numpy()
+
+        return train_idx, test_idx
+
+    @staticmethod
     def adjust_splits_to_ratio(test_df: pd.DataFrame, train_df: pd.DataFrame, test_ratio,
                                random_state: int) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -212,3 +229,21 @@ class SplitUtils:
             train_df = train_df.sample(n=train_target_size, random_state=random_state)
 
         return test_df, train_df
+
+    @staticmethod
+    def create_full_df(class_1_df: pd.DataFrame, class_0_df: pd.DataFrame) -> pd.DataFrame:
+        full_df = pd.concat([class_1_df.copy(), class_0_df.copy()], ignore_index=True)
+        full_df["label"] = full_df["ResultID"].map(
+            lambda rid: 1 if rid in set(class_1_df["ResultID"]) else 0
+        )
+        # Save original full_df index to easily retrieve this information later
+        full_df = full_df.reset_index().rename(columns={"index": "orig_index"})
+
+        return full_df
+
+    @staticmethod
+    def return_X_y(full_df: pd.DataFrame) -> tuple:
+        X = full_df.drop(columns=["label", "orig_index"])
+        y = full_df["label"].values
+
+        return X, y

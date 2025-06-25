@@ -125,10 +125,7 @@ class SplitManager:
         kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.random_state)
 
         # Create full dataset
-        full_df = pd.concat([self.class_1_df.copy(), self.class_0_df.copy()], ignore_index=True)
-        full_df["label"] = full_df["ResultID"].map(
-            lambda rid: 1 if rid in set(self.class_1_df["ResultID"]) else 0
-        )
+        full_df = SplitUtils.create_full_df(self.class_1_df, self.class_0_df)
 
         splits = []
 
@@ -137,7 +134,7 @@ class SplitManager:
             train_ids = all_ids[train_id_idx]
             test_ids = all_ids[test_id_idx]
 
-            train_df, test_df = SplitUtils.return_balanced_split(
+            train_idx, test_idx = SplitUtils.return_train_test_sample_idx(
                 train_ids=train_ids,
                 test_ids=test_ids,
                 random_state=self.random_state,
@@ -145,18 +142,9 @@ class SplitManager:
                 test_size=self.test_size
             )
 
-            # Save indices of distribution
-            train_mask = full_df["ResultID"].isin(train_ids)
-            test_mask = full_df["ResultID"].isin(test_ids)
-
-            train_idx = full_df[train_mask].index.to_numpy()
-            test_idx = full_df[test_mask].index.to_numpy()
-
             splits.append((train_idx, test_idx))  # Save split indices as Tuple -> (train, test)
 
-        # Full Dataset X and y and all splits
-        X = full_df.drop(columns=["label"])
-        y = full_df["label"].values
+        X, y = SplitUtils.return_X_y(full_df)
 
         # Save if requested
         if save:
@@ -165,27 +153,36 @@ class SplitManager:
 
         return X, y, splits
 
-    def create_custom_splits_by_test_size(self, test_size=0.15, tolerance=0.05):
+    def create_custom_splits_by_test_size(self, test_size=0.15, tolerance=0.05, save=True):
         splits = []
-        non_overlap_split_number = int(1//test_size)
-        all_ids = pd.concat([self.class_1_df, self.class_0_df])['ResultID'].unique()
+        non_overlap_split_number = int(1//test_size) # Maximum possible number of non overlapping splits
 
-        """TO DO: Remove test_ids in every Iteration, to ensure non overlapping folds"""
+        full_df = SplitUtils.create_full_df(self.class_1_df, self.class_0_df)
+
+        used_test_ids = set()
+        split_counter = 0
+
         for _ in range(non_overlap_split_number):
-            train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
-                awake_df=self.class_1_df,
-                faw_df=self.class_0_df,
-                test_size=test_size,
-                tolerance=tolerance,
-                random_state=np.random.randint(10000)
-            )
 
-            full_df = pd.concat([self.class_1_df.copy(), self.class_0_df.copy()], ignore_index=True)
-            full_df["label"] = full_df["ResultID"].map(
-                lambda rid: 1 if rid in set(self.class_1_df["ResultID"]) else 0
-            )
+            # Should only fail due to too small of a sample for current iteration
+            try:
+                train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
+                    awake_df=self.class_1_df,
+                    faw_df=self.class_0_df,
+                    test_size=test_size,
+                    tolerance=tolerance,
+                    random_state=np.random.randint(10000),
+                    exclude_ids=used_test_ids
+                )
+            except ValueError as e:
+                print(f"Split creation failed for Split number: {split_counter}. Error is:\n{e}")
+                break
 
-            train_df, test_df = SplitUtils.return_balanced_split(
+            # Add found test_ids to avoid getting them in subsequent splits
+            used_test_ids.update(test_ids)
+
+            # Get indices of split
+            train_idx, test_idx = SplitUtils.return_train_test_sample_idx(
                 train_ids=train_ids,
                 test_ids=test_ids,
                 random_state=self.random_state,
@@ -193,16 +190,16 @@ class SplitManager:
                 test_size=self.test_size
             )
 
-            train_mask = full_df["ResultID"].isin(train_ids)
-            test_mask = full_df["ResultID"].isin(test_ids)
-
-            train_idx = full_df[train_mask].index.to_numpy()
-            test_idx = full_df[test_mask].index.to_numpy()
-
             splits.append((train_idx, test_idx))
+            split_counter += 1
 
-        X = full_df.drop(columns=["label"])
-        y = full_df["label"].values
+        X, y = SplitUtils.return_X_y(full_df)
+
+        # Save if requested
+        if save:
+            split_obj = (X, y, splits)
+            self.save(split_obj)
+
         return X, y, splits
 
     def save(self, split_obj):
