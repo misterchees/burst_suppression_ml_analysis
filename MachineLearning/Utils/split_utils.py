@@ -10,15 +10,14 @@ class SplitUtils:
             awake_df, faw_df, test_size=0.2, tolerance=0.05, max_iter=500, random_state=42
     ):
         import numpy as np
-        import pandas as pd
         from sklearn.utils import shuffle
 
         rng = np.random.RandomState(random_state)
 
-        # Alle ResultIDs, egal ob in awake oder faw
+        # All resultIDs in union of awake and faw (i.e present in at least one on the dataframes)
         all_ids = pd.Index(awake_df['ResultID'].unique()).union(faw_df['ResultID'].unique())
 
-        # Mapping von ResultID → Anzahl Epochen
+        # Mapping of resultID → Number of epochs
         id_episode_counts = {
             rid: len(awake_df[awake_df['ResultID'] == rid]) + len(faw_df[faw_df['ResultID'] == rid])
             for rid in all_ids
@@ -62,6 +61,43 @@ class SplitUtils:
         return best_train_ids, best_test_ids
 
     @staticmethod
+    def return_balanced_split(train_ids, test_ids, random_state: int, full_df: pd.DataFrame = None,
+                              class_0_df: pd.DataFrame = None, class_1_df: pd.Dataframe = None, test_size: float = None
+                              ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        This method returns a tuple of the train and test splits based on the given ids. Both sets will then be balanced
+        to ensure a ratio of 1:1 for both classes. As last optional step, the ratio of the split can be ensured, by
+        sampling down the bigger set (in relation to the target ratio).
+
+        :param train_ids: The ids of the train split.
+        :param test_ids: The ids of the test split.
+        :param random_state: The random state for balancing
+        :param full_df: The full dataframe to be split. If None, the two class-dataframes will be used.
+        :param class_0_df: The class 0 dataframe. If None, the full dataframe will be used.
+        :param class_1_df: The class 1 dataframe. If None, the full dataframe will be used.
+        :param test_size: The target ratio of the test split. If not None splits will be adjusted.
+        :return: A tuple containing the train and test splits in the order (train, test).
+        """
+        if class_0_df is not None and class_1_df is not None:
+            full_df = pd.concat([class_1_df.copy(), class_0_df.copy()], ignore_index=True)
+        elif full_df is None:
+            raise ValueError("Input dataframes missing. Either provied a full dataframe or both class dataframes.")
+
+        # Split patient data
+        train_df = full_df[full_df["ResultID"].isin(train_ids)].copy()  # Copy to modify df without risk
+        test_df = full_df[full_df["ResultID"].isin(test_ids)].copy()
+
+        # Balance classes in both sets
+        train_df = SplitUtils.balance_classes(train_df, random_state)
+        test_df = SplitUtils.balance_classes(test_df, random_state)
+
+        # Correct for ratio, since previous steps might have changed it
+        if test_size is not None:
+            test_df, train_df = SplitUtils.adjust_splits_to_ratio(test_df, train_df, test_size, random_state)
+
+        return train_df, test_df
+
+    @staticmethod
     def balance_classes(df: pd.DataFrame, random_state: int) -> pd.DataFrame:
         """
         Takes a feature set dataframe with a "label" column that only contain two classes. It balances the number
@@ -88,9 +124,9 @@ class SplitUtils:
                                random_state: int) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Adjust a train-test-split to a given ratio on sample level by adjusting the set, that is larger than the ratio
-        and sampling it down. Function returns the new split and does nothing if the split is of optimal ratio.
-        :param test_df: Dataframe with test set.
-        :param train_df: Dataframe with train set.
+        and sampling it down. The Function returns the new split and does nothing if the split is of optimal ratio.
+        :param test_df: Test set dataframe.
+        :param train_df: Train set dataframe.
         :param test_ratio: Given test ratio. Train ratio can be inferred by 1-test_ratio
         :param random_state: The random state to randomly select from the dataframe (for reproducibility).
         :return: Modified train and test dataframes as Tuple -> (new_test, new_train)
@@ -102,7 +138,7 @@ class SplitUtils:
 
         train_ratio = 1 - test_ratio
 
-        # sample down test_set if ratio of test set higher than target test ratio and vice versa
+        # sample down test_set if the ratio of test set is higher than target test ratio and vice versa
         if test_len / total_samples > test_ratio:
             test_target_size = int((train_len * test_ratio) / train_ratio)
             test_df = test_df.sample(n=test_target_size, random_state=random_state)

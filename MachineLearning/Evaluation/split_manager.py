@@ -1,4 +1,5 @@
 """Contains the SplitManager class."""
+import numpy as np
 import pandas as pd
 from MachineLearning.IO.io_core import IOCore
 from MachineLearning.IO.save_result import SaveResult
@@ -80,28 +81,19 @@ class SplitManager:
             random_state=self.random_state
         )
 
-        # Step 3: Split Epochs along Patient IDs
-        train_df = pd.concat([
-            class_1_df[class_1_df["ResultID"].isin(train_ids)],
-            class_0_df[class_0_df["ResultID"].isin(train_ids)]
-        ], ignore_index=True)
+        # Step 3: Split along patient IDs, balance classes. (optional) Ensure ratio afterward.
+        train_df, test_df = SplitUtils.return_balanced_split(
+            train_ids=train_ids,
+            test_ids=test_ids,
+            random_state=self.random_state,
+            class_0_df=class_0_df,
+            class_1_df=class_1_df,
+            test_size=self.test_size
+        )
 
-        test_df = pd.concat([
-            class_1_df[class_1_df["ResultID"].isin(test_ids)],
-            class_0_df[class_0_df["ResultID"].isin(test_ids)]
-        ], ignore_index=True)
-
-        # Step 4: Balance both classes in test and train to 50/50
-        test_df_balanced = SplitUtils.balance_classes(test_df, self.random_state)
-        train_df_balanced = SplitUtils.balance_classes(train_df, self.random_state)
-
-        # Step 5: Ensure that sample split has the correct ratio by adjusting to smaller set
-        test_df_balanced, train_df_balanced = SplitUtils.adjust_splits_to_ratio(test_df_balanced, train_df_balanced,
-                                                                                self.test_size, self.random_state)
-
-        # Step 6: Sort rows
-        self.train_df = train_df_balanced.sort_values(by=["label", "ResultID", "Start"]).reset_index(drop=True)
-        self.test_df = test_df_balanced.sort_values(by=["label", "ResultID", "Start"]).reset_index(drop=True)
+        # Step 4: Sort rows
+        self.train_df = train_df.sort_values(by=["label", "ResultID", "Start"]).reset_index(drop=True)
+        self.test_df = test_df.sort_values(by=["label", "ResultID", "Start"]).reset_index(drop=True)
 
         # Save if requested
         if save:
@@ -140,23 +132,27 @@ class SplitManager:
 
         splits = []
 
-        # Split sets based on patient IDs
+        # Split sets with help of k-fold
         for train_id_idx, test_id_idx in kf.split(all_ids):
             train_ids = all_ids[train_id_idx]
             test_ids = all_ids[test_id_idx]
 
-            # split based on patient ID selection of kfold
-            train_df = full_df[full_df["ResultID"].isin(train_ids)].copy()
-            test_df = full_df[full_df["ResultID"].isin(test_ids)].copy()
-
-            # Balancing of classes (50/50)
-            train_df = SplitUtils.balance_classes(train_df, self.random_state)
-            test_df = SplitUtils.balance_classes(test_df, self.random_state)
+            train_df, test_df = SplitUtils.return_balanced_split(
+                train_ids=train_ids,
+                test_ids=test_ids,
+                random_state=self.random_state,
+                full_df=full_df,
+                test_size=self.test_size
+            )
 
             # Save indices of distribution
-            train_index = train_df.index.to_numpy()
-            test_index = test_df.index.to_numpy()
-            splits.append((train_index, test_index))  # Save split indices as Tuple -> (train, test)
+            train_mask = full_df["ResultID"].isin(train_ids)
+            test_mask = full_df["ResultID"].isin(test_ids)
+
+            train_idx = full_df[train_mask].index.to_numpy()
+            test_idx = full_df[test_mask].index.to_numpy()
+
+            splits.append((train_idx, test_idx))  # Save split indices as Tuple -> (train, test)
 
         # Full Dataset X and y and all splits
         X = full_df.drop(columns=["label"])
@@ -167,6 +163,46 @@ class SplitManager:
             split_obj = (X,y,splits)
             self.save(split_obj)
 
+        return X, y, splits
+
+    def create_custom_splits_by_test_size(self, test_size=0.15, tolerance=0.05):
+        splits = []
+        non_overlap_split_number = int(1//test_size)
+        all_ids = pd.concat([self.class_1_df, self.class_0_df])['ResultID'].unique()
+
+        """TO DO: Remove test_ids in every Iteration, to ensure non overlapping folds"""
+        for _ in range(non_overlap_split_number):
+            train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
+                awake_df=self.class_1_df,
+                faw_df=self.class_0_df,
+                test_size=test_size,
+                tolerance=tolerance,
+                random_state=np.random.randint(10000)
+            )
+
+            full_df = pd.concat([self.class_1_df.copy(), self.class_0_df.copy()], ignore_index=True)
+            full_df["label"] = full_df["ResultID"].map(
+                lambda rid: 1 if rid in set(self.class_1_df["ResultID"]) else 0
+            )
+
+            train_df, test_df = SplitUtils.return_balanced_split(
+                train_ids=train_ids,
+                test_ids=test_ids,
+                random_state=self.random_state,
+                full_df=full_df,
+                test_size=self.test_size
+            )
+
+            train_mask = full_df["ResultID"].isin(train_ids)
+            test_mask = full_df["ResultID"].isin(test_ids)
+
+            train_idx = full_df[train_mask].index.to_numpy()
+            test_idx = full_df[test_mask].index.to_numpy()
+
+            splits.append((train_idx, test_idx))
+
+        X = full_df.drop(columns=["label"])
+        y = full_df["label"].values
         return X, y, splits
 
     def save(self, split_obj):

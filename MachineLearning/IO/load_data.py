@@ -71,7 +71,7 @@ class LoadData(IOCore):
 
         for _, row in input_df.iterrows():
             caseid = row['caseid']
-            anestart = row['anestart']
+            anestart = int(row['anestart'])
             num_epochs = int((anestart-transition_time) // epoch_length)  # segment into epochs based on episode length
 
             for i in range(num_epochs):
@@ -113,19 +113,20 @@ class LoadData(IOCore):
         random.shuffle(eeg_files)
 
         for eeg_file in eeg_files:
-            result_id = os.path.splitext(eeg_file)[0]
+            result_id = os.path.splitext(eeg_file)[0]  # 1.csv -> ['1', '.csv'] -> 1
             eeg_path = os.path.join(filtered_data_dir, eeg_file)
+            # Lookup anestart for patient ID
             match = anestart_df.loc[anestart_df['caseid'].astype(str) == result_id, 'anestart']
             if not match.empty:
                 anestart = match.values[0]
             else:
-                # Default to safety margin if anestart is not available
+                # Default to safety margin if anestart is not available for this ID
                 anestart = safety_margin_min * 60
 
             # Get duration of EEG file
             with open(eeg_path) as f:
                 num_lines = sum(1 for _ in f) - 1  # minus header
-            eeg_duration = num_lines//128  # assuming 1Hz sampling rate (1 row per second)
+            eeg_duration = num_lines//128  # assuming 128 Hz sampling rate (128 rows per second)
 
             # Compute valid range for sampling
             start_limit = anestart + transition_sec
@@ -133,7 +134,7 @@ class LoadData(IOCore):
             if end_limit <= start_limit:
                 continue  # skip files where there's not enough space
 
-            # How many epochs can we fit?
+            # Skip files that are too short to retrieve an epoch
             max_possible_epochs = (end_limit - start_limit) // epoch_length_sec
             if max_possible_epochs <= 0:
                 continue
@@ -285,7 +286,7 @@ class LoadData(IOCore):
 
         # Step 3: Build row-skipping function for pandas
         def skiprows(i):
-            return i != 1 and i not in required_rows  # 1 is the header line, keep it
+            return i != 1 and i not in required_rows  # only keeps header line and required rows
 
         # Step 4: Read only selected rows and the requested channel
         col = str(channel)  # 1 -> '1'
