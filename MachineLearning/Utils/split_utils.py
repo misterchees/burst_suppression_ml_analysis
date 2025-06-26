@@ -1,9 +1,6 @@
 """This Module contains a Utils class for test-train-split creation."""
 from typing import Optional, Set, Any
-
 import pandas as pd
-
-from MachineLearning.Utils.path_utils import PathUtils
 
 
 class SplitUtils:
@@ -56,7 +53,7 @@ class SplitUtils:
             )
 
         # Iterate through possible random splits to find one, that satisfies all criteria
-        best_test_ids = PathUtils.find_best_ids_for_target_test_sample_size(
+        best_test_ids = SplitUtils.find_best_ids_for_target_test_sample_size(
             ids_for_search=ids_for_search,
             target_test_size=target_test_episodes,
             tolerance=tolerance,
@@ -198,6 +195,14 @@ class SplitUtils:
 
         train_idx = train_df["orig_index"].to_numpy()
         test_idx = test_df["orig_index"].to_numpy()
+
+        print("\nData for current fold:\n")
+        print(f"Train set size: {len(train_idx)}, Test set size: {len(test_idx)}")
+        print(f"Class distribution in train: class label 1 = {sum(train_df.label == 1)},"
+              f"class label 0 = {sum(train_df.label == 0)}")
+        print(f"Class distribution in test:  class label 1 = {sum(test_df.label == 1)},"
+              f" class label 0 = {sum(test_df.label == 0)}")
+
 
         return train_idx, test_idx
 

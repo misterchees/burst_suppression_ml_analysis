@@ -1,7 +1,8 @@
 """Contains the SplitManager class."""
 import numpy as np
 import pandas as pd
-from MachineLearning.IO.io_core import IOCore
+
+from MachineLearning.IO.io_core import IOCore, PathUtils
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.split_utils import SplitUtils
 
@@ -37,6 +38,7 @@ class SplitManager:
         self.class_0_df = None
         self.train_df = None
         self.test_df = None
+        self.k_folds = None
 
     def load_and_validate(self):
         """Loads both csv Files, each of them containing data of one class."""
@@ -62,9 +64,10 @@ class SplitManager:
          5. Saves sets to this class. To save them to your folder use the save method.
 
          :param save: Boolean flag to save the splits in csv files.
+         :return: A tuple of the split dataframes in this order (train/test)
         """
 
-        print(f"Creating Splits. Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
+        print(f"Creating Split. Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
 
         # Step 1: Assign labels according to file
         class_1_df = self.class_1_df.copy()
@@ -107,6 +110,8 @@ class SplitManager:
         print(f"Class distribution in test:  {self.class_1}={sum(self.test_df.label == 1)},"
               f" {self.class_0}={sum(self.test_df.label == 0)}")
 
+        return self.train_df, self.test_df
+
     def create_cv_splits(self, n_splits=5, save=True):
         """
         Creates patient-based cross-validation splits for use in GridSearchCV.
@@ -145,6 +150,7 @@ class SplitManager:
             splits.append((train_idx, test_idx))  # Save split indices as Tuple -> (train, test)
 
         X, y = SplitUtils.return_X_y(full_df)
+        self.k_folds = len(splits)  # Save number of folded splits created
 
         # Save if requested
         if save:
@@ -153,9 +159,11 @@ class SplitManager:
 
         return X, y, splits
 
-    def create_custom_splits_by_test_size(self, test_size=0.15, tolerance=0.05, save=True):
+    def create_custom_splits_by_test_size(self, save=True):
         splits = []
-        non_overlap_split_number = int(1//test_size) # Maximum possible number of non overlapping splits
+        non_overlap_split_number = int(1//self.test_size) # Maximum possible number of non overlapping splits
+        print(f"Creating folded non overlapping Splits. "
+              f"Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
 
         full_df = SplitUtils.create_full_df(self.class_1_df, self.class_0_df)
 
@@ -169,8 +177,8 @@ class SplitManager:
                 train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
                     awake_df=self.class_1_df,
                     faw_df=self.class_0_df,
-                    test_size=test_size,
-                    tolerance=tolerance,
+                    test_size=self.test_size,
+                    tolerance=0.05,
                     random_state=np.random.randint(10000),
                     exclude_ids=used_test_ids
                 )
@@ -194,6 +202,7 @@ class SplitManager:
             split_counter += 1
 
         X, y = SplitUtils.return_X_y(full_df)
+        self.k_folds = len(splits)  # Save number of folded splits created
 
         # Save if requested
         if save:
@@ -205,8 +214,9 @@ class SplitManager:
     def save(self, split_obj):
         """Save single split or k-fold splits."""
         saver = SaveResult()
+        # Check if three values in split_obj -> X, y, splits. If not, it must be split_obj -> train_df, test_df
         try:
-            x, y, split = split_obj
+            _, _, _ = split_obj
         except ValueError:
             saver.save_single_split(self.parameters, split_obj)
             print("Single split saving successful")
@@ -219,3 +229,32 @@ class SplitManager:
         train_fullpath = self.io_core.return_single_split_folder_fullpath(self.parameters, "train")
         test_fullpath = self.io_core.return_single_split_folder_fullpath(self.parameters, "test")
         return train_fullpath, test_fullpath
+
+    def return_k_fold_split_paths(self) -> list:
+        """
+        Returns a list of tuples containing the paths for the train and test folds.
+        If one of them doesn't exist, a FileNotFoundError is raised.
+
+        :return: List of tuples. Every tuple -> (train_path, test_path)
+        """
+        splits_list = []
+
+        # alias functions
+        exists = PathUtils.filepath_exists
+        get_fullpath = self.io_core.return_folded_split_folder_fullpath
+
+        for fold in range(self.k_folds):
+            fold+=1  # folds start at 1 and not 0
+            train_fullpath = get_fullpath(self.parameters, "train", fold, self.k_folds, False)
+            test_fullpath = get_fullpath(self.parameters, "test", fold, self.k_folds, False)
+
+            # Check if files exist
+            if not exists(train_fullpath) or not exists(test_fullpath):
+                raise FileNotFoundError(f"Could not find {train_fullpath} or {test_fullpath}")
+
+            splits_list.append((train_fullpath, test_fullpath))
+
+        return splits_list
+
+
+

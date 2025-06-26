@@ -77,3 +77,6 @@ class PathUtils:
             return f"Normal_ane_{epoch_length}"
         raise ValueError(f"Unknown node type {node_type}. Valid types are 'awake' and 'normal_an'")
 
+    @staticmethod
+    def filepath_exists(filepath: str) -> bool:
+        return os.path.isfile(filepath)

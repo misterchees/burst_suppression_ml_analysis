@@ -24,9 +24,12 @@ def run():
     # pipeline.combine_all_features()
     # pipeline.combine_features(False, "mean", "variance", "bandpower", "spectral_skewness",
     #                          "spectral_kurtosis", "shannon_entropy")
-    train_path, test_path = pipeline.create_splits(class_0, class_1, .15, 42)
-    y_pred, y_test, y_proba = pipeline.run_svm_classifier(train_path, test_path, None, True, kernel="poly")
-    pipeline.evaluate_metrics(class_0, class_1, y_test, y_pred, y_proba)
+    split_list = pipeline.create_splits(class_0, class_1, .15, 42)
+
+    for train_path, test_path in split_list:
+        print(f"Classification run for \n train path: {train_path} \n test path: {test_path}")
+        y_pred, y_test, y_proba = pipeline.run_svm_classifier(train_path, test_path, None, False, kernel="rbf")
+        pipeline.evaluate_metrics(class_0, class_1, y_test, y_pred, y_proba)
 
 
 if __name__ == "__main__":

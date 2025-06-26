@@ -64,26 +64,38 @@ class Pipeline:
         """Wrapper for combining features method implemented in FeatureExtractor"""
         self.feature_extractor.combine_features(all_features, *features)
 
-    def create_splits(self, class_0: str, class_1: str,  test_size: float, random_state: int, split_paths=True):
+    def create_splits(self, class_0: str, class_1: str,  test_size: float, random_state: int,
+                      split_paths=True, folds=True):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
         ratios of faw and awake class in both test and train.
-        :param class_0: Determines the set of epochs to be used as class with label 0. Should be different from class_1.
-        Valid options are: 'awake', 'faw' and 'normal_an'
-        :param class_1: Determines the set of epochs to be used as class with label 1. Should be different from class_0.
-        Valid options are: 'awake', 'faw' and 'normal_an'
-        :param test_size: Float that determines the ratio of test to train. E.g. 0.15 -> test:015/train:0.85
+
+        :param class_0: Name of the set of epochs to be used as class with label 0. Should be different from class_1.
+         Valid options are: 'awake', 'faw' and 'normal_an'
+        :param class_1: Name of the set of epochs to be used as class with label 1. Should be different from class_0.
+         Valid options are: 'awake', 'faw' and 'normal_an'
+        :param test_size: Float that determines the ratio of test to train. E.g. 0.15 -> test:15% train:85%
         :param random_state: Randomness seed, to reproduce the shuffling of the splits.
-        :param split_paths: If True, this method returns a tuple of paths leading to splitted train and test files.
-        :return: if split_paths is True, returns: (<train set path>, <test set path>), else doesn't return anything.
+        :param split_paths: If True, this method returns a tuple of paths leading to split train and test files.
+        :param folds: If True, the splits will be as many non-overlapping folds as possible for cross-validation.
+        :return: If split_paths is True, returns the split paths: (<train set path>, <test set path>).
+         Depending on folds, if it is true, a list of tuples will be returned, else a single tuple will be returned.
         """
         parameters = self.get_current_parameters()
         split_manager = SplitManager(parameters, class_0, class_1, test_size, random_state)
         split_manager.load_and_validate()
-        split_manager.create_single_split()
+
+        # create single split or folds
+        if folds:
+            split_manager.create_custom_splits_by_test_size()
+            return_splits = split_manager.return_k_fold_split_paths
+        else:
+            split_manager.create_single_split()
+            return_splits = split_manager.return_split_paths
 
         if split_paths:
-            return split_manager.return_split_paths()
+            return return_splits()
+        return None
 
     def run_svm_classifier(self, train_path: str, test_path: str, classifier: Classifier = None, save_clf=True, **kwargs):
         """
@@ -93,7 +105,7 @@ class Pipeline:
         :param test_path: Fullpath to test set as string.
         :param classifier: Already trained SVM Classifier.
         :param save_clf: If true will save the trained SVM classifier.
-        :return: returns a tuple -> (predicted values, test labels, probabilities)
+        :return: Tuple -> (predicted values, test labels, probabilities)
         """
 
         parameters = self.get_current_parameters()
@@ -139,7 +151,7 @@ class Pipeline:
         from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
 
         evaluator = MetricsEvaluator(class_0, class_1, y_test, y_pred, y_proba)
-        evaluation = evaluator.evaluate()
+        evaluation = evaluator.evaluate()  # evaluate and print results
         return evaluation
 
     def set_result_ids(self, initial_data_key: str):
