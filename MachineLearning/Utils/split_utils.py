@@ -67,7 +67,7 @@ class SplitUtils:
         return best_train_ids, best_test_ids
 
     @staticmethod
-    def find_best_ids_for_target_test_sample_size(ids_for_search, target_test_size: int, tolerance: float,
+    def  find_best_ids_for_target_test_sample_size(ids_for_search, target_test_size: int, tolerance: float,
                                                   id_episode_dict: dict, random_state: int, max_iter: int):
         """
         Tries to find the best patient IDs that is as close as possible to target test sample size (within tolerance).

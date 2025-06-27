@@ -86,7 +86,7 @@ class LoadData(IOCore):
         return pd.DataFrame(all_epochs)
 
     def sample_anesthesia_epochs(self, parameters: dict, num_epochs: int, transition_sec: int = 10,
-                                 safety_margin_min: int = 10, random_state: int = 42) -> pd.DataFrame:
+                                 safety_margin_min: int = 10, random_state: int = 42, epochs_per_eeg: int = 30) -> pd.DataFrame:
         """
         Samples random EEG epochs from anesthesia segments (i.e., neither awake nor FAW).
 
@@ -95,6 +95,7 @@ class LoadData(IOCore):
         :param transition_sec: Time (in seconds) after anestart before epochs are allowed
         :param safety_margin_min: Minutes to exclude from end of EEG to avoid flatline segments
         :param random_state: Random seed for reproducibility
+        :param epochs_per_eeg: Max number of epochs to sample per eeg (Less samples per patient -> better distribution)
         :returns: DataFrame with columns Start, End, ResultID
         """
         import random
@@ -139,12 +140,10 @@ class LoadData(IOCore):
             if max_possible_epochs <= 0:
                 continue
 
-            # Sample as many as possible but not more than needed
-            num_to_sample = min(max_possible_epochs, num_epochs - len(result))
-            start_points = random.sample(
-                range(start_limit, end_limit - epoch_length_sec + 1),
-                num_to_sample
-            )
+            # Sample max is constrained by length of EEG, number of needed epochs, or given number per EEG
+            # The smallest of these three will be picked
+            num_to_sample = min(max_possible_epochs, num_epochs - len(result), epochs_per_eeg)
+            start_points = random.sample(range(start_limit, end_limit - epoch_length_sec + 1),num_to_sample)
 
             for start in start_points:
                 result.append({

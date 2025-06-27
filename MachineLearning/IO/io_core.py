@@ -201,3 +201,29 @@ class IOCore:
                 warnings.warn(f"Something went wrong while file: {file} was parsed. Error {ex}")
 
         return result_ids
+
+
+    def delete_all_files_in_normal_an_folder(self, parameters: dict, *folder_keys: str):
+        """
+        Deletes all files (not folders) in the specified folder, that contains normal anesthesia data.
+        Only folders of this type will be cleared because, normal anesthesia data are created everytime
+        completely random and in the worst case, new data can mix with old data.
+
+        :param folder_keys: Keys to determine path to the folder whose files should be deleted.
+        :param parameters: Parameters that determine the subfolder path in the folder.
+        """
+        folder_path = self.return_no_parameters_fullpath(parameters, "normal_an", False, *folder_keys)
+
+        if not os.path.exists(folder_path):
+            print(f"Folder does not exist: {folder_path}")
+            return
+
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            if os.path.isfile(file_path):  # Deletes only files, not subdirs
+                try:
+                    os.remove(file_path)
+                    print(f"Deleted file: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting file {file_path}: {e}")
+

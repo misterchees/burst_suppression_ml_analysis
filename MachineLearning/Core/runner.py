@@ -5,8 +5,8 @@ from MachineLearning.Core.pipeline import Pipeline
 
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
 
-epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
-# epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
+# epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
+epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 class_0 = epoch_classes[0]
 class_1 = epoch_classes[1]
 
@@ -18,13 +18,12 @@ def run():
     # Initialize with key of directory with patient ID subset of interest. Faw and awake flags are default true
     pipeline = Pipeline(INITIAL_DATA_SUBDIR_KEY, class_0, class_1)
     # pipeline.raw_eeg_filtering()
-    # pipeline.transform_eeg_to_psd()
-    # pipeline.feature_extraction(False, "mean", "variance", "bandpower", "spectral_skewness",
-    #                            "spectral_kurtosis", "shannon_entropy")
-    # pipeline.combine_all_features()
-    # pipeline.combine_features(False, "mean", "variance", "bandpower", "spectral_skewness",
-    #                          "spectral_kurtosis", "shannon_entropy")
-    split_list = pipeline.create_splits(class_0, class_1, .15, 42)
+    pipeline.transform_eeg_to_psd()
+    pipeline.feature_extraction(False, "mean", "variance", "bandpower", "spectral_skewness",
+                               "spectral_kurtosis", "shannon_entropy")
+    pipeline.combine_features(False, "mean", "variance", "bandpower", "spectral_skewness",
+                             "spectral_kurtosis", "shannon_entropy")
+    split_list = pipeline.create_splits(class_0, class_1, .15, 42, iterations=10)
 
     for train_path, test_path in split_list:
         print(f"Classification run for \n train path: {train_path} \n test path: {test_path}")

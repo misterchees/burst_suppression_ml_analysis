@@ -68,14 +68,18 @@ class MLObject:
         :param channel: current channel of the EEG from where the epochs are.
         """
         # Get all Episodes for all handled epochs
-        for epoch in self.epoch_types:
-            if epoch == "normal_an":
-                if len(self.epoch_types) <= 1:
-                    raise Exception("To compare with anesthesia, episodes from another type must be present "
-                                    "to align the number of episodes.")
-                number_of_epochs = max(len(self.awake_epochs.epoch_times), len(self.faw_epochs.epoch_times))
-                self.normal_an_epochs.update_if_necessary(self.parameter_dict, num_an=number_of_epochs, channel=channel)
-            elif epoch == "faw":
-                self.faw_epochs.update_if_necessary(self.parameter_dict, channel=channel)
-            else:
-                self.awake_epochs.update_if_necessary(self.parameter_dict, channel=channel)
+        if "faw" in self.epoch_types:
+            self.faw_epochs.update_if_necessary(self.parameter_dict, channel=channel)
+        if "awake" in self.epoch_types:
+            self.awake_epochs.update_if_necessary(self.parameter_dict, channel=channel)
+        if "normal_an" in self.epoch_types:
+            awake_epochs = self.awake_epochs.epoch_times
+            faw_epochs = self.faw_epochs.epoch_times
+
+            if not awake_epochs and not faw_epochs:
+                raise Exception("To compare with anesthesia, episodes from another type must be present "
+                                "to align the number of episodes.")
+            number_of_epochs = max(len(awake_epochs), len(faw_epochs))
+            self.normal_an_epochs.update_if_necessary(self.parameter_dict, num_an=number_of_epochs, channel=channel)
+
+

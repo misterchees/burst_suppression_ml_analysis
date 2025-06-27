@@ -159,9 +159,14 @@ class SplitManager:
 
         return X, y, splits
 
-    def create_custom_splits_by_test_size(self, save=True):
+    def create_custom_splits_by_test_size(self, save=True, split_finding_iterations: int = None):
         splits = []
-        non_overlap_split_number = int(1//self.test_size) # Maximum possible number of non overlapping splits
+        if split_finding_iterations is None:
+            # Set iterations to maximum possible number of non overlapping splits (default)
+            non_overlap_split_number = int(1//self.test_size)
+        else:
+            # Custom number of iterations
+            non_overlap_split_number = split_finding_iterations
         print(f"Creating folded non overlapping Splits. "
               f"Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
 
@@ -179,7 +184,7 @@ class SplitManager:
                     faw_df=self.class_0_df,
                     test_size=self.test_size,
                     tolerance=0.05,
-                    random_state=np.random.randint(10000),
+                    random_state=self.random_state,
                     exclude_ids=used_test_ids
                 )
             except ValueError as e:

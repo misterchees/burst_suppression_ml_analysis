@@ -65,7 +65,7 @@ class Pipeline:
         self.feature_extractor.combine_features(all_features, *features)
 
     def create_splits(self, class_0: str, class_1: str,  test_size: float, random_state: int,
-                      split_paths=True, folds=True):
+                      split_paths=True, folds=True, iterations: int = None):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
         ratios of faw and awake class in both test and train.
@@ -78,6 +78,7 @@ class Pipeline:
         :param random_state: Randomness seed, to reproduce the shuffling of the splits.
         :param split_paths: If True, this method returns a tuple of paths leading to split train and test files.
         :param folds: If True, the splits will be as many non-overlapping folds as possible for cross-validation.
+        :param iterations: Number of iterations for searching folds. Will be ignored if folds is False.
         :return: If split_paths is True, returns the split paths: (<train set path>, <test set path>).
          Depending on folds, if it is true, a list of tuples will be returned, else a single tuple will be returned.
         """
@@ -87,7 +88,7 @@ class Pipeline:
 
         # create single split or folds
         if folds:
-            split_manager.create_custom_splits_by_test_size()
+            split_manager.create_custom_splits_by_test_size(split_finding_iterations=iterations)
             return_splits = split_manager.return_k_fold_split_paths
         else:
             split_manager.create_single_split()

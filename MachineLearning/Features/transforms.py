@@ -4,7 +4,7 @@ from typing import Tuple
 from scipy.signal import welch
 from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.load_data import LoadData
-from MachineLearning.IO.save_result import SaveResult
+from MachineLearning.IO.save_result import SaveResult, PathUtils
 
 
 class Transforms(MLObject):
@@ -50,13 +50,33 @@ class Transforms(MLObject):
             epochs = self.faw_epochs.epoch_times
             saving_func = result_saver.save_faw_psd
 
+            # skip calculation if PSD folder contains an amount of files equal to current epochs
+            psd_dir_fullpath = result_saver.return_all_parameter_fullpath(
+                self.parameter_dict, False, False, "features", "psds"
+            )
+            _, existing_psd_count = PathUtils.list_files_in_folder(psd_dir_fullpath, ".csv")
+            if existing_psd_count == len(epochs):
+                print(f"Skipping Calculations. PSDs already calculated for parameters: \n{self.parameter_dict}")
+                return
+
         elif epoch_type == 'awake':
             epochs = self.awake_epochs.epoch_times
             saving_func = result_saver.save_awake_psd
 
+            # skip calculation if PSD folder contains an amount of files equal to current epochs
+            psd_dir_fullpath = result_saver.return_no_parameters_fullpath(
+                self.parameter_dict, "awake",False, "features", "psds"
+            )
+            _, existing_psd_count = PathUtils.list_files_in_folder(psd_dir_fullpath, ".csv")
+            if existing_psd_count == len(epochs):
+                print(f"Skipping Calculations. PSDs already calculated for parameters: \n{self.parameter_dict}")
+                return
+
         elif epoch_type == 'normal_an':
             epochs = self.normal_an_epochs.epoch_times
             saving_func = result_saver.save_normal_an_psd
+            # Epoch generation is random -> clear previous transforms
+            result_saver.delete_all_files_in_normal_an_folder(self.parameter_dict, "features", "psds")
 
         else:
             raise ValueError(f'Unrecognized epoch type {epoch_type}. Valid types are "faw", "awake", "normal_an"')

@@ -40,9 +40,7 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir = self.return_folder_path("features", "psds")
-        psd_subfolder = PathUtils.return_node_name(parameters, "awake")
-        psd_dir_fullpath = PathUtils.return_anypath(psd_dir, psd_subfolder)
+        psd_dir_fullpath = self.return_no_parameters_fullpath(parameters, "awake", False, "features", "psds")
 
         # make sure directory exists
         os.makedirs(psd_dir_fullpath, exist_ok=True)
@@ -62,9 +60,7 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir = self.return_folder_path("features", "psds")
-        psd_subfolder = PathUtils.return_node_name(parameters, "normal_an")
-        psd_dir_fullpath = PathUtils.return_anypath(psd_dir, psd_subfolder)
+        psd_dir_fullpath = self.return_no_parameters_fullpath(parameters, "normal_an", False, "features", "psds")
 
         # make sure directory exists
         os.makedirs(psd_dir_fullpath, exist_ok=True)

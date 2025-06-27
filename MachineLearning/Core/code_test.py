@@ -11,21 +11,27 @@ parameter_dict = {
     "overlap": 0.0  # window overlap (options: 0.0, 0.25, 0.5)
 }
 
-
+"""
 from MachineLearning.Evaluation.split_manager import SplitManager
 from MachineLearning.Models.svm_classifier import SVMClassifier
 from MachineLearning.Models.ParamTuning.svm_grid_search import SVMGridSearch
 
 split_manager = SplitManager(parameter_dict, "faw", "awake", test_size=0.15)
 split_manager.load_and_validate()
-X, y, splits = split_manager.create_cv_splits()
+X, y, splits = split_manager.create_custom_splits_by_test_size()
 svm = SVMClassifier()
 svm_base_model = svm.get_base_model()
 metric_list = ["accuracy", "recall", "precision"]
 for metric in metric_list:
     grid_search = SVMGridSearch(svm_base_model, X, y, splits, metric)
+    grid_search.run()
     print(f"Results for grid search to optimize {metric}:")
     print(f"Best estimator: {grid_search.best_estimator()}")
     print(f"Best score: {grid_search.best_score()}")
     print(f"Best params: {grid_search.best_params()}")
+"""
 
+from MachineLearning.IO.io_core import IOCore
+
+io_core = IOCore()
+print(io_core.return_no_parameters_fullpath(parameter_dict, "normal_an", False, "features", "psds"))
