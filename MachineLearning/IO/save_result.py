@@ -86,7 +86,7 @@ class SaveResult(IOCore):
         })
 
         # create fullpath with PSD name to save data
-        psd_filename = f"PSD_{start}_{end}_{result_id}.csv"
+        psd_filename = PathUtils.assemble_psd_file_name(start, end, result_id)
         fullpath = PathUtils.return_anypath(psd_dir_fullpath, psd_filename)
 
         # save psd

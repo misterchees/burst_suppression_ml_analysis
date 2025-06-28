@@ -3,20 +3,25 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 
 
 class Epochs:
-    """Handles all epochs of a single epoch type and given parameters. Type can't be changed after initialization"""
+    """
+    Handles all epochs of a single epoch type and given parameters. Type can't be changed after initialization
+    The most important attribute here is epoch_times. This list contains all epochs with metadata as a tuple.
+    The tuple is of the following structure:
+    start_time, end_time, result_id, fs, eeg_segment
+    """
 
     def __init__(self, epoch_type: str,  parameters: dict = None, channel: int = None, filtered=True,
                  num_an: int = None):
         """
-        Initializes a new Epochs object, that contains the read EEG snippets based on the times of the epoch.
-        It's main purpose is to provide the epochs to all necessary manipulations on them without needing to load
-        them multiple times. Can be updated, if parameters change.
+        Initializes a new Epochs object that contains the read EEG snippets based on the times of the epoch.
+        Its main purpose is to load the epochs only once to perform all necessary manipulations on them
+        without the need to load them multiple times. Can be updated if parameters change.
 
         :param epoch_type: Type of the stored epochs. Valid options are 'faw','awake' and 'normal_an'.
         :param parameters: Dictionary of parameters, that determine the epochs.
         :param channel: Channel of the EEG from which the epochs are read. Valid options are 1 or 2.
         :param filtered: If true, epochs are from a filtered EEG, else from the raw EEG.
-        :param num_an: Will be ignored if epoch_type is not 'nomral_an'. Number of normal anesthesia epochs,
+        :param num_an: Will be ignored if epoch_type is not 'normal_an'. Number of normal anesthesia epochs,
         since these are randomly sampled. It should be at least the same number of the epochs,
         which will be compared to these.
         """
@@ -30,7 +35,7 @@ class Epochs:
         self.num_an = num_an
 
     def is_empty(self) -> bool:
-        """Makes use of the behaviour, that boolean checks return false for an empty list."""
+        """Makes use of the behavior that boolean checks return false for an empty list."""
         return not self.epoch_times
 
     def update_if_necessary(self, parameters: dict = None, channel: int = None, filtered: bool = True, num_an: int = None):

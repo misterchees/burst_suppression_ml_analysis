@@ -45,41 +45,43 @@ class Transforms(MLObject):
         :param epoch_type: Type of epochs from which to calculate PSD.
         :param result_saver: Result Saver instance.
         """
+        # Acts as a flag to see if diff to the current psd folder is needed to skip PSD creation
+        psd_dir_fullpath = None
+
         # Define epochs and saving function based on epoch type
         if epoch_type == 'faw':
             epochs = self.faw_epochs.epoch_times
             saving_func = result_saver.save_faw_psd
-
-            # skip calculation if PSD folder contains an amount of files equal to current epochs
+            # Path to check PSD against current epochs
             psd_dir_fullpath = result_saver.return_all_parameter_fullpath(
                 self.parameter_dict, False, False, "features", "psds"
             )
-            _, existing_psd_count = PathUtils.list_files_in_folder(psd_dir_fullpath, ".csv")
-            if existing_psd_count == len(epochs):
-                print(f"Skipping Calculations. PSDs already calculated for parameters: \n{self.parameter_dict}")
-                return
 
         elif epoch_type == 'awake':
             epochs = self.awake_epochs.epoch_times
             saving_func = result_saver.save_awake_psd
-
-            # skip calculation if PSD folder contains an amount of files equal to current epochs
+            # Path to check PSD against current epochs
             psd_dir_fullpath = result_saver.return_no_parameters_fullpath(
                 self.parameter_dict, "awake",False, "features", "psds"
             )
-            _, existing_psd_count = PathUtils.list_files_in_folder(psd_dir_fullpath, ".csv")
-            if existing_psd_count == len(epochs):
-                print(f"Skipping Calculations. PSDs already calculated for parameters: \n{self.parameter_dict}")
-                return
 
         elif epoch_type == 'normal_an':
             epochs = self.normal_an_epochs.epoch_times
             saving_func = result_saver.save_normal_an_psd
-            # Epoch generation is random -> clear previous transforms
-            result_saver.delete_all_files_in_normal_an_folder(self.parameter_dict, "features", "psds")
+            # No path given, since the PSD folder should always be cleared to fill with PSDs from new sampled epochs
 
         else:
             raise ValueError(f'Unrecognized epoch type {epoch_type}. Valid types are "faw", "awake", "normal_an"')
+
+        # Skip PSD calculation if all Epochs are already calculated
+        if psd_dir_fullpath is not None:
+            if not PathUtils.diff_epochs_vs_psd_files(psd_dir_fullpath, epochs):
+                print(f"Skipping Calculations for {epoch_type} epochs. "
+                      f"PSDs already calculated for parameters: \n{self.parameter_dict}")
+                return
+
+        # Clear folder before calculating new PSDs
+        result_saver.clear_psd_folder(self.parameter_dict, epoch_type)
 
         # Calculate and save psd for each epoch
         for start_time, end_time, result_id, fs, eeg_segment in epochs:
@@ -88,7 +90,7 @@ class Transforms(MLObject):
 
     def transform_eeg_to_psd(self, result_id: int, channel=1, nperseg_seconds=2):
         """
-        Calculates a PSD for a raw EEG from a patient specified by result id .
+        Calculates a PSD for a raw EEG from a patient specified by result ID.
         :param result_id: Patient id
         :param channel: EEG-Channel (options: 1, 2)
         :param nperseg_seconds: Length of window for Welch in seconds (usually: 1 or 2)

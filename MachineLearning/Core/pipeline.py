@@ -12,17 +12,19 @@ from MachineLearning.Evaluation.split_manager import SplitManager
 class Pipeline:
     result_ids = []
 
-    def __init__(self, initial_data_key="raw_eeg_mat", *epoch_types):
+    def __init__(self, initial_data_key:str, epoch_classes: dict):
         """
-        Sets subset of Patient IDs, i.e. subdirectory of initial data
-        :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
-        :param epoch_types: Defines which Epochs will be handled throughout the pipeline.
+        Sets subset of Patient IDs, i.e., subdirectory of initial data
+        :param initial_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
+        :param epoch_classes: A dict with two classes (keys 0 and 1), which will be handled throughout the pipeline.
+         Valid values are: "awake", "faw" and "normal_an"
         """
         loader = LoadData()
 
-        self.epoch_types = epoch_types
-        self.feature_extractor = EEGFeatureExtractor(*epoch_types)
-        self.transformer = Transforms(*epoch_types)
+        self.class_0 = epoch_classes[0]
+        self.class_1 = epoch_classes[1]
+        self.feature_extractor = EEGFeatureExtractor(*epoch_classes.values())
+        self.transformer = Transforms(*epoch_classes.values())
         self.result_ids = loader.return_all_result_ids(initial_data_key)
 
     def raw_eeg_filtering(self):
@@ -64,31 +66,26 @@ class Pipeline:
         """Wrapper for combining features method implemented in FeatureExtractor"""
         self.feature_extractor.combine_features(all_features, *features)
 
-    def create_splits(self, class_0: str, class_1: str,  test_size: float, random_state: int,
-                      split_paths=True, folds=True, iterations: int = None):
+    def create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
         ratios of faw and awake class in both test and train.
 
-        :param class_0: Name of the set of epochs to be used as class with label 0. Should be different from class_1.
-         Valid options are: 'awake', 'faw' and 'normal_an'
-        :param class_1: Name of the set of epochs to be used as class with label 1. Should be different from class_0.
-         Valid options are: 'awake', 'faw' and 'normal_an'
-        :param test_size: Float that determines the ratio of test to train. E.g. 0.15 -> test:15% train:85%
+        :param test_size: Float that determines the ratio of test to train. E.g., 0.15 -> test:15% train:85%
         :param random_state: Randomness seed, to reproduce the shuffling of the splits.
         :param split_paths: If True, this method returns a tuple of paths leading to split train and test files.
         :param folds: If True, the splits will be as many non-overlapping folds as possible for cross-validation.
-        :param iterations: Number of iterations for searching folds. Will be ignored if folds is False.
+        :param iterations: Number of iterations for searching folds. Will be ignored if param "folds" is False.
         :return: If split_paths is True, returns the split paths: (<train set path>, <test set path>).
          Depending on folds, if it is true, a list of tuples will be returned, else a single tuple will be returned.
         """
         parameters = self.get_current_parameters()
-        split_manager = SplitManager(parameters, class_0, class_1, test_size, random_state)
+        split_manager = SplitManager(parameters, self.class_0, self.class_1, test_size, random_state)
         split_manager.load_and_validate()
 
         # create single split or folds
         if folds:
-            split_manager.create_custom_splits_by_test_size(split_finding_iterations=iterations)
+            split_manager.create_custom_splits_by_test_size(min_iterations=iterations)
             return_splits = split_manager.return_k_fold_split_paths
         else:
             split_manager.create_single_split()
@@ -138,22 +135,34 @@ class Pipeline:
             saver.save_model(clf, "svm", parameters)
         return y_pred, y_test, y_proba
 
-    @staticmethod
-    def evaluate_metrics(class_0, class_1, y_test, y_pred, y_proba):
+    def evaluate_metrics(self, y_test, y_pred, y_proba, print_results=True):
         """
         Wrapper for the metric evaluator of Machine Learning algorithm.
-        :param class_0: Class 0 name
-        :param class_1: Class 1 name
-        :param y_test: Test labels, contains ground truth.
+        :param y_test: Test labels which contain ground truth.
         :param y_pred: Predicted labels.
         :param y_proba: Prediction probabilities (optional, for AUC).
+        :param print_results: If True, prints the results of the evaluation.
         :return: A dict with the result of the evaluation.
         """
         from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
 
-        evaluator = MetricsEvaluator(class_0, class_1, y_test, y_pred, y_proba)
-        evaluation = evaluator.evaluate()  # evaluate and print results
+        evaluator = MetricsEvaluator(self.class_0, self.class_1, y_test, y_pred, y_proba)
+        evaluation = evaluator.evaluate(print_results)  # evaluate and print results
         return evaluation
+
+
+    def split_classify_evaluate(self, test_size: float, random_state: int, folds=True):
+        iterations = int(1//test_size)*2  # Double the number of minimal necessary iterations
+        split_paths = self.create_splits(test_size, random_state, folds=folds, iterations=iterations)
+        if not folds:
+            train_path, test_path = split_paths
+            y_pred, y_test, y_proba = self.run_svm_classifier(train_path, test_path, save_clf=False)
+            self.evaluate_metrics(y_test, y_pred, y_proba)
+
+        else:
+            y_pred, y_test, y_proba = self.collect_classification_results(split_paths)
+            self.evaluate_metrics(y_test, y_pred, y_proba)
+
 
     def set_result_ids(self, initial_data_key: str):
         """
@@ -167,3 +176,28 @@ class Pipeline:
         """Returns the current parameters as a dictionary."""
         # It doesn't matter if taken from feature extractor or filterer
         return self.feature_extractor.parameter_dict
+
+    def collect_classification_results(self, split_paths: list) -> tuple[list, list, list]:
+        """
+        Collects the classification results from multiple splits.
+        Args:
+            split_paths: List of tuples, each containing the paths to the train and test set of a split.
+
+        Returns:
+            tuple: (predictions, true_labels, probabilities)
+        """
+        predictions = []
+        true_labels = []
+        probabilities = []
+
+        for train_path, test_path in split_paths:
+            prediction, true_label, probability = self.run_svm_classifier(
+                train_path,
+                test_path,
+                save_clf=False
+            )
+            predictions.append(prediction)
+            true_labels.append(true_label)
+            probabilities.append(probability)
+
+        return predictions, true_labels, probabilities

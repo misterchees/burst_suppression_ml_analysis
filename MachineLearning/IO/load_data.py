@@ -21,7 +21,8 @@ def load_psd_with_start_end_resultid(folder_path: str, filename: str) \
     # Validation of single episode PSD name structure
     name_parts = filename.split(".")[0].split("_")
     if len(name_parts) != 4 and name_parts[0] != "PSD":
-        raise ValueError(f"Name of file {filename} has no typical structure for single episode PSD")
+        raise ValueError(f"Name of file {filename} has no typical structure for single episode PSD."
+                         "Typical structure example: PSD_0_1_2.csv")
     metadata = filename.replace(".csv", "").split("_")[1:]  # PSD_0_1_2.csv -> ['0','1','2']
     start = int(metadata[0])
     end = int(metadata[1])
@@ -322,7 +323,7 @@ class LoadData(IOCore):
         return grouped
 
     def return_csv_file_from_basedir(self, file_key: str) -> str:
-        """Returns a path to a file in base directory"""
+        """Returns a path to a file in the base directory"""
         base_dir = self.path_config["base_dir"]["path_name"]
         file_name = self.path_config["base_dir"]["files"][file_key]
         file_path = PathUtils.return_anypath(base_dir, f"{file_name}.csv")

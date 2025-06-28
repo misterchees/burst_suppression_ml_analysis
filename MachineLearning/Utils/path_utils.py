@@ -82,14 +82,14 @@ class PathUtils:
         return os.path.isfile(filepath)
 
     @staticmethod
-    def list_files_in_folder(folder_path, extension_filter=None, print_to_console=False):
+    def list_files_in_folder(folder_path: str, extension_filter:str = None, print_to_console=False):
         """
         Lists all files in a folder, optionally filtered by file extension.
 
         :param folder_path: Path to the folder to list files from.
         :param extension_filter: Optional file extension to filter by (e.g. ".csv" or ".txt").
         :param print_to_console: If true will print out all files to console.
-        :returns: List of matching file names and the total count.
+        :returns: List of file names and the total count of these files.
         """
         if not os.path.exists(folder_path):
             print(f"Folder does not exist: {folder_path}")
@@ -110,3 +110,50 @@ class PathUtils:
         print(f"\nTotal files{f' with extension {extension_filter}' if extension_filter else ''}: {len(all_files)}")
 
         return all_files, len(all_files)
+
+    @staticmethod
+    def clear_folder(folder_path: str):
+        """Deletes all files in a folder of given path, not including subfolders."""
+
+        # Nothing to do if already deleted
+        if not os.path.exists(folder_path):
+            print(f"Folder does not exist: {folder_path}")
+            return
+
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            if os.path.isfile(file_path):  # Deletes only files, not subdirs
+                try:
+                    os.remove(file_path)
+                    print(f"Deleted file: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting file {file_path}: {e}")
+
+    @staticmethod
+    def assemble_psd_file_name(start: int, end: int, result_id: int) -> str:
+        """Assembles the name of a PSD file with given metadata."""
+        if start is None or end is None or result_id is None:
+            raise ValueError("start, end and result_id must be values")
+
+        return f"PSD_{start}_{end}_{result_id}.csv"
+
+    @staticmethod
+    def diff_epochs_vs_psd_files(psd_file_path, epochs) -> bool:
+        # Get csv files and number of files in psd_path
+        psd_files_list, existing_psd_count = PathUtils.list_files_in_folder(psd_file_path, ".csv")
+
+        # If there aren't as many epochs as psd_files, there is a diff -> return true
+        if existing_psd_count != len(epochs):
+            return True
+        # If not all epochs have a calculated psd counterpart, there is a diff -> return true
+        else:
+            psd_file_set = set(psd_files_list) # convert to set for optimal search efficiency
+            # Assemble each PSD filename from epoch metadata and check if exists. If not exist -> return true
+            for epoch in epochs:
+                start, end, result_id, _, _ = epoch # Get relevant data of epochs
+                psd_file_name = PathUtils.assemble_psd_file_name(start, end, result_id)
+                if psd_file_name not in psd_file_set:
+                    return True
+        # Number of epochs is equal to number of PSD files and every epoch has its PSD counterpart
+        return False
+
