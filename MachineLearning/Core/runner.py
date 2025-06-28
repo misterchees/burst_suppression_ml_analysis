@@ -24,8 +24,7 @@ def run():
     #                            "spectral_kurtosis", "shannon_entropy")
     # pipeline.combine_features(False, "mean", "variance", "bandpower", "spectral_skewness",
     #                          "spectral_kurtosis", "shannon_entropy")
-    pipeline.split_classify_evaluate(test_size, random_state)
-
+    pipeline.split_classify_evaluate(test_size, random_state, True, C=10, gamma=0.1)
 
 
 if __name__ == "__main__":

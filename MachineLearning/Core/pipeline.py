@@ -150,19 +150,17 @@ class Pipeline:
         evaluation = evaluator.evaluate(print_results)  # evaluate and print results
         return evaluation
 
-
-    def split_classify_evaluate(self, test_size: float, random_state: int, folds=True):
+    def split_classify_evaluate(self, test_size: float, random_state: int, folds=True, **kwargs):
         iterations = int(1//test_size)*2  # Double the number of minimal necessary iterations
         split_paths = self.create_splits(test_size, random_state, folds=folds, iterations=iterations)
         if not folds:
             train_path, test_path = split_paths
-            y_pred, y_test, y_proba = self.run_svm_classifier(train_path, test_path, save_clf=False)
+            y_pred, y_test, y_proba = self.run_svm_classifier(train_path, test_path, save_clf=False, **kwargs)
             self.evaluate_metrics(y_test, y_pred, y_proba)
 
         else:
-            y_pred, y_test, y_proba = self.collect_classification_results(split_paths)
+            y_pred, y_test, y_proba = self.collect_classification_results(split_paths, **kwargs)
             self.evaluate_metrics(y_test, y_pred, y_proba)
-
 
     def set_result_ids(self, initial_data_key: str):
         """
@@ -177,11 +175,12 @@ class Pipeline:
         # It doesn't matter if taken from feature extractor or filterer
         return self.feature_extractor.parameter_dict
 
-    def collect_classification_results(self, split_paths: list) -> tuple[list, list, list]:
+    def collect_classification_results(self, split_paths: list, **kwargs) -> tuple[list, list, list]:
         """
         Collects the classification results from multiple splits.
         Args:
             split_paths: List of tuples, each containing the paths to the train and test set of a split.
+            kwargs: kwargs for the SVM classifier
 
         Returns:
             tuple: (predictions, true_labels, probabilities)
@@ -194,7 +193,8 @@ class Pipeline:
             prediction, true_label, probability = self.run_svm_classifier(
                 train_path,
                 test_path,
-                save_clf=False
+                save_clf=False,
+                **kwargs
             )
             predictions.append(prediction)
             true_labels.append(true_label)

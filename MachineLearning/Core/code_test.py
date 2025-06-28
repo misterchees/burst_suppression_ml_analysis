@@ -11,7 +11,7 @@ parameter_dict = {
     "overlap": 0.0  # window overlap (options: 0.0, 0.25, 0.5)
 }
 
-"""
+
 from MachineLearning.Evaluation.split_manager import SplitManager
 from MachineLearning.Models.svm_classifier import SVMClassifier
 from MachineLearning.Models.ParamTuning.svm_grid_search import SVMGridSearch
@@ -29,9 +29,3 @@ for metric in metric_list:
     print(f"Best estimator: {grid_search.best_estimator()}")
     print(f"Best score: {grid_search.best_score()}")
     print(f"Best params: {grid_search.best_params()}")
-"""
-
-from MachineLearning.IO.io_core import IOCore
-
-io_core = IOCore()
-print(io_core.return_no_parameters_fullpath(parameter_dict, "normal_an", False, "features", "psds"))
