@@ -6,8 +6,8 @@ class PathUtils:
     def return_anypath(*path_parts: str) -> str:
         """
         Creates any path build from given path_parts.
-        :param path_parts: Any number of path parts in the right order to assemble them.
-        :return: A path build from given path_parts as string.
+        :param path_parts: Any number of path parts in the right order to assemble them as strings.
+        :return: A path built from given path_parts as a string.
         """
         return str(os.path.join(*path_parts))
 
@@ -60,7 +60,7 @@ class PathUtils:
     def return_A_B_C_D_X_Y_path(prefix: str, parameters: dict) -> str:
         """
         Returns a path-like string. For details look into return_A_B_C_D_name and return_X_Y_name functions.
-        :param prefix: prefix of abcd folder
+        :param prefix: Prefix of abcd folder
         :param parameters: parameters that decide about the variables.
         :return: <prefix>_A_B_C_D\\<Episode>_X_Y
         """

@@ -610,11 +610,11 @@ class EEGFeatureExtractor(MLObject):
                     output_list.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
         return output_list
 
-    def combine_features(self, all_features: bool, *features: str):
+    def combine_features(self, all_features: bool, features: list):
         """
         Combines features of all epochs and saves them together in one file.
         :param all_features: If True will combine all features in the features folder.
         :param features: All features to be combined. Is ignored if all_features is True.
         """
         for epoch_type in self.epoch_types:
-            FeatureUtils.combine_features(self.parameter_dict, epoch_type, all_features, *features)
+            FeatureUtils.combine_features(self.parameter_dict, epoch_type, all_features, features)

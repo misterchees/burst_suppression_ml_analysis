@@ -4,6 +4,8 @@ This module is to execute all pipeline commands and therefore the main point to 
 from MachineLearning.Core.pipeline import Pipeline
 
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
+feature_list = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
+features_to_combine = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
 test_size = 0.15
 random_state = 42
 
@@ -20,10 +22,8 @@ def run():
     pipeline = Pipeline(INITIAL_DATA_SUBDIR_KEY, epoch_classes)
     # pipeline.raw_eeg_filtering()
     # pipeline.transform_eeg_to_psd()
-    # pipeline.feature_extraction(False, "mean", "variance", "bandpower", "spectral_skewness",
-    #                            "spectral_kurtosis", "shannon_entropy")
-    # pipeline.combine_features(False, "mean", "variance", "bandpower", "spectral_skewness",
-    #                          "spectral_kurtosis", "shannon_entropy")
+    # pipeline.feature_extraction(False, feature_list)
+    # pipeline.combine_features(False, features_to_combine)
     pipeline.split_classify_evaluate(test_size, random_state, True, C=10, gamma=0.1)
 
 

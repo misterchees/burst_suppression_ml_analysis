@@ -7,6 +7,7 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.transforms import Transforms
 from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
 from MachineLearning.Evaluation.split_manager import SplitManager
+from MachineLearning.Utils.config_loader import load_config
 
 
 class Pipeline:
@@ -37,12 +38,12 @@ class Pipeline:
         """Wrapper for transform function implemented in Transforms class"""
         self.transformer.transform_eeg_episodes_to_psd(channel, nperseg_seconds)
 
-    def feature_extraction(self, all_features: bool, *custom_feature_args):
+    def feature_extraction(self, all_features: bool, features: list):
         """
-        Extracts defined features from all EEGs in current result_ids subset.
-        :param all_features: If True will extract all features implemented in FeatureExtractor, else will
+        Extracts defined features from all EEGs in the current result_ids subset.
+        :param all_features: If True extracts all features implemented in FeatureExtractor, else will
         only extract features in custom_feature_dict.
-        :param custom_feature_args: list of features to be extracted (List entries have to be feature keys)
+        :param features: List of features to be extracted (List entries have to be feature keys)
         :return:
         """
         feature_functions = self.feature_extractor.feature_extract_funcs
@@ -56,15 +57,15 @@ class Pipeline:
         else:
             # validate keys
             feature_keys = FeatureUtils.return_all_features_dict().keys()
-            for key in custom_feature_args:
+            for key in features:
                 if key not in feature_keys:
                     raise ValueError(f"'{key}' is no valid feature key. Valid keys are: {feature_keys}")
-            for function_key in custom_feature_args:
+            for function_key in features:
                 feature_functions[function_key](self.feature_extractor)
 
-    def combine_features(self, all_features: bool, *features):
+    def combine_features(self, all_features: bool, features: list):
         """Wrapper for combining features method implemented in FeatureExtractor"""
-        self.feature_extractor.combine_features(all_features, *features)
+        self.feature_extractor.combine_features(all_features, features)
 
     def create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None):
         """
@@ -111,7 +112,7 @@ class Pipeline:
 
         if classifier is not None:
             loader = LoadData()
-            clf = loader.load_model("svm", parameters)
+            clf = loader.load_model("svm", parameters)  # load pretrained model
         else:
             from MachineLearning.Models.svm_classifier import SVMClassifier  # Lazy import
             # Prepare features/labels
@@ -170,10 +171,11 @@ class Pipeline:
         loader = LoadData()
         self.result_ids = loader.return_all_result_ids(initial_data_key)
 
-    def get_current_parameters(self) -> dict:
+    @staticmethod
+    def get_current_parameters() -> dict:
         """Returns the current parameters as a dictionary."""
-        # It doesn't matter if taken from feature extractor or filterer
-        return self.feature_extractor.parameter_dict
+        # Return current parameters stored in config
+        return load_config("parameters_config.yaml")["current_params"]
 
     def collect_classification_results(self, split_paths: list, **kwargs) -> tuple[list, list, list]:
         """

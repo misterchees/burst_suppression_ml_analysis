@@ -233,4 +233,56 @@ class SaveResult(IOCore):
         fullpath = PathUtils.return_anypath(full_folder_path, model_file)
         dump(model, fullpath)
 
+    def save_ml_result(self, file: pd.DataFrame | dict, model_key: str, parameters: dict, file_type: str, file_prefix: str = ""):
+        """
+        Save machine learning result data to a specified file format and location.
+
+        This method processes data, constructs appropriate folder paths based on
+        provided parameters, and saves the data in the specified file format. The
+        method enforces naming conventions for the file, making it easier to maintain
+        consistency across saved results. It supports saving in CSV or JSON formats
+        for different use cases.
+
+        :param file: Input data to be saved. It can either be a pandas DataFrame or
+                     a dictionary depending on the file type.
+        :type file: pd.DataFrame | dict
+        :param model_key: A unique string identifier for the model, used for constructing
+                          folder paths.
+        :type model_key: str
+        :param parameters: A dictionary containing parameters used for constructing
+                           folder hierarchy and metadata about the file.
+        :type parameters: dict
+        :param file_type: Specifies the type of file to save. Valid options are
+                          "pred_and_meta", "metrics", and "all_metadata".
+        :type file_type: str
+        :param file_prefix: An optional prefix added to the filename for further
+                            customization. Probably only used to specify the fold.
+                            Defaults to an empty string.
+        :type file_prefix: str
+        :return: None
+        """
+        # Construct the path to the folder, where the file will be saved
+        base_dir = self.return_folder_path("results", model_key)
+        prefix = self.return_folder_name("results", model_key)
+        abcdxy_subdirs = PathUtils.return_A_B_C_D_X_Y_path(prefix, parameters)
+        folder_path = PathUtils.return_anypath(base_dir, abcdxy_subdirs)
+        os.makedirs(os.path.dirname(folder_path), exist_ok=True)  # Make sure folders are created if non-existent
+
+        # Better hardcoded to enforce name consistency
+        if file_type == "pred_and_meta":
+            file_name = f"{file_prefix}_pred_and_meta.csv"
+        elif file_type == "metrics":
+            file_name = f"{file_prefix}_metrics.json"
+        elif file_type == "all_metadata":
+            file_name = f"{file_prefix}_all_metadata.json"
+        else:
+            raise ValueError(f"Unknown file type: {file_type}. Valid options are: pred_and_meta, metrics, all_metadata")
+
+        fullpath = PathUtils.return_anypath(folder_path, file_name)
+
+        if file_type == "pred_and_meta":
+            file.to_csv(fullpath, index=False)
+        else:
+            file.to_json(fullpath, indent=4)
+        print(f"Successfully saved {file_type} to {fullpath}")
 

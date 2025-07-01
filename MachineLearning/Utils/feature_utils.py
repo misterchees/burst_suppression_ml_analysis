@@ -5,7 +5,7 @@ from MachineLearning.IO.save_result import SaveResult
 
 class FeatureUtils:
     @staticmethod
-    def combine_features(parameters: dict, epoch_type: str, all_features=True, *features: str):
+    def combine_features(parameters: dict, epoch_type: str, all_features:bool, features: list):
         """
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.
@@ -19,20 +19,19 @@ class FeatureUtils:
         saver = SaveResult()
         # Step 1: Determine which features to include
         if all_features:
-            feature_keys = loader.return_all_feature_keys()
+            features = loader.return_all_feature_keys()
         else:
             if not features:
                 raise ValueError("You must provide at least one feature name or set all_features=True.")
-            feature_keys = list(features)
 
         # Remove PSDs if present since it is just the basis of the features, but no feature itself
-        if "psds" in feature_keys:
-            feature_keys.remove("psds")
+        if "psds" in features:
+            features.remove("psds")
 
         # Step 2: Load feature CSVs and merge on Start, End, ResultID
         merged_df = None
 
-        for feature in feature_keys:
+        for feature in features:
             try:
                 print(f"Merging feature {loader.return_feature_name(feature)}...")
                 # loads feature
@@ -49,7 +48,7 @@ class FeatureUtils:
             except Exception as e:
                 print(f"An error occured while merging feature {feature}: {e}")
 
-        # Check if merged file is empty
+        # Check if the merged file is empty
         if merged_df is None or merged_df.empty:
             raise ValueError("No features were combined – possibly no files found or empty inputs.")
 
@@ -59,7 +58,7 @@ class FeatureUtils:
         # Step 3: Sort for consistency
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
 
-        # Step 4: Save to feature_sets directory
+        # Step 4: Save to the feature_sets directory
         saver.save_combined_features(parameters, merged_df, epoch_type)
 
     @staticmethod
