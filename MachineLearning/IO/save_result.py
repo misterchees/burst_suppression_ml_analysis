@@ -273,44 +273,51 @@ class SaveResult(IOCore):
         # Better hardcoded to enforce name consistency
         if file_type == "full_and_pred":
             file_name = f"{file_prefix}_full_and_pred.csv"
+            saving_func = PathUtils.save_file_as_csv
+
         elif file_type == "metrics":
             file_name = f"{file_prefix}_metrics.json"
+            saving_func = PathUtils.save_data_as_json
+
         elif file_type == "all_metadata":
             file_name = f"{file_prefix}_all_metadata.json"
+            saving_func = PathUtils.save_data_as_json
+
+        elif file_type == "analysis_plot":
+            file_name = f"{file_prefix}_analysis_plot.png"
+            saving_func = PathUtils.save_plot
+
         else:
             raise ValueError(f"Unknown file type: {file_type}. Valid options are: full_and_pred, metrics, all_metadata")
 
         fullpath = PathUtils.return_anypath(folder_path, file_name)
-
-        if file_type == "full_and_pred":
-            result_data.to_csv(fullpath, index=False)
-        else:
-            serial_result_data = self.serialize_for_json(result_data)
-            with open(fullpath, "w") as f:
-                json.dump(serial_result_data, f, indent=4)
+        saving_func(result_data, fullpath)
         print(f"Successfully saved {file_type} to {fullpath}")
 
 
-    def serialize_for_json(self, obj):
+    def save_predicted_set(self, test_df, test_path, pred_df, parameters, model_key):
         """
-        Converts a given object into a JSON-compatible version.
-        Replaces pandas.DataFrame with dicts that have these entries: 'data', 'index' and 'columns'.
+        Save the predicted dataset along with necessary modifications and persist the results.
 
-        :param obj: Any object (dict, list, DataFrame, ...)
-        :return: JSON-compatible version of the object.
+        This function appends predictions to the given test dataset, calculates the prediction
+        error for each instance, and saves the modified dataset with additional metadata. It helps
+        in evaluating model performance and preserving results for subsequent analysis.
+
+        :param test_df: pandas DataFrame representing the test dataset. Expected to have at least
+                       columns including 'label' to compare with predictions.
+        :param test_path: str or Path-like object representing the file path of the original
+                         test dataset. Used to derive the filename for saving results.
+        :param pred_df: pandas Series or DataFrame representing the predicted labels generated
+                       by the machine learning model.
+        :param parameters: dict containing the parameters/configuration for the machine learning
+                          run. Saved along with results for traceability.
+        :param model_key: str representing the key used to identify the model,
+                        that calculated the results.
+        :return: None
         """
-        # Convert dataframe into dict
-        if isinstance(obj, pd.DataFrame):
-            return {
-                "data": obj.values.tolist(),
-                "index": obj.index.tolist(),
-                "columns": obj.columns.tolist()
-            }
-        # Recursive call for any object within the object
-        elif isinstance(obj, dict):
-            return {k: self.serialize_for_json(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self.serialize_for_json(item) for item in obj]
-        else:
-            return obj
+        test_df_copy = test_df.copy()
+        test_df_copy["prediction"] = pred_df  # Append predicted labels to test set
+        test_df_copy["error"] = (test_df_copy["label"] != test_df_copy["prediction"]).astype(int)  # Add prediction error column
 
+        test_filename = PathUtils.return_filename_from_fullpath(test_path)
+        self.save_ml_result(test_df_copy, model_key, parameters, "full_and_pred", test_filename)

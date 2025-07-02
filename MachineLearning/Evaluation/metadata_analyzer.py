@@ -10,11 +10,15 @@ class MetadataAnalyzer:
 
     def __init__(self, results_df: pd.DataFrame):
         """
+        Initializes the MetadataAnalyzer with a DataFrame of results.
+        At least a "label" and a "prediction" column must be present in the DataFrame.
+
         :param results_df: A DataFrame that includes columns for true and predicted labels,
                            and relevant metadata like 'Start', 'End', 'ResultID', etc.
         """
         self.df = results_df.copy()
-        self.df["error"] = (self.df["true_label"] != self.df["predicted_label"]).astype(int)
+        if "error" not in self.df.columns and "label" in self.df.columns and "prediction" in self.df.columns:
+            self.df["error"] = (self.df["label"] != self.df["prediction"]).astype(int)
 
     def error_by_group(self, group_col: str) -> pd.Series:
         """
@@ -32,13 +36,14 @@ class MetadataAnalyzer:
         :param group_col: Column name to group by.
         :returns: Crosstab of class proportions per group.
         """
-        return pd.crosstab(self.df[group_col], self.df["true_label"], normalize="index")
+        return pd.crosstab(self.df[group_col], self.df["label"], normalize="index")
 
     def correlation_with_error(self, method: str = "pearson") -> pd.Series:
         """
         Correlates numeric columns (e.g., metadata or features) with the classification error.
 
         :param method: Correlation method ('pearson', 'spearman', etc.).
+                    It defaults to pearson correlation, which is for assumed linear relationships.
         :returns: A Series with correlations to the error column.
         """
         numeric_df = self.df.select_dtypes(include="number")
@@ -83,6 +88,6 @@ class MetadataAnalyzer:
         from sklearn.metrics import confusion_matrix
         grouped_matrices = {}
         for group, group_df in self.df.groupby(group_col):
-            cm = confusion_matrix(group_df["true_label"], group_df["predicted_label"], labels=sorted(self.df["true_label"].unique()))
+            cm = confusion_matrix(group_df["label"], group_df["prediction"], labels=sorted(self.df["label"].unique()))
             grouped_matrices[group] = cm
         return grouped_matrices

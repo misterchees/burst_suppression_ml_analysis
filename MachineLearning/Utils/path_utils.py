@@ -1,5 +1,7 @@
 import os
 
+import pandas as pd
+
 
 class PathUtils:
     @staticmethod
@@ -185,3 +187,42 @@ class PathUtils:
         # Number of epochs is equal to number of PSD files and every epoch has its PSD counterpart
         return False
 
+    @staticmethod
+    def save_file_as_csv(data, fullpath):
+        data.to_csv(fullpath, index=False)
+
+    @staticmethod
+    def save_plot(plt, fullpath):
+        plt.savefig(fullpath)
+        plt.close()
+
+    @staticmethod
+    def save_data_as_json(data, fullpath):
+        import json
+        serial_result_data = PathUtils.serialize_for_json(data)
+        with open(fullpath, "w") as f:
+            json.dump(serial_result_data, f, indent=4)
+
+    @staticmethod
+    def serialize_for_json(obj):
+        """
+        Converts a given object into a JSON-compatible version.
+        Replaces pandas.DataFrame with dicts that have these entries: 'data', 'index' and 'columns'.
+
+        :param obj: Any object (dict, list, DataFrame, ...)
+        :return: JSON-compatible version of the object.
+        """
+        # Convert dataframe into dict
+        if isinstance(obj, pd.DataFrame):
+            return {
+                "data": obj.values.tolist(),
+                "index": obj.index.tolist(),
+                "columns": obj.columns.tolist()
+            }
+        # Recursive call for any object within the object
+        elif isinstance(obj, dict):
+            return {k: PathUtils.serialize_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [PathUtils.serialize_for_json(item) for item in obj]
+        else:
+            return obj

@@ -1,5 +1,6 @@
 import pandas as pd
 from fontTools.misc.classifyTools import Classifier
+from sklearn.metrics import confusion_matrix
 
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
@@ -112,12 +113,13 @@ class Pipeline:
         """
 
         parameters = self.get_current_parameters()
+        svm_key = "svm"
         test_df = pd.read_csv(test_path)
 
         # Setup model
         if classifier is not None:
             loader = LoadData()
-            clf = loader.load_model("svm", parameters)  # load pretrained model
+            clf = loader.load_model(svm_key, parameters)  # load pretrained model
         else:
             from MachineLearning.Models.svm_classifier import SVMClassifier  # Lazy import
             # Prepare features/labels
@@ -139,16 +141,12 @@ class Pipeline:
         # Save the trained model
         if save_clf:
             saver = SaveResult()
-            saver.save_model(clf, "svm", parameters)
+            saver.save_model(clf, svm_key, parameters)
 
-        # Save the original data with the prediction
+        # Save the original data with the prediction and error column
         if save_pred:
             saver = SaveResult()
-            test_df_copy = test_df.copy()
-            test_df_copy["prediction"] = y_pred  # Append predicted labels to test set
-
-            test_filename = PathUtils.return_filename_from_fullpath(test_path)
-            saver.save_ml_result(test_df_copy, "svm", parameters, "full_and_pred", test_filename)
+            saver.save_predicted_set(test_df, test_path, y_pred, parameters, svm_key)
 
         return y_pred, y_test, y_proba
 
@@ -243,8 +241,18 @@ class Pipeline:
         from MachineLearning.Evaluation.metadata_analyzer import MetadataAnalyzer
 
         result_df = pd.read_csv(result_path)
-
         analyzer = MetadataAnalyzer(result_df)
+        metadata_to_test = "ResultID"
+
+        error_by_result_id = analyzer.error_by_group(metadata_to_test)
+        class_dist_per_result_id = analyzer.class_distribution_by_group(metadata_to_test)
+        error_correlation = analyzer.correlation_with_error()
+
+        analyzer.plot_error_distribution(metadata_to_test)
+        analyzer.plot_temporal_error()
+        confusion_matrices_by_result_id = analyzer.confusion_matrix_by_group(metadata_to_test)
+
+        ################ Use saving function: save_ml_results
 
 
 
