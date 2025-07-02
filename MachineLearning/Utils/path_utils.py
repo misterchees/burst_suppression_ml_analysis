@@ -69,6 +69,34 @@ class PathUtils:
         return str(os.path.join(abcd_folder, xy_folder))
 
     @staticmethod
+    def return_filename_from_fullpath(filepath: str, extension=False) -> str:
+        """
+        Returns the file name from the given file path.
+
+        This method extracts the base name of a file from its file path. By default,
+        it removes the file extension from the returned name, but the full file name
+        including its extension can be returned if explicitly specified.
+
+        :param filepath: The full path of the file from which the name should
+            be extracted.
+        :type filepath: str
+        :param extension: A flag indicating whether the file extension should be
+            included in the returned file name. Defaults to False.
+        :type extension: bool, optional
+        :return: The file name extracted from the file path. By default, it excludes
+            the file extension. If `extension` is True, the file name with its
+            extension is returned instead.
+        :rtype: str
+        """
+        filename = os.path.basename(filepath)  # foo/bar/baz.txt -> baz.txt
+
+        if extension:
+            return filename
+        else:
+            return os.path.splitext(filename)[0]  # baz.txt -> baz
+
+
+    @staticmethod
     def return_node_name(parameters: dict, node_type: str) -> str:
         epoch_length = parameters["fixed_window_size"]
         if node_type == "awake":

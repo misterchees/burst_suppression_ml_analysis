@@ -6,8 +6,8 @@ from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.transforms import Transforms
 from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
-from MachineLearning.Evaluation.split_manager import SplitManager
 from MachineLearning.Utils.config_loader import load_config
+from MachineLearning.Utils.path_utils import PathUtils
 
 
 class Pipeline:
@@ -80,6 +80,8 @@ class Pipeline:
         :return: If split_paths is True, returns the split paths: (<train set path>, <test set path>).
          Depending on folds, if it is true, a list of tuples will be returned, else a single tuple will be returned.
         """
+        from MachineLearning.Evaluation.split_manager import SplitManager
+
         parameters = self.get_current_parameters()
         split_manager = SplitManager(parameters, self.class_0, self.class_1, test_size, random_state)
         split_manager.load_and_validate()
@@ -96,7 +98,8 @@ class Pipeline:
             return return_splits()
         return None
 
-    def run_svm_classifier(self, train_path: str, test_path: str, classifier: Classifier = None, save_clf=True, **kwargs):
+    def run_svm_classifier(self, train_path: str, test_path: str,
+                           classifier: Classifier = None, save_clf=True, save_pred=True, **kwargs):
         """
         Runs SVM classifier on train and test sets of given paths. It takes a pretrained Classifier or trains
         the base model if None is given.
@@ -104,12 +107,14 @@ class Pipeline:
         :param test_path: Fullpath to test set as string.
         :param classifier: Already trained SVM Classifier.
         :param save_clf: If true will save the trained SVM classifier.
+        :param save_pred: If true will save the test set with the predictions.
         :return: Tuple -> (predicted values, test labels, probabilities)
         """
 
         parameters = self.get_current_parameters()
         test_df = pd.read_csv(test_path)
 
+        # Setup model
         if classifier is not None:
             loader = LoadData()
             clf = loader.load_model("svm", parameters)  # load pretrained model
@@ -131,37 +136,67 @@ class Pipeline:
         y_pred = clf.predict(X_test)
         y_proba = clf.predict_proba(X_test)
 
+        # Save the trained model
         if save_clf:
             saver = SaveResult()
             saver.save_model(clf, "svm", parameters)
+
+        # Save the original data with the prediction
+        if save_pred:
+            saver = SaveResult()
+            test_df_copy = test_df.copy()
+            test_df_copy["prediction"] = y_pred  # Append predicted labels to test set
+
+            test_filename = PathUtils.return_filename_from_fullpath(test_path)
+            saver.save_ml_result(test_df_copy, "svm", parameters, "full_and_pred", test_filename)
+
         return y_pred, y_test, y_proba
 
-    def evaluate_metrics(self, y_test, y_pred, y_proba, print_results=True):
+    def evaluate_metrics(self, y_test, y_pred, y_proba, folds:bool, print_metrics=True, save_metrics=True):
         """
         Wrapper for the metric evaluator of Machine Learning algorithm.
         :param y_test: Test labels which contain ground truth.
         :param y_pred: Predicted labels.
         :param y_proba: Prediction probabilities (optional, for AUC).
-        :param print_results: If True, prints the results of the evaluation.
+        :param folds: Defines the name of the prefix for the saved metrics.
+        :param print_metrics: If True, prints the results of the evaluation.
+        :param save_metrics: If True, saves the results of the evaluation.
         :return: A dict with the result of the evaluation.
         """
         from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
 
         evaluator = MetricsEvaluator(self.class_0, self.class_1, y_test, y_pred, y_proba)
-        evaluation = evaluator.evaluate(print_results)  # evaluate and print results
+        evaluation = evaluator.evaluate(print_metrics)  # evaluate and print results
+        if save_metrics:
+            saver = SaveResult()
+            prefix = "folds" if folds else "single"
+            saver.save_ml_result(evaluation, "svm", self.get_current_parameters(), "metrics", prefix)
+
         return evaluation
 
     def split_classify_evaluate(self, test_size: float, random_state: int, folds=True, **kwargs):
+        """
+        Splits data, performs classification, and evaluates the results using a specified test size,
+        random state, and optionally in a cross-validation setting.
+
+        :param test_size: Fraction of the dataset to include in the test split. Must be a float between 0 and 1.
+        :param random_state: Random seed to ensure reproducibility of the data split.
+        :param folds: Indicates whether to perform classification using cross-validation.
+                      If True, it applies cross-validation; if False, a single split is used.
+        :param kwargs: Additional optional parameters to pass to the classifier or related methods.
+        :return: None
+        """
         iterations = int(1//test_size)*2  # Double the number of minimal necessary iterations
         split_paths = self.create_splits(test_size, random_state, folds=folds, iterations=iterations)
+
         if not folds:
             train_path, test_path = split_paths
             y_pred, y_test, y_proba = self.run_svm_classifier(train_path, test_path, save_clf=False, **kwargs)
-            self.evaluate_metrics(y_test, y_pred, y_proba)
+            self.evaluate_metrics(y_test, y_pred, y_proba, folds)
 
         else:
             y_pred, y_test, y_proba = self.collect_classification_results(split_paths, **kwargs)
-            self.evaluate_metrics(y_test, y_pred, y_proba)
+            self.evaluate_metrics(y_test, y_pred, y_proba, folds)
 
     def set_result_ids(self, initial_data_key: str):
         """
@@ -203,3 +238,14 @@ class Pipeline:
             probabilities.append(probability)
 
         return predictions, true_labels, probabilities
+
+    def analyze_single_result(self, result_path: str, print_analysis=True, save_analysis=True):
+        from MachineLearning.Evaluation.metadata_analyzer import MetadataAnalyzer
+
+        result_df = pd.read_csv(result_path)
+
+        analyzer = MetadataAnalyzer(result_df)
+
+
+
+

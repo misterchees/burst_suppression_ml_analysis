@@ -24,7 +24,7 @@ def run():
     # pipeline.transform_eeg_to_psd()
     # pipeline.feature_extraction(False, feature_list)
     # pipeline.combine_features(False, features_to_combine)
-    pipeline.split_classify_evaluate(test_size, random_state, True, C=10, gamma=0.1)
+    pipeline.split_classify_evaluate(test_size, random_state, True)
 
 
 if __name__ == "__main__":

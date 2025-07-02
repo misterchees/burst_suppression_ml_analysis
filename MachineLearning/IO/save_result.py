@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 import pandas as pd
@@ -12,7 +13,7 @@ class SaveResult(IOCore):
     def save_faw_psd(self, frequencies: np.ndarray, power: np.ndarray,
                      parameters: dict, start: int, end: int, result_id: int):
         """
-        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end and result_id.
+        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end, and result_id.
         :param frequencies: Frequencies from the PSD
         :param power: Power of the Frequencies from the PSD
         :param parameters: A dictionary with all episode parameters from the project
@@ -30,7 +31,7 @@ class SaveResult(IOCore):
     def save_awake_psd(self, frequencies: np.ndarray, power: np.ndarray,
                        parameters: dict, start: int, end: int, result_id: int):
         """
-        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end and result_id.
+        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end, and result_id.
         :param frequencies: Frequencies from the PSD
         :param power: Power of the Frequencies from the PSD
         :param parameters: A dictionary with all episode parameters from the project
@@ -50,7 +51,7 @@ class SaveResult(IOCore):
     def save_normal_an_psd(self, frequencies: np.ndarray, power: np.ndarray,
                            parameters: dict, start: int, end: int, result_id: int):
         """
-        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end and result_id.
+        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end, and result_id.
         :param frequencies: Frequencies from the PSD
         :param power: Power of the Frequencies from the PSD
         :param parameters: A dictionary with all episode parameters from the project
@@ -70,7 +71,7 @@ class SaveResult(IOCore):
     def save_psd_in_given_directory(self, frequencies: np.ndarray, power: np.ndarray,
                                     start: int, end: int, result_id: int, psd_dir_fullpath: str):
         """
-        Saves PSD data of EEG in a given directory with a name specified by start, end and result_id.
+        Saves PSD data of EEG in a given directory with a name specified by start, end, and result_id.
         :param frequencies: Frequencies from the PSD
         :param power: Power of the Frequencies from the PSD
         :param start: Start time of episode, from which the PSD was calculated
@@ -233,7 +234,8 @@ class SaveResult(IOCore):
         fullpath = PathUtils.return_anypath(full_folder_path, model_file)
         dump(model, fullpath)
 
-    def save_ml_result(self, file: pd.DataFrame | dict, model_key: str, parameters: dict, file_type: str, file_prefix: str = ""):
+    def save_ml_result(self, result_data: pd.DataFrame | dict, model_key: str, parameters: dict,
+                       file_type: str, file_prefix: str = ""):
         """
         Save machine learning result data to a specified file format and location.
 
@@ -243,9 +245,9 @@ class SaveResult(IOCore):
         consistency across saved results. It supports saving in CSV or JSON formats
         for different use cases.
 
-        :param file: Input data to be saved. It can either be a pandas DataFrame or
+        :param result_data: Input data to be saved. It can either be a pandas DataFrame or
                      a dictionary depending on the file type.
-        :type file: pd.DataFrame | dict
+        :type result_data: pd.DataFrame | dict
         :param model_key: A unique string identifier for the model, used for constructing
                           folder paths.
         :type model_key: str
@@ -253,7 +255,7 @@ class SaveResult(IOCore):
                            folder hierarchy and metadata about the file.
         :type parameters: dict
         :param file_type: Specifies the type of file to save. Valid options are
-                          "pred_and_meta", "metrics", and "all_metadata".
+                          "full_and_pred", "metrics", and "all_metadata".
         :type file_type: str
         :param file_prefix: An optional prefix added to the filename for further
                             customization. Probably only used to specify the fold.
@@ -266,23 +268,49 @@ class SaveResult(IOCore):
         prefix = self.return_folder_name("results", model_key)
         abcdxy_subdirs = PathUtils.return_A_B_C_D_X_Y_path(prefix, parameters)
         folder_path = PathUtils.return_anypath(base_dir, abcdxy_subdirs)
-        os.makedirs(os.path.dirname(folder_path), exist_ok=True)  # Make sure folders are created if non-existent
+        os.makedirs(folder_path, exist_ok=True)  # Make sure folders are created if non-existent
 
         # Better hardcoded to enforce name consistency
-        if file_type == "pred_and_meta":
-            file_name = f"{file_prefix}_pred_and_meta.csv"
+        if file_type == "full_and_pred":
+            file_name = f"{file_prefix}_full_and_pred.csv"
         elif file_type == "metrics":
             file_name = f"{file_prefix}_metrics.json"
         elif file_type == "all_metadata":
             file_name = f"{file_prefix}_all_metadata.json"
         else:
-            raise ValueError(f"Unknown file type: {file_type}. Valid options are: pred_and_meta, metrics, all_metadata")
+            raise ValueError(f"Unknown file type: {file_type}. Valid options are: full_and_pred, metrics, all_metadata")
 
         fullpath = PathUtils.return_anypath(folder_path, file_name)
 
-        if file_type == "pred_and_meta":
-            file.to_csv(fullpath, index=False)
+        if file_type == "full_and_pred":
+            result_data.to_csv(fullpath, index=False)
         else:
-            file.to_json(fullpath, indent=4)
+            serial_result_data = self.serialize_for_json(result_data)
+            with open(fullpath, "w") as f:
+                json.dump(serial_result_data, f, indent=4)
         print(f"Successfully saved {file_type} to {fullpath}")
+
+
+    def serialize_for_json(self, obj):
+        """
+        Converts a given object into a JSON-compatible version.
+        Replaces pandas.DataFrame with dicts that have these entries: 'data', 'index' and 'columns'.
+
+        :param obj: Any object (dict, list, DataFrame, ...)
+        :return: JSON-compatible version of the object.
+        """
+        # Convert dataframe into dict
+        if isinstance(obj, pd.DataFrame):
+            return {
+                "data": obj.values.tolist(),
+                "index": obj.index.tolist(),
+                "columns": obj.columns.tolist()
+            }
+        # Recursive call for any object within the object
+        elif isinstance(obj, dict):
+            return {k: self.serialize_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self.serialize_for_json(item) for item in obj]
+        else:
+            return obj
 

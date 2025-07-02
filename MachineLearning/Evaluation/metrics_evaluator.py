@@ -41,6 +41,7 @@ class MetricsEvaluator:
         Returns metrics for prediction and ground truth values in this class.
         For multiple results, returns list of results and summary statistics.
         :param print_res: If true, prints results to console.
+        :return: Dictionary with metrics for each class, or list of dictionaries if multiple results.
         """
         if not self.multiple_results:
             return self._evaluate_single(print_res)
@@ -59,16 +60,17 @@ class MetricsEvaluator:
 
         if print_res:
             print("Summary Statistics:")
-            for metric, (mean, var) in summary.items():
+            for metric, stats in summary.items():
                 if metric == "confusion_matrix":
                     print("\nConfusion Matrix (mean % ± variance %):")
-                    combined_matrix = mean.copy()
-                    for i in mean.index:
-                        for j in mean.columns:
-                            combined_matrix.loc[i, j] = f"{mean.loc[i, j]:.1f}% ± {var.loc[i, j]:.1f}%"
+                    combined_matrix = stats["mean"].copy()
+                    for i in stats["mean"].index:
+                        for j in stats["mean"].columns:
+                            combined_matrix.loc[
+                                i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['variance'].loc[i, j]:.1f}%"
                     print(combined_matrix)
                 else:
-                    print(f"{metric} - Mean: {mean:.4f}, Variance: {var:.4f}")
+                    print(f"{metric} - Mean: {stats['mean']:.4f}, Variance: {stats['variance']:.4f}")
 
         return {"individual_results": all_results, "summary": summary}
 
@@ -153,12 +155,12 @@ class MetricsEvaluator:
         for metric in metrics:
             values = [r[metric] for r in results_list if r[metric] is not None]
             if values:
-                summary[metric] = (np.mean(values), np.var(values))
+                summary[metric] = {"mean": np.mean(values), "variance": np.var(values)}
             else:
-                summary[metric] = (None, None)
+                summary[metric] = {"mean": None, "variance": None}
 
         # Add confusion matrix summary
         mean_cm, var_cm = MetricsEvaluator._calculate_confusion_matrix_summary(results_list)
-        summary["confusion_matrix"] = (mean_cm, var_cm)
+        summary["confusion_matrix"] = {"mean": mean_cm, "variance": var_cm}
 
         return summary
