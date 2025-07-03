@@ -5,7 +5,7 @@ from MachineLearning.IO.save_result import SaveResult
 
 class FeatureUtils:
     @staticmethod
-    def combine_features(parameters: dict, epoch_type: str, all_features:bool, features: list):
+    def combine_features(parameters: dict, epoch_type: str, all_features: bool, features: list):
         """
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.
@@ -62,13 +62,12 @@ class FeatureUtils:
         saver.save_combined_features(parameters, merged_df, epoch_type)
 
     @staticmethod
-    def return_eeg_epochs(epoch_type: str, parameters: dict, filtered=True, channel=1, num_an: int = None) -> list:
+    def return_eeg_epochs(epoch_type: str, parameters: dict, channel=1, num_an: int = None) -> list:
         """
         Takes parameters and returns a list of all epochs (+ metadata) of this list
 
         :param epoch_type: Type of epoch. Influences from where to retrieve the epochs.
         :param parameters: Defines the directory from where the episodes will be retrieved.
-        :param filtered: Defines if windows are from filtered EEG (True) or raw EEG (False).
         :param channel: EEG-Channel (options: 1, 2)
         :param num_an: Number of epochs for normal anesthesia to return. Only relevant if epoch_type = 'normal_an'
         :return: List of Tuples. Every Tuple is structured -> (start(s), end(s), result_id, fs, eeg epochs (samples))

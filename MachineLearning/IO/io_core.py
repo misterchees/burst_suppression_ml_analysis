@@ -202,7 +202,6 @@ class IOCore:
 
         return result_ids
 
-
     def clear_psd_folder(self, parameters: dict, epoch_type: str):
         """
         Deletes all files (not folders) in the specified folder, that contains normal anesthesia data.

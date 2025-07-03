@@ -1,4 +1,4 @@
-import json
+"""This module contains the SaveResult class"""
 import os
 import numpy as np
 import pandas as pd
@@ -7,6 +7,7 @@ from MachineLearning.Utils.path_utils import PathUtils
 
 
 class SaveResult(IOCore):
+    """This class handles the saving of any data in this project"""
     def __init__(self):
         super().__init__()
 
@@ -133,6 +134,14 @@ class SaveResult(IOCore):
         print(f"Single episode PSD saved: {fullpath}")
 
     def save_feature_summary_episode(self, results: list, feature_key: str, parameters: dict, episode_type: str):
+        """
+        this function saves results in a directory depending on given parameters,
+        :param results:
+        :param feature_key:
+        :param parameters:
+        :param episode_type:
+        :return: None
+        """
         result_df = pd.DataFrame(results)
         fullpath = self.return_file_fullpath(parameters, True, True, episode_type,
                                              "features", feature_key)
@@ -210,8 +219,8 @@ class SaveResult(IOCore):
             train_df = X_labeled.iloc[train_idx]
             test_df = X_labeled.iloc[test_idx]
 
-            train_path = self.return_folded_split_folder_fullpath(parameters, "train", fold_idx+1, total_folds)
-            test_path = self.return_folded_split_folder_fullpath(parameters, "test", fold_idx+1, total_folds)
+            train_path = self.return_folded_split_folder_fullpath(parameters, "train", fold_idx + 1, total_folds)
+            test_path = self.return_folded_split_folder_fullpath(parameters, "test", fold_idx + 1, total_folds)
 
             train_df.to_csv(train_path, index=False)
             test_df.to_csv(test_path, index=False)
@@ -294,7 +303,6 @@ class SaveResult(IOCore):
         saving_func(result_data, fullpath)
         print(f"Successfully saved {file_type} to {fullpath}")
 
-
     def save_predicted_set(self, test_df, test_path, pred_df, parameters, model_key):
         """
         Save the predicted dataset along with necessary modifications and persist the results.
@@ -317,7 +325,8 @@ class SaveResult(IOCore):
         """
         test_df_copy = test_df.copy()
         test_df_copy["prediction"] = pred_df  # Append predicted labels to test set
-        test_df_copy["error"] = (test_df_copy["label"] != test_df_copy["prediction"]).astype(int)  # Add prediction error column
+        test_df_copy["error"] = (test_df_copy["label"] != test_df_copy["prediction"]).astype(
+            int)  # Add prediction error column
 
         test_filename = PathUtils.return_filename_from_fullpath(test_path)
         self.save_ml_result(test_df_copy, model_key, parameters, "full_and_pred", test_filename)

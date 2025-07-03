@@ -1,3 +1,4 @@
+"""This module implements a class for the SVM classifier from sklearn."""
 from sklearn.svm import SVC
 from MachineLearning.Models.ParamTuning.svm_grid_search import SVMGridSearch
 
@@ -17,7 +18,8 @@ class SVMClassifier:
     def train(self, x_train, y_train):
         """
         Trains the model with given training data.
-        :param x_train: Training data
+        :param x_train: Unlabeled training data
+        :param y_train: Labels for given training data.
         """
         self.model.fit(x_train, y_train)
 
@@ -29,9 +31,9 @@ class SVMClassifier:
             return self.model.predict_proba(x)
         raise AttributeError("SVM was not initialized with probability=True.")
 
-    def tune_hyperparameters(self, X, y, scoring='accuracy'):
+    def tune_hyperparameters(self, X, y, cv, scoring='accuracy'):
 
-        tuner = SVMGridSearch(self.get_base_model(), X, y, scoring=scoring)
+        tuner = SVMGridSearch(self.get_base_model(), X, y, cv, scoring=scoring)
         tuner.run()
         self.model = tuner.best_estimator()
 

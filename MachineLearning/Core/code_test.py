@@ -23,8 +23,3 @@ for metric in metric_list:
     print(f"Best score: {grid_search.best_score()}")
     print(f"Best params: {grid_search.best_params()}")
 """
-
-from MachineLearning.Utils.config_loader import load_config
-
-Parameter_dict = load_config("parameters_config.yaml")["initial_params"]
-print(Parameter_dict)

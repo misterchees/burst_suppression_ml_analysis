@@ -7,8 +7,8 @@ base_dir: # basic directory for all data in this project
         initial_data: # subdirectory for all initial raw data only
             path_name: "Initial_data"
             subdirs:
-                combined_raw_data: "vitaldb_csvprocessed_BIS_BIS_SR_MAC" # contains synchronized and combined raw data: bis, bis_sr and mac
-                raw_eeg_mat: "vitalDB_mat_EEG" # contains
+                combined_raw_data: "vitaldb_csvprocessed_BIS_BIS_SR_MAC" # contains synchronized and combined additional data: bis, bis_sr and mac
+                raw_eeg_mat: "vitalDB_mat_EEG" # contains the raw EEGs
         features: # subdirectory for features and related data (like PSDs for freq domain features)
             path_name: "Features"
             subdirs:

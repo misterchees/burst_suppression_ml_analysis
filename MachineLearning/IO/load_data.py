@@ -34,6 +34,7 @@ def load_psd_with_start_end_resultid(folder_path: str, filename: str) \
 
 class LoadData(IOCore):
     """This class handles the loading of the data in the project"""
+
     def __init__(self):
         """Initializes the class with configs from IOCore superclass."""
         super().__init__()
@@ -73,7 +74,8 @@ class LoadData(IOCore):
         for _, row in input_df.iterrows():
             caseid = row['caseid']
             anestart = int(row['anestart'])
-            num_epochs = int((anestart-transition_time) // epoch_length)  # segment into epochs based on episode length
+            num_epochs = int(
+                (anestart - transition_time) // epoch_length)  # segment into epochs based on episode length
 
             for i in range(num_epochs):
                 start = i * epoch_length
@@ -87,7 +89,8 @@ class LoadData(IOCore):
         return pd.DataFrame(all_epochs)
 
     def sample_anesthesia_epochs(self, parameters: dict, num_epochs: int, transition_sec: int = 10,
-                                 safety_margin_min: int = 10, random_state: int = 42, epochs_per_eeg: int = 30) -> pd.DataFrame:
+                                 safety_margin_min: int = 10, random_state: int = 42,
+                                 epochs_per_eeg: int = 30) -> pd.DataFrame:
         """
         Samples random EEG epochs from anesthesia segments (i.e., neither awake nor FAW).
 
@@ -128,7 +131,7 @@ class LoadData(IOCore):
             # Get duration of EEG file
             with open(eeg_path) as f:
                 num_lines = sum(1 for _ in f) - 1  # minus header
-            eeg_duration = num_lines//128  # assuming 128 Hz sampling rate (128 rows per second)
+            eeg_duration = num_lines // 128  # assuming 128 Hz sampling rate (128 rows per second)
 
             # Compute valid range for sampling
             start_limit = anestart + transition_sec
@@ -144,7 +147,7 @@ class LoadData(IOCore):
             # Sample max is constrained by length of EEG, number of needed epochs, or given number per EEG
             # The smallest of these three will be picked
             num_to_sample = min(max_possible_epochs, num_epochs - len(result), epochs_per_eeg)
-            start_points = random.sample(range(start_limit, end_limit - epoch_length_sec + 1),num_to_sample)
+            start_points = random.sample(range(start_limit, end_limit - epoch_length_sec + 1), num_to_sample)
 
             for start in start_points:
                 result.append({
@@ -180,7 +183,6 @@ class LoadData(IOCore):
         # Group and return epochs
         grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
         return grouped_epoch_times
-
 
     def return_eeg_tuple(self, result_id: int, filtered=True) -> Tuple[int, np.ndarray]:
         """
