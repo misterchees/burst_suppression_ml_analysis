@@ -81,6 +81,7 @@ class MetadataAnalyzer:
             print("No groups with errors found. Nothing to plot.")
             return None
 
+        # TO DO: Change to bar plot (the vertical bars)
         fig, ax = plt.subplots(figsize=(max(6, len(df) * 0.4), 5))
         sns.boxplot(data=df, x=group_col, y="error_rate", ax=ax)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")

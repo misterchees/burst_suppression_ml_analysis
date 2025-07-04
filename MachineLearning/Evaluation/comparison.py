@@ -9,7 +9,8 @@ class Comparison:
     def __init__(self):
         pass
 
-    def compare_filtered_and_unfiltered_eeg(self, result_id: int, channel=1, log_scale=True, y_scale="raw",
+    @staticmethod
+    def compare_filtered_and_unfiltered_eeg(result_id: int, channel=1, log_scale=True, y_scale="raw",
                                             same_plot=True):
         """
         Will retrieve the raw and the filtered EEG for given Patient ID and Plot both PSDs to compare filtering.

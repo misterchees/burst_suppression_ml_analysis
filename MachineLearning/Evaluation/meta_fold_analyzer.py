@@ -1,3 +1,4 @@
+"""This Module contains the MetaFoldAnalyzer class."""
 import os
 import pandas as pd
 import json
@@ -5,52 +6,61 @@ import glob
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from MachineLearning.IO.io_core import IOCore
+
+
 class MetaFoldAnalyzer:
-    def __init__(self, base_path: str, model_name: str, set_name: str, subfolder: str):
-        self.base_path = base_path
-        self.model_name = model_name
-        self.set_name = set_name
-        self.subfolder = subfolder
+    """Class that calculates from results and metadata analysis from single folds overall statistics and trends."""
+    def __init__(self, model_key: str, parameters: dict):
+        """
+        Initializes the MetaFoldAnalyzer instance with model and paths to calculated results and metadata analysis
+        of single folds.
 
-        # Dynamisch Pfade setzen
-        self.ml_results_path = os.path.join(base_path, "ML_Results", model_name, set_name, subfolder)
-        self.metadata_path = os.path.join(base_path, "Metadata_analysis", model_name, set_name, subfolder)
+        :param model_key: The key of the model to analyze.
+        :param parameters: A dictionary containing the parameters of the epochs from which the results were
+                           calculated.
+        """
+        self.model_name = model_key
 
-        # Container für fold-spezifische Daten
+        io_basics = IOCore()
+        # Set paths
+        self.ml_results_path = io_basics.return_all_parameter_fullpath(parameters, False, False, "results", model_key)
+        self.metadata_path = io_basics.return_all_parameter_fullpath(
+            parameters, False, False, "metadata_analysis", model_key)
+
+        # Container for analysis data
         self.fold_errors_by_group = {}
         self.fold_class_distributions = {}
         self.fold_metrics = {}
 
-    def load_all_folds(self):
+    def load_all_folds(self, group_col: str):
         """
-        Lädt alle relevanten Dateien (error_by_group, class_dist, metrics) aus den Ordnern.
+        Load all relevant data (error_by_group, class_dist, metrics) from directories.
         """
-        # Suche alle Fold-Files (z. B. *_test_split_full_and_pred.csv)
+        # Search for all folds with labels and errors
         fold_files = glob.glob(os.path.join(self.ml_results_path, "*full_and_pred.csv"))
         for fold_file in fold_files:
-            fold_name = os.path.basename(fold_file).replace("_full_and_pred.csv", "")
+            fold_lname = os.path.basename(fold_file).replace(".csv", "")  # long name of fold
+            fold_sname = fold_lname.replace("full_and_pred", "")  # short name of fold
 
-            # Lade Error by group
-            err_path = os.path.join(self.metadata_path, f"{fold_name}_error_by_group.csv")
+            # Load all files containing error by group analysis for folds
+            err_path = os.path.join(self.metadata_path, f"{fold_lname}_error_by_{group_col}.csv")
             if os.path.exists(err_path):
-                self.fold_errors_by_group[fold_name] = pd.read_csv(err_path, index_col=0)
+                self.fold_errors_by_group[fold_sname] = pd.read_csv(err_path, index_col=0)
 
-            # Lade Klassenverteilung
-            dist_path = os.path.join(self.metadata_path, f"{fold_name}_class_dist_per_ResultID.csv")
+            # Load all files containing class distribution by group
+            dist_path = os.path.join(self.metadata_path, f"{fold_lname}_class_dist_per_{group_col}.csv")
             if os.path.exists(dist_path):
-                self.fold_class_distributions[fold_name] = pd.read_csv(dist_path, header=[0,1], index_col=0)
+                self.fold_class_distributions[fold_sname] = pd.read_csv(dist_path, header=[0,1], index_col=0)
 
-            # Lade Metriken
-            metrics_path = os.path.join(self.ml_results_path, f"{fold_name}_metrics.json")
+            # Load metrics for folds
+            metrics_path = os.path.join(self.ml_results_path, "folds_metrics.json")
             if os.path.exists(metrics_path):
                 with open(metrics_path, "r") as f:
-                    self.fold_metrics[fold_name] = json.load(f)
+                    self.fold_metrics[fold_sname] = json.load(f)
 
     def aggregate_error_by_group(self):
-        """
-        Gibt eine kombinierte Tabelle aus, in der die Fehlerrate pro Gruppe (z. B. ResultID)
-        fold-übergreifend zusammengefasst wird.
-        """
+        """Returns a combined dataframe of errors by group (e.g. ResultID) over all folds."""
         combined = []
         for fold_name, df in self.fold_errors_by_group.items():
             df = df.copy()
@@ -63,24 +73,34 @@ class MetaFoldAnalyzer:
 
         return pd.concat(combined, ignore_index=True)
 
-    def analyze_class_imbalance_vs_accuracy(self):
+    def analyze_class_imbalance_vs_metric(self, metric: str):
         """
-        Stellt Accuracy der Folds der durchschnittlichen Klassenverteilung gegenüber.
+        Creates a dataframe with class distribution vs metric to see dependencies to the classes.
+
+        :param metric: The metric to analyze.
         """
         rows = []
         for fold_name, dist in self.fold_class_distributions.items():
             if fold_name in self.fold_metrics:
-                acc = self.fold_metrics[fold_name].get("accuracy", None)
+                fold_number = fold_name.split("_")[0]
+                result_name = f"fold_{fold_number}"
+                # TO DO: path to metric is -> key: individual_results -> val: list with individual metric dicts
+                # -> Search for metric with val result_name for key ["result"]
+                # -> And now you can .get(metric, None) to get it.
+                metric_val = self.fold_metrics[fold_name].get(metric, None)
                 rel = dist["rel"].mean().to_dict()
-                rel["accuracy"] = acc
+                rel[metric] = metric_val
                 rel["fold"] = fold_name
                 rows.append(rel)
 
         return pd.DataFrame(rows)
 
-    def plot_foldwise_error_heatmap(self, group_col_name="group"):
+    def plot_foldwise_error_heatmap(self, group_col_name="ResultID", show_plt=True):
         """
-        Zeigt eine Heatmap der Fehlerrate pro Fold x Gruppe (z. B. ResultID).
+        Plots a heatmap of error rate per Group (e.g. ResultID) in Fold.
+
+        :param group_col_name: The name of the group for which the heatmap will be plotted.
+        :param show_plt: A boolean indicating whether or not to show the heatmap.
         """
         agg = self.aggregate_error_by_group()
         if agg.empty:
@@ -92,4 +112,8 @@ class MetaFoldAnalyzer:
         sns.heatmap(pivot, annot=False, cmap="Reds", ax=ax)
         ax.set_title("Fehlerrate pro Fold und Gruppe")
         plt.tight_layout()
+
+        if show_plt:
+            plt.show()
+
         return fig
