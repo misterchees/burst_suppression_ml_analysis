@@ -1,6 +1,7 @@
 import os
-
 import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
 
 
 class PathUtils:
@@ -97,7 +98,6 @@ class PathUtils:
         else:
             return os.path.splitext(filename)[0]  # baz.txt -> baz
 
-
     @staticmethod
     def return_node_name(parameters: dict, node_type: str) -> str:
         epoch_length = parameters["fixed_window_size"]
@@ -192,13 +192,43 @@ class PathUtils:
         return False
 
     @staticmethod
-    def save_file_as_csv(data, fullpath):
-        data.to_csv(fullpath, index=False)
+    def save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data):
+        if file_type == "dataframe":
+            file_name = f"{file_prefix}_{file_suffix}.csv"
+            saving_func = PathUtils.save_file_as_csv
+
+        elif file_type == "dict":
+            file_name = f"{file_prefix}_{file_suffix}.json"
+            saving_func = PathUtils.save_data_as_json
+
+        elif file_type == "plot":
+            file_name = f"{file_prefix}_{file_suffix}.png"
+            saving_func = PathUtils.save_plot
+
+        else:
+            raise ValueError(f"Unknown file type: {file_type}. Valid options are: dataframe, dict, plot")
+
+        fullpath = PathUtils.return_anypath(folder_path, file_name)
+        saving_func(result_data, fullpath)
+        print(f"Successfully saved {file_type} to {fullpath}")
 
     @staticmethod
-    def save_plot(plt, fullpath):
-        plt.savefig(fullpath)
-        plt.close()
+    def save_file_as_csv(data, fullpath, index=True):
+        data.to_csv(fullpath, index=index)
+
+    @staticmethod
+    def save_plot(fig, fullpath: str):
+        """
+        Saves a matplotlib Figure to file.
+
+        :param fig: The matplotlib Figure object to save.
+        :param fullpath: Full path including filename and extension (e.g. 'figures/plot.png').
+        """
+        if fig is not None:
+            fig.savefig(fullpath, dpi=300)
+            plt.close(fig)
+        else:
+            print(f"Nothing to save at {fullpath}.")
 
     @staticmethod
     def save_data_as_json(data, fullpath):
@@ -211,19 +241,24 @@ class PathUtils:
     def serialize_for_json(obj):
         """
         Converts a given object into a JSON-compatible version.
-        Replaces pandas.DataFrame with dicts that have these entries: 'data', 'index' and 'columns'.
+        Supports pandas.DataFrame and numpy.ndarray.
 
-        :param obj: Any object (dict, list, DataFrame, ...)
+        :param obj: Any object (dict, list, DataFrame, ndarray, ...)
         :return: JSON-compatible version of the object.
         """
-        # Convert dataframe into dict
         if isinstance(obj, pd.DataFrame):
             return {
+                "__type__": "DataFrame",
                 "data": obj.values.tolist(),
                 "index": obj.index.tolist(),
                 "columns": obj.columns.tolist()
             }
-        # Recursive call for any object within the object
+        elif isinstance(obj, np.ndarray):
+            return {
+                "__type__": "ndarray",
+                "data": obj.tolist(),
+                "shape": obj.shape
+            }
         elif isinstance(obj, dict):
             return {k: PathUtils.serialize_for_json(v) for k, v in obj.items()}
         elif isinstance(obj, list):

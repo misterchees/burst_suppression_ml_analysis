@@ -48,6 +48,14 @@ base_dir: # basic directory for all data in this project
                 k_nn: "KNN"
                 lda: "LDA"
                 xg_boost: "XGBoost"
+        metadata_analysis:
+            path_name: "Metadata_analysis"
+            subdirs:
+                svm: "SVM"
+                rf: "RF"
+                k_nn: "KNN"
+                lda: "LDA"
+                xg_boost: "XGBoost"
 
     files:
         metadata: "metadata_vitaldb.csv" # File with metadata for all patients

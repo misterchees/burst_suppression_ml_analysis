@@ -277,31 +277,49 @@ class SaveResult(IOCore):
         :return: None
         """
         # Construct the path to the folder, where the file will be saved
-        base_dir = self.return_folder_path("results", model_key)
-        prefix = self.return_folder_name("results", model_key)
-        abcdxy_subdirs = PathUtils.return_A_B_C_D_X_Y_path(prefix, parameters)
-        folder_path = PathUtils.return_anypath(base_dir, abcdxy_subdirs)
-        os.makedirs(folder_path, exist_ok=True)  # Make sure folders are created if non-existent
+        folder_path = self.return_all_parameter_fullpath(parameters, False, True, "results", model_key)
 
-        # Better hardcoded to enforce name consistency
-        if file_type == "dataframe":
-            file_name = f"{file_prefix}_{file_suffix}.csv"
-            saving_func = PathUtils.save_file_as_csv
+        # Save file depending on filetype
+        PathUtils.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
 
-        elif file_type == "dict":
-            file_name = f"{file_prefix}_{file_suffix}.json"
-            saving_func = PathUtils.save_data_as_json
+    def save_metadata_analysis(self, result_data, model_key: str, parameters: dict,
+                       file_type: str, file_prefix: str = "", file_suffix: str = ""):
+        """
+        Save metadata analysis data to a specified file format and location.
 
-        elif file_type == "plot":
-            file_name = f"{file_prefix}_{file_suffix}.png"
-            saving_func = PathUtils.save_plot
+        This method processes data, constructs appropriate folder paths based on
+        provided parameters, and saves the data in the specified file format. The
+        method enforces naming conventions for the file, making it easier to maintain
+        consistency across saved results. It supports saving in CSV or JSON formats
+        for different use cases.
 
-        else:
-            raise ValueError(f"Unknown file type: {file_type}. Valid options are: dataframe, dict, plot")
+        :param result_data: Input data to be saved.
+        :type result_data: Any
+        :param model_key: A unique string identifier for the model, used for constructing
+                          folder paths.
+        :type model_key: str
+        :param parameters: A dictionary containing parameters used for constructing
+                           folder hierarchy and metadata about the file.
+        :type parameters: dict
+        :param file_type: Specifies the type of file to save. Valid options are
+                          "dataframe", "dict", and "plot". Dataframes are saved as CSV,
+                          dictionaries are saved as JSON, and plots are saved as PNG.
+        :type file_type: str
+        :param file_prefix: An optional prefix added to the filename for further
+                            customization. Should contain enough information to infer
+                            the source of the result (e.g. the filename of the split set)
+                            Defaults to an empty string.
+        :type file_prefix: str
+        :param file_suffix: An optional suffix added to the filename. Should contain information
+                            about the result type (e.g. "metrics" or "analysis_plot").
+        :type file_suffix: str
+        :return: None
+        """
+        # Construct the path to the folder, where the file will be saved
+        folder_path = self.return_all_parameter_fullpath(parameters, False, True, "metadata_analysis", model_key)
 
-        fullpath = PathUtils.return_anypath(folder_path, file_name)
-        saving_func(result_data, fullpath)
-        print(f"Successfully saved {file_type} to {fullpath}")
+        # Save file depending on filetype
+        PathUtils.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
 
     def save_predicted_set(self, test_df, test_path, pred_df, parameters, model_key):
         """

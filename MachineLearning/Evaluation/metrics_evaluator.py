@@ -44,7 +44,7 @@ class MetricsEvaluator:
         :return: Dictionary with metrics for each class, or list of dictionaries if multiple results.
         """
         if not self.multiple_results:
-            return self._evaluate_single(print_res)
+            return self._evaluate_single("single", print_res)
 
         all_results = []
         for i in range(len(self.y_true)):
@@ -53,11 +53,12 @@ class MetricsEvaluator:
             y_proba_i = self.y_proba[i] if self.y_proba is not None else None
 
             evaluator = MetricsEvaluator(self.class_0, self.class_1, y_true_i, y_pred_i, y_proba_i)
-            result = evaluator._evaluate_single(print_res)
+            result = evaluator._evaluate_single(f"fold_{i+1}", print_res)
             all_results.append(result)
 
         summary = self._calculate_summary(all_results)
 
+        # Prints a nice summary confusion matrix
         if print_res:
             print("Summary Statistics:")
             for metric, stats in summary.items():
@@ -74,9 +75,10 @@ class MetricsEvaluator:
 
         return {"individual_results": all_results, "summary": summary}
 
-    def _evaluate_single(self, print_res=True):
+    def _evaluate_single(self, result_name: str, print_res=True):
         """
         Evaluates a single set of predictions.
+        :param result_name: Name of the result for the correct assignment of metrics to result.
         :param print_res: If true, prints results to the console.
         """
         cm = confusion_matrix(self.y_true, self.y_pred)
@@ -91,6 +93,7 @@ class MetricsEvaluator:
         )
 
         results = {
+            "result": result_name,
             "accuracy": accuracy_score(self.y_true, self.y_pred),
             "precision": precision_score(self.y_true, self.y_pred, zero_division=0),
             "recall": recall_score(self.y_true, self.y_pred, zero_division=0),

@@ -282,22 +282,22 @@ class Pipeline:
             print(f"Saving analysis results to disk...")
             filename = PathUtils.return_filename_from_fullpath(result_path)
             saver = SaveResult()
-            saver.save_ml_result(error_correlation, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(error_correlation, "svm", self.get_current_parameters(),
                                  "dataframe", filename, "error_correlation")
 
-            saver.save_ml_result(error_by_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_parameters(),
                                  "dataframe", filename, f"error_by_{metadata_to_test}")
 
-            saver.save_ml_result(class_dist_per_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(class_dist_per_metadata, "svm", self.get_current_parameters(),
                                  "dataframe", filename, f"class_dist_per_{metadata_to_test}")
 
-            saver.save_ml_result(confusion_matrices_by_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(confusion_matrices_by_metadata, "svm", self.get_current_parameters(),
                                  "dict", filename, f"confusion_matrices_by_{metadata_to_test}")
 
-            saver.save_ml_result(error_dist_by_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(error_dist_by_metadata, "svm", self.get_current_parameters(),
                                  "plot", filename, f"error_dist_by_{metadata_to_test}")
 
-            saver.save_ml_result(temp_error_by_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(temp_error_by_metadata, "svm", self.get_current_parameters(),
                                  "plot", filename, f"temp_error_by_{metadata_to_test}")
 
 
