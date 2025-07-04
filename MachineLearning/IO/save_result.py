@@ -243,8 +243,8 @@ class SaveResult(IOCore):
         fullpath = PathUtils.return_anypath(full_folder_path, model_file)
         dump(model, fullpath)
 
-    def save_ml_result(self, result_data: pd.DataFrame | dict, model_key: str, parameters: dict,
-                       file_type: str, file_prefix: str = ""):
+    def save_ml_result(self, result_data, model_key: str, parameters: dict,
+                       file_type: str, file_prefix: str = "", file_suffix: str = ""):
         """
         Save machine learning result data to a specified file format and location.
 
@@ -254,9 +254,8 @@ class SaveResult(IOCore):
         consistency across saved results. It supports saving in CSV or JSON formats
         for different use cases.
 
-        :param result_data: Input data to be saved. It can either be a pandas DataFrame or
-                     a dictionary depending on the file type.
-        :type result_data: pd.DataFrame | dict
+        :param result_data: Input data to be saved.
+        :type result_data: Any
         :param model_key: A unique string identifier for the model, used for constructing
                           folder paths.
         :type model_key: str
@@ -264,12 +263,17 @@ class SaveResult(IOCore):
                            folder hierarchy and metadata about the file.
         :type parameters: dict
         :param file_type: Specifies the type of file to save. Valid options are
-                          "full_and_pred", "metrics", and "all_metadata".
+                          "dataframe", "dict", and "plot". Dataframes are saved as CSV,
+                          dictionaries are saved as JSON, and plots are saved as PNG.
         :type file_type: str
         :param file_prefix: An optional prefix added to the filename for further
-                            customization. Probably only used to specify the fold.
+                            customization. Should contain enough information to infer
+                            the source of the result (e.g. the filename of the split set)
                             Defaults to an empty string.
         :type file_prefix: str
+        :param file_suffix: An optional suffix added to the filename. Should contain information
+                            about the result type (e.g. "metrics" or "analysis_plot").
+        :type file_suffix: str
         :return: None
         """
         # Construct the path to the folder, where the file will be saved
@@ -280,24 +284,20 @@ class SaveResult(IOCore):
         os.makedirs(folder_path, exist_ok=True)  # Make sure folders are created if non-existent
 
         # Better hardcoded to enforce name consistency
-        if file_type == "full_and_pred":
-            file_name = f"{file_prefix}_full_and_pred.csv"
+        if file_type == "dataframe":
+            file_name = f"{file_prefix}_{file_suffix}.csv"
             saving_func = PathUtils.save_file_as_csv
 
-        elif file_type == "metrics":
-            file_name = f"{file_prefix}_metrics.json"
+        elif file_type == "dict":
+            file_name = f"{file_prefix}_{file_suffix}.json"
             saving_func = PathUtils.save_data_as_json
 
-        elif file_type == "all_metadata":
-            file_name = f"{file_prefix}_all_metadata.json"
-            saving_func = PathUtils.save_data_as_json
-
-        elif file_type == "analysis_plot":
-            file_name = f"{file_prefix}_analysis_plot.png"
+        elif file_type == "plot":
+            file_name = f"{file_prefix}_{file_suffix}.png"
             saving_func = PathUtils.save_plot
 
         else:
-            raise ValueError(f"Unknown file type: {file_type}. Valid options are: full_and_pred, metrics, all_metadata")
+            raise ValueError(f"Unknown file type: {file_type}. Valid options are: dataframe, dict, plot")
 
         fullpath = PathUtils.return_anypath(folder_path, file_name)
         saving_func(result_data, fullpath)
@@ -329,4 +329,4 @@ class SaveResult(IOCore):
             int)  # Add prediction error column
 
         test_filename = PathUtils.return_filename_from_fullpath(test_path)
-        self.save_ml_result(test_df_copy, model_key, parameters, "full_and_pred", test_filename)
+        self.save_ml_result(test_df_copy, model_key, parameters, "dataframe", test_filename, "full_and_pred")

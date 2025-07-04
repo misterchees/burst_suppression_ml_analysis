@@ -1,6 +1,5 @@
 import pandas as pd
 from fontTools.misc.classifyTools import Classifier
-from sklearn.metrics import confusion_matrix
 
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
@@ -168,7 +167,7 @@ class Pipeline:
         if save_metrics:
             saver = SaveResult()
             prefix = "folds" if folds else "single"
-            saver.save_ml_result(evaluation, "svm", self.get_current_parameters(), "metrics", prefix)
+            saver.save_ml_result(evaluation, "svm", self.get_current_parameters(), "dict", prefix, "metrics")
 
         return evaluation
 
@@ -237,23 +236,82 @@ class Pipeline:
 
         return predictions, true_labels, probabilities
 
-    def analyze_single_result(self, result_path: str, print_analysis=True, save_analysis=True):
+    def analyze_single_result(self, result_path: str, metadata_to_test: str, print_analysis=True, save_analysis=True):
+        """
+        Analyzes a single result file to evaluate the correlation between metadata and error rates, categorize errors by
+        metadata groups, and assess the distribution of classes and confusion matrices for specified metadata.
+
+        :param result_path: The file path to the CSV containing the results to be analyzed.
+        :type result_path: str
+        :param metadata_to_test: The name of the metadata column in the results CSV to be analyzed.
+        :type metadata_to_test: str
+        :param print_analysis: A flag indicating whether the analysis results should be printed to the console.
+        :type print_analysis: bool, optional
+        :param save_analysis: A flag indicating whether the analysis results should be saved to disk.
+        :type save_analysis: bool, optional
+        :return: None
+        """
         from MachineLearning.Evaluation.metadata_analyzer import MetadataAnalyzer
 
+        print(f"Analyzing result file: {result_path}")
+
+        # Read results from path and verify if metadata is a valid column name
         result_df = pd.read_csv(result_path)
+        if metadata_to_test not in result_df.columns:
+            raise ValueError(f"Metadata column '{metadata_to_test}' not found in result file.")
+
         analyzer = MetadataAnalyzer(result_df)
-        metadata_to_test = "ResultID"
 
-        error_by_result_id = analyzer.error_by_group(metadata_to_test)
-        class_dist_per_result_id = analyzer.class_distribution_by_group(metadata_to_test)
+        # Calculate analysis
         error_correlation = analyzer.correlation_with_error()
+        error_by_metadata = analyzer.error_by_group(metadata_to_test)
+        class_dist_per_metadata = analyzer.class_distribution_by_group(metadata_to_test)
+        confusion_matrices_by_metadata = analyzer.confusion_matrix_by_group(metadata_to_test)
 
-        analyzer.plot_error_distribution(metadata_to_test)
-        analyzer.plot_temporal_error()
-        confusion_matrices_by_result_id = analyzer.confusion_matrix_by_group(metadata_to_test)
+        if print_analysis:
+            print(f"Correlation with error: {error_correlation}")
+            print(f"Error by {metadata_to_test}: {error_by_metadata}")
+            print(f"Class distribution by {metadata_to_test}: {class_dist_per_metadata}")
+            print(f"Confusion matrices by {metadata_to_test}: {confusion_matrices_by_metadata}")
 
-        ################ Use saving function: save_ml_results
+        # create plots
+        error_dist_by_metadata = analyzer.plot_error_distribution(metadata_to_test, print_analysis)
+        temp_error_by_metadata = analyzer.plot_temporal_error(metadata_to_test, print_analysis)
+
+        if save_analysis:
+            print(f"Saving analysis results to disk...")
+            filename = PathUtils.return_filename_from_fullpath(result_path)
+            saver = SaveResult()
+            saver.save_ml_result(error_correlation, "svm", self.get_current_parameters(),
+                                 "dataframe", filename, "error_correlation")
+
+            saver.save_ml_result(error_by_metadata, "svm", self.get_current_parameters(),
+                                 "dataframe", filename, f"error_by_{metadata_to_test}")
+
+            saver.save_ml_result(class_dist_per_metadata, "svm", self.get_current_parameters(),
+                                 "dataframe", filename, f"class_dist_per_{metadata_to_test}")
+
+            saver.save_ml_result(confusion_matrices_by_metadata, "svm", self.get_current_parameters(),
+                                 "dict", filename, f"confusion_matrices_by_{metadata_to_test}")
+
+            saver.save_ml_result(error_dist_by_metadata, "svm", self.get_current_parameters(),
+                                 "plot", filename, f"error_dist_by_{metadata_to_test}")
+
+            saver.save_ml_result(temp_error_by_metadata, "svm", self.get_current_parameters(),
+                                 "plot", filename, f"temp_error_by_{metadata_to_test}")
 
 
+        print("Analysis complete.")
 
+    def analyze_results(self, model_key: str, metadata_to_test: list, print_analysis=True, save_analysis=True):
 
+        # Gather all results
+        loader = LoadData()
+        parameter_dict = self.get_current_parameters()
+        result_folder = loader.return_all_parameter_fullpath(parameter_dict,False, False, "results", model_key)
+        path_list,_ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
+
+        # Analyze all given metadata in all results
+        for metadata in metadata_to_test:
+            for result_path in path_list:
+                self.analyze_single_result(result_path, metadata, print_analysis, save_analysis)

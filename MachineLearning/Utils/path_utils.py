@@ -112,13 +112,14 @@ class PathUtils:
         return os.path.isfile(filepath)
 
     @staticmethod
-    def list_files_in_folder(folder_path: str, extension_filter:str = None, print_to_console=False):
+    def list_files_in_folder(folder_path: str, extension_filter: str = None, print_to_console=False, fullpaths=False):
         """
         Lists all files in a folder, optionally filtered by file extension.
 
         :param folder_path: Path to the folder to list files from.
         :param extension_filter: Optional file extension to filter by (e.g. ".csv" or ".txt").
         :param print_to_console: If true will print out all files to console.
+        :param fullpaths: If true returns full file paths instead of just file names.
         :returns: List of file names and the total count of these files.
         """
         if not os.path.exists(folder_path):
@@ -132,6 +133,9 @@ class PathUtils:
 
         if extension_filter:
             all_files = [f for f in all_files if f.lower().endswith(extension_filter.lower())]
+
+        if fullpaths:
+            all_files = [os.path.join(folder_path, f) for f in all_files]
 
         if print_to_console:
             for file in all_files:

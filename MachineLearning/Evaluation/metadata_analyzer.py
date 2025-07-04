@@ -49,11 +49,13 @@ class MetadataAnalyzer:
         numeric_df = self.df.select_dtypes(include="number")
         return numeric_df.corr(method=method)["error"].sort_values(ascending=False)
 
-    def plot_error_distribution(self, group_col: str):
+    def plot_error_distribution(self, group_col: str, show_plt=True):
         """
-        Creates a boxplot of error rates by group.
+        Creates a boxplot of error rates by group and shows the plot.
 
         :param group_col: Grouping column, e.g., 'ResultID'.
+        :param show_plt: Boolean to enable/disable showing the plot.
+        :returns: A matplotlib.pyplot.Figure object.
         """
         error_by_group = self.error_by_group(group_col).reset_index()
         error_by_group.columns = [group_col, "mean_error"]
@@ -61,13 +63,19 @@ class MetadataAnalyzer:
         plt.xticks(rotation=45)
         plt.title(f"Classification Error by {group_col}")
         plt.tight_layout()
-        plt.show()
 
-    def plot_temporal_error(self, id_col: str = "ResultID"):
+        if show_plt:
+            plt.show()
+
+        return plt
+
+    def plot_temporal_error(self, id_col: str, show_plt=True):
         """
-        Plots error over time (Start) for each ResultID individually.
+        Plots error over time (Start) for each ResultID individually and shows the plot.
 
         :param id_col: Identifier column for separate series (e.g., 'ResultID').
+        :param show_plt: Boolean to enable/disable showing the plot.
+        :returns: A matplotlib.pyplot.Figure object.
         """
         for rid, group in self.df.groupby(id_col):
             plt.plot(group["Start"], group["error"], label=str(rid))
@@ -76,7 +84,11 @@ class MetadataAnalyzer:
         plt.title("Temporal Error Progression per Recording")
         plt.legend()
         plt.tight_layout()
-        plt.show()
+
+        if show_plt:
+            plt.show()
+
+        return plt
 
     def confusion_matrix_by_group(self, group_col: str) -> dict:
         """
