@@ -53,6 +53,7 @@ class IOCore:
     def return_folder_path(self, *folder_keys: str) -> str:
         """
         Returns a fullpath to the last folder given in folder keys, following all folders along the way.
+        Returns the base dir if no arguments are given.
         :param folder_keys: Keys to assemble the path of folders
         :return: Fullpath as string
         """

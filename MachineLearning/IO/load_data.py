@@ -65,7 +65,7 @@ class LoadData(IOCore):
         :param transition_time: The transition time for patient to respond to anesthesia beginning.
         :returns: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
         """
-        csv_path = self.return_csv_file_from_basedir("awake_times")
+        csv_path = self.return_csv_path_from_basedir("awake_times")
         input_df = pd.read_csv(csv_path)
         epoch_length = int(parameters["fixed_window_size"])
 
@@ -106,7 +106,7 @@ class LoadData(IOCore):
 
         # set initial data
         random.seed(random_state)
-        anestart_csv_path = self.return_csv_file_from_basedir("awake_times")
+        anestart_csv_path = self.return_csv_path_from_basedir("awake_times")
         epoch_length_sec = int(parameters["fixed_window_size"])
         filtered_data_dir = self.return_folder_path("filtered_data")
 
@@ -324,7 +324,7 @@ class LoadData(IOCore):
         )
         return grouped
 
-    def return_csv_file_from_basedir(self, file_key: str) -> str:
+    def return_csv_path_from_basedir(self, file_key: str) -> str:
         """Returns a path to a file in the base directory"""
         base_dir = self.path_config["base_dir"]["path_name"]
         file_name = self.path_config["base_dir"]["files"][file_key]

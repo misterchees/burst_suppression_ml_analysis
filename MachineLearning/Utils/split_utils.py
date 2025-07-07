@@ -26,7 +26,7 @@ class SplitUtils:
         :return: Tuple of train and test splits.
         """
 
-        # All resultIDs in union of awake and faw (i.e. present in at least one on the dataframes)
+        # All resultIDs in union of awake and faw (i.e. present in at least one of the dataframes)
         all_ids = pd.Index(awake_df['ResultID'].unique()).union(faw_df['ResultID'].unique())
 
         # Will remove IDs from Set in which the search for the best test split happens
