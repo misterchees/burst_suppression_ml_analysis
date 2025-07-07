@@ -1,9 +1,12 @@
 """This Module contains the MetaFoldAnalyzer class."""
 import os
+
 import pandas as pd
 import json
 import glob
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use('TkAgg')
 import seaborn as sns
 
 from MachineLearning.IO.io_core import IOCore
@@ -84,10 +87,14 @@ class MetaFoldAnalyzer:
             if fold_name in self.fold_metrics:
                 fold_number = fold_name.split("_")[0]
                 result_name = f"fold_{fold_number}"
-                # TO DO: path to metric is -> key: individual_results -> val: list with individual metric dicts
-                # -> Search for metric with val result_name for key ["result"]
-                # -> And now you can .get(metric, None) to get it.
-                metric_val = self.fold_metrics[fold_name].get(metric, None)
+
+                # Get correct metric
+                metric_val = None
+                for entry in self.fold_metrics[fold_name].get("individual_results", []):
+                    if entry.get("result") == result_name:
+                        metric_val = entry.get(metric, None)
+                        break
+
                 rel = dist["rel"].mean().to_dict()
                 rel[metric] = metric_val
                 rel["fold"] = fold_name
@@ -104,7 +111,7 @@ class MetaFoldAnalyzer:
         """
         agg = self.aggregate_error_by_group()
         if agg.empty:
-            print("Keine Fehlerdaten vorhanden.")
+            print("No errors found. Plot creation cancelled.")
             return None
 
         pivot = agg.pivot(index="fold", columns=group_col_name, values="error_rate")

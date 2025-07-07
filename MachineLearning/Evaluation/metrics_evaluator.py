@@ -92,7 +92,7 @@ class MetricsEvaluator:
             index=[true_class_0_name, true_class_1_name]
         )
 
-        results = {
+        raw_results = {
             "result": result_name,
             "accuracy": accuracy_score(self.y_true, self.y_pred),
             "precision": precision_score(self.y_true, self.y_pred, zero_division=0),
@@ -103,18 +103,25 @@ class MetricsEvaluator:
 
         if self.y_proba is not None:
             try:
-                results["roc_auc"] = roc_auc_score(self.y_true, self.y_proba[:, 1])
+                raw_results["roc_auc"] = roc_auc_score(self.y_true, self.y_proba[:, 1])
             except Exception:
-                results["roc_auc"] = None
+                raw_results["roc_auc"] = None
+
+        # Round results
+        results = {
+            k: round(v, 4) if isinstance(v, (float, int)) and k != "confusion_matrix" else v
+            for k, v in raw_results.items()
+        }
 
         if print_res:
+            print(f"Fold number: {results['result']}")
             print(f"Accuracy: {results['accuracy']:.4f}")
             print(f"Precision: {results['precision']:.4f}")
             print(f"Recall: {results['recall']:.4f}")
             print(f"F1 Score: {results['f1']:.4f}")
             print(f"ROC AUC: {results['roc_auc']:.4f}")
             print(f"Confusion Matrix:")
-            print(f"{results['confusion_matrix']}")
+            print(f"{results['confusion_matrix']}\n")
 
         return results
 

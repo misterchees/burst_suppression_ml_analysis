@@ -2,6 +2,7 @@
 Here is the place to test any code.
 """
 from MachineLearning.Utils.config_loader import load_config
+
 Parameter_dict = load_config("parameters_config.yaml")["initial_params"]
 path_to_file = load_config("path_config.yaml")["base_dir"]["path_name"]
 
@@ -28,4 +29,4 @@ for metric in metric_list:
 from MachineLearning.Core.pipeline import Pipeline
 
 pipeline = Pipeline("combined_raw_data", {0: "faw", 1: "awake"})
-pipeline.analyze_results("svm", ["ResultID"])
+pipeline.analyze_results("svm", ["ResultID"], plots=False)

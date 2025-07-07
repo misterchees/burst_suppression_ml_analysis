@@ -291,7 +291,7 @@ class SaveResult(IOCore):
         provided parameters, and saves the data in the specified file format. The
         method enforces naming conventions for the file, making it easier to maintain
         consistency across saved results. It supports saving in CSV or JSON formats
-        for different use cases.
+        for different use cases. File name will be constructed as <prefix>_<suffix>.<extension>
 
         :param result_data: Input data to be saved.
         :type result_data: Any

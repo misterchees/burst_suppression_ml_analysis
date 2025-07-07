@@ -13,7 +13,7 @@ from MachineLearning.Utils.path_utils import PathUtils
 class Pipeline:
     result_ids = []
 
-    def __init__(self, initial_data_key:str, epoch_classes: dict):
+    def __init__(self, initial_data_key: str, epoch_classes: dict):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param initial_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
@@ -149,7 +149,7 @@ class Pipeline:
 
         return y_pred, y_test, y_proba
 
-    def evaluate_metrics(self, y_test, y_pred, y_proba, folds:bool, print_metrics=True, save_metrics=True):
+    def evaluate_metrics(self, y_test, y_pred, y_proba, folds: bool, print_metrics=True, save_metrics=True):
         """
         Wrapper for the metric evaluator of Machine Learning algorithm.
         :param y_test: Test labels which contain ground truth.
@@ -183,7 +183,7 @@ class Pipeline:
         :param kwargs: Additional optional parameters to pass to the classifier or related methods.
         :return: None
         """
-        iterations = int(1//test_size)*2  # Double the number of minimal necessary iterations
+        iterations = int(1 // test_size) * 2  # Double the number of minimal necessary iterations
         split_paths = self.create_splits(test_size, random_state, folds=folds, iterations=iterations)
 
         if not folds:
@@ -236,15 +236,15 @@ class Pipeline:
 
         return predictions, true_labels, probabilities
 
-    def analyze_single_result(self, result_path: str, metadata_to_test: str, print_analysis=True, save_analysis=True):
+    def analyze_single_result(self, result_path: str, metadata_col: str, print_analysis=True, save_analysis=True, plots=True):
         """
         Analyzes a single result file to evaluate the correlation between metadata and error rates, categorize errors by
         metadata groups, and assess the distribution of classes and confusion matrices for specified metadata.
 
         :param result_path: The file path to the CSV containing the results to be analyzed.
         :type result_path: str
-        :param metadata_to_test: The name of the metadata column in the results CSV to be analyzed.
-        :type metadata_to_test: str
+        :param metadata_col: The name of the metadata column in the results CSV to be analyzed.
+        :type metadata_col: str
         :param print_analysis: A flag indicating whether the analysis results should be printed to the console.
         :type print_analysis: bool, optional
         :param save_analysis: A flag indicating whether the analysis results should be saved to disk.
@@ -257,61 +257,106 @@ class Pipeline:
 
         # Read results from path and verify if metadata is a valid column name
         result_df = pd.read_csv(result_path)
-        if metadata_to_test not in result_df.columns:
-            raise ValueError(f"Metadata column '{metadata_to_test}' not found in result file.")
+        if metadata_col not in result_df.columns:
+            raise ValueError(f"Metadata column '{metadata_col}' not found in result file.")
 
         analyzer = MetadataAnalyzer(result_df)
 
         # Calculate analysis
         error_correlation = analyzer.correlation_with_error()
-        error_by_metadata = analyzer.error_by_group(metadata_to_test)
-        class_dist_per_metadata = analyzer.class_distribution_by_group(metadata_to_test)
-        confusion_matrices_by_metadata = analyzer.confusion_matrix_by_group(metadata_to_test)
+        error_by_metadata = analyzer.error_by_group(metadata_col)
+        class_dist_per_metadata = analyzer.class_distribution_by_group(metadata_col)
+        confusion_matrices_by_metadata = analyzer.confusion_matrix_by_group(metadata_col)
 
         if print_analysis:
             print(f"Correlation with error: {error_correlation}")
-            print(f"Error by {metadata_to_test}: {error_by_metadata}")
-            print(f"Class distribution by {metadata_to_test}: {class_dist_per_metadata}")
-            print(f"Confusion matrices by {metadata_to_test}: {confusion_matrices_by_metadata}")
+            print(f"Error by {metadata_col}: {error_by_metadata}")
+            print(f"Class distribution by {metadata_col}: {class_dist_per_metadata}")
+            print(f"Confusion matrices by {metadata_col}: {confusion_matrices_by_metadata}")
 
-        # create plots
-        error_dist_by_metadata = analyzer.plot_error_distribution(metadata_to_test, print_analysis)
-        temp_error_by_metadata = analyzer.plot_temporal_error(metadata_to_test, print_analysis)
+        # create plots if needed
+        if plots:
+            error_dist_by_metadata = analyzer.plot_error_distribution(metadata_col, print_analysis)
+            temp_error_by_metadata = analyzer.plot_temporal_error(metadata_col, print_analysis)
 
         if save_analysis:
             print(f"Saving analysis results to disk...")
             filename = PathUtils.return_filename_from_fullpath(result_path)
             saver = SaveResult()
             saver.save_metadata_analysis(error_correlation, "svm", self.get_current_parameters(),
-                                 "dataframe", filename, "error_correlation")
+                                         "dataframe", filename, "error_correlation")
 
             saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_parameters(),
-                                 "dataframe", filename, f"error_by_{metadata_to_test}")
+                                         "dataframe", filename, f"error_by_{metadata_col}")
 
             saver.save_metadata_analysis(class_dist_per_metadata, "svm", self.get_current_parameters(),
-                                 "dataframe", filename, f"class_dist_per_{metadata_to_test}")
+                                         "dataframe", filename, f"class_dist_per_{metadata_col}")
 
             saver.save_metadata_analysis(confusion_matrices_by_metadata, "svm", self.get_current_parameters(),
-                                 "dict", filename, f"confusion_matrices_by_{metadata_to_test}")
+                                         "dict", filename, f"confusion_matrices_by_{metadata_col}")
 
-            saver.save_metadata_analysis(error_dist_by_metadata, "svm", self.get_current_parameters(),
-                                 "plot", filename, f"error_dist_by_{metadata_to_test}")
+            if plots:
+                saver.save_metadata_analysis(error_dist_by_metadata, "svm", self.get_current_parameters(),
+                                             "plot", filename, f"error_dist_by_{metadata_col}")
 
-            saver.save_metadata_analysis(temp_error_by_metadata, "svm", self.get_current_parameters(),
-                                 "plot", filename, f"temp_error_by_{metadata_to_test}")
-
+                saver.save_metadata_analysis(temp_error_by_metadata, "svm", self.get_current_parameters(),
+                                             "plot", filename, f"temp_error_by_{metadata_col}")
 
         print("Analysis complete.")
 
-    def analyze_results(self, model_key: str, metadata_to_test: list, print_analysis=True, save_analysis=True):
+    def analyze_meta_analyses(self, model_key: str, metadata_col, print_analysis=True, save_analysis=True, plots=True):
+
+        from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
+
+        print("Analyzing single fold analysis results")
+
+        # Carry out analysis
+        parameters = self.get_current_parameters()
+        fold_analyzer = MetaFoldAnalyzer(model_key, parameters)
+        fold_analyzer.load_all_folds(metadata_col)
+        agg_err_by_group = fold_analyzer.aggregate_error_by_group()
+        acc_vs_class_dist = fold_analyzer.analyze_class_imbalance_vs_metric("accuracy")
+        prec_vs_class_dist = fold_analyzer.analyze_class_imbalance_vs_metric("precision")
+        rec_vs_class_dist = fold_analyzer.analyze_class_imbalance_vs_metric("recall")
+
+        if print_analysis:
+            print(f"Aggregated Error by {metadata_col}: {agg_err_by_group}")
+            print(f"Accuracy vs class distribution: {acc_vs_class_dist}")
+            print(f"Precision vs class distribution: {prec_vs_class_dist}")
+            print(f"Recall vs class distribution: {rec_vs_class_dist}")
+
+        if plots:
+            error_heatmap = fold_analyzer.plot_foldwise_error_heatmap(metadata_col, print_analysis)
+
+        if save_analysis:
+            saver = SaveResult()
+            saver.save_metadata_analysis(agg_err_by_group, "svm", parameters,"dataframe", "Summary_analysis",
+                                         "agg_error_by_groups")
+            saver.save_metadata_analysis(acc_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
+                                         "acc_vs_class_distribution")
+            saver.save_metadata_analysis(prec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
+                                         "prec_vs_class_distribution")
+            saver.save_metadata_analysis(rec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
+                                         "rec_vs_class_distribution")
+            if plots:
+                saver.save_metadata_analysis(error_heatmap, "svm", parameters, "plot", "Summary_analysis",
+                                             "error_heatmap")
+
+    print("Analysis of single analysis results complete")
+
+    def analyze_results(self, model_key: str, metadata_list: list, print_analysis=True, save_analysis=True, plots=True):
 
         # Gather all results
         loader = LoadData()
         parameter_dict = self.get_current_parameters()
-        result_folder = loader.return_all_parameter_fullpath(parameter_dict,False, False, "results", model_key)
-        path_list,_ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
+        result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, "results", model_key)
+        path_list, _ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
 
         # Analyze all given metadata in all results
-        for metadata in metadata_to_test:
+        for metadata in metadata_list:
             for result_path in path_list:
-                self.analyze_single_result(result_path, metadata, print_analysis, save_analysis)
+                self.analyze_single_result(result_path, metadata, print_analysis, save_analysis, plots)
+
+            # Summary Analysis of single analysis results
+            self.analyze_meta_analyses(model_key, metadata, print_analysis, save_analysis, plots)
+
