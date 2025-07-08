@@ -1,7 +1,6 @@
 import pandas as pd
 
-from MachineLearning.IO.load_data import LoadData, PathUtils
-from MachineLearning.IO.save_result import SaveResult
+from MachineLearning.IO.save_result import SaveResult, PathUtils
 from MachineLearning.Utils.config_loader import load_config
 
 
@@ -11,18 +10,17 @@ class QualityControl:
         self.parameters = load_config("parameters_config.yaml")["initial_params"]
         pass
 
-    def check_awake_and_faw_overlap(self):
+    def check_awake_and_faw_overlap(self, awake_path, faw_path):
 
         print("Checking awake and faw overlap")
-        loader = LoadData()
         saver = SaveResult()
 
         # Get set of awake patient IDs
-        awake_df = loader.load_awake_times_as_df(self.parameters)
+        awake_df = pd.read_csv(awake_path)
         awake_result_ids = list(awake_df["ResultID"].unique())
 
         # Load faw csv
-        faw_df = loader.load_faw_times_as_df(self.parameters)
+        faw_df = pd.read_csv(faw_path)
         faw_result_ids = faw_df["ResultID"].unique()
 
         both_classes = []
@@ -44,13 +42,12 @@ class QualityControl:
 
         print(f"Check succesful. Data saved to {fullpath}")
 
-    def unique_faw_result_ids(self):
+    def unique_faw_result_ids(self, faw_path):
         print("Saving unique result ids")
-        loader = LoadData()
         saver = SaveResult()
 
         # Load faw csv
-        faw_df = loader.load_faw_times_as_df(self.parameters)
+        faw_df = pd.read_csv(faw_path)
         faw_result_ids = pd.DataFrame(list(faw_df["ResultID"].unique()))
 
         base_dir_path = saver.return_folder_path()
@@ -63,5 +60,9 @@ class QualityControl:
 
 
 if __name__ == "__main__":
+    awake_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Awake_20.csv"
+    faw_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Feature_sets_70_080_20_5\\Summary_Episodes_20_000.csv"
+
     quality_control = QualityControl()
-    quality_control.unique_faw_result_ids()
+    quality_control.check_awake_and_faw_overlap(awake_path, faw_path)
+    quality_control.unique_faw_result_ids(faw_path)

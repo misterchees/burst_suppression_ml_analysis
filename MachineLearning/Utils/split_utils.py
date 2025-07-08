@@ -237,10 +237,15 @@ class SplitUtils:
 
     @staticmethod
     def create_full_df(class_1_df: pd.DataFrame, class_0_df: pd.DataFrame) -> pd.DataFrame:
+        # Add labels
+        class_1_df = class_1_df.copy()
+        class_1_df["label"] = 1
+
+        class_0_df = class_0_df.copy()
+        class_0_df["label"] = 0
+
         full_df = pd.concat([class_1_df.copy(), class_0_df.copy()], ignore_index=True)
-        full_df["label"] = full_df["ResultID"].map(
-            lambda rid: 1 if rid in set(class_1_df["ResultID"]) else 0
-        )
+
         # Save original full_df index to easily retrieve this information later
         full_df = full_df.reset_index().rename(columns={"index": "orig_index"})
 

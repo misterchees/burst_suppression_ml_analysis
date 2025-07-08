@@ -49,18 +49,18 @@ class MetaFoldAnalyzer:
             # Load all files containing error by group analysis for folds
             err_path = os.path.join(self.metadata_path, f"{fold_lname}_error_by_{group_col}.csv")
             if os.path.exists(err_path):
-                self.fold_errors_by_group[fold_sname] = pd.read_csv(err_path, index_col=0)
+                self.fold_errors_by_group[fold_sname] = pd.read_csv(err_path, index_col=0).copy()
 
             # Load all files containing class distribution by group
             dist_path = os.path.join(self.metadata_path, f"{fold_lname}_class_dist_per_{group_col}.csv")
             if os.path.exists(dist_path):
-                self.fold_class_distributions[fold_sname] = pd.read_csv(dist_path, header=[0,1], index_col=0)
+                self.fold_class_distributions[fold_sname] = pd.read_csv(dist_path, header=[0,1], index_col=0).copy()
 
             # Load metrics for folds
             metrics_path = os.path.join(self.ml_results_path, "folds_metrics.json")
             if os.path.exists(metrics_path):
                 with open(metrics_path, "r") as f:
-                    self.fold_metrics[fold_sname] = json.load(f)
+                    self.fold_metrics[fold_sname] = json.load(f).copy()
 
     def aggregate_error_by_group(self):
         """Returns a combined dataframe of errors by group (e.g. ResultID) over all folds."""
