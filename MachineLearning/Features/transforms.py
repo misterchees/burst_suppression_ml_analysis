@@ -12,13 +12,13 @@ class Transforms(MLObject):
     This class provides methods to transform EEG data from time domain to frequency domain
     i.e. calculate frequency periodograms from linear EEG recordings over time.
     """
-    def __init__(self, *epoch_types, **parameter_kwargs):
+    def __init__(self, epoch_types, parameter_kwargs):
         """
         Calls the constructor of the MLObject superclass.
-        :param epoch_types: All epoch types, that will be handled by this instance.
-        :param parameter_kwargs: Any keyword parameter(s).
+        :param epoch_types: Tuple of all epoch types, that will be handled by this instance.
+        :param parameter_kwargs: Dict of parameters to change.
         """
-        super().__init__(*epoch_types, **parameter_kwargs)
+        super().__init__(epoch_types, parameter_kwargs)
 
     def transform_eeg_episodes_to_psd(self, channel=1, nperseg_seconds=2):
         """

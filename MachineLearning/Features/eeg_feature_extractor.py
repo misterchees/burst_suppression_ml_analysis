@@ -56,13 +56,13 @@ class EEGFeatureExtractor(MLObject):
     data_loader = LoadData()
     result_saver = SaveResult()
 
-    def __init__(self, *epoch_types, **parameter_kwargs):
+    def __init__(self, epoch_types, parameter_kwargs):
         """
         Create a FeatureExtractor object.
-        :param epoch_types: Defines which Epochs will be handled by this instance.
-        :param parameter_kwargs: Keyword arguments to change current parameters.
+        :param epoch_types: Tuple, that defines which epochs will be handled by this instance.
+        :param parameter_kwargs: Dict with all parameters to change.
         """
-        super().__init__(*epoch_types, **parameter_kwargs)
+        super().__init__(epoch_types, parameter_kwargs)
         # initialize registries
         self.feature_calc_funcs = feature_calculators_registry
         self.feature_extract_funcs = feature_extractors_registry

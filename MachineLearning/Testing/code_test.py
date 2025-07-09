@@ -1,9 +1,9 @@
 """
 Here is the place to test any code.
 """
-from MachineLearning.Utils.config_loader import load_config
+from MachineLearning.Utils.config_handler import load_config
 
-Parameter_dict = load_config("parameters_config.yaml")["initial_params"]
+parameter_dict = load_config("parameters_config.yaml")["initial_params"]
 path_to_file = load_config("path_config.yaml")["base_dir"]["path_name"]
 
 """
@@ -26,7 +26,38 @@ for metric in metric_list:
     print(f"Best params: {grid_search.best_params()}")
 """
 
-from MachineLearning.Core.pipeline import Pipeline
+from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
+from MachineLearning.IO.load_data import LoadData
+from MachineLearning.Utils.config_handler import update_config
 
-pipeline = Pipeline("combined_raw_data", {0: "faw", 1: "awake"})
-pipeline.analyze_results("svm", ["ResultID"], plots=False)
+loader = LoadData()
+evaluator = MetricsEvaluator(None, None, None, None, None)
+
+overlaps = [0.0, 0.25, 0.5]
+min_episode_lengths = [10, 15]
+
+for overlap in overlaps:
+    for ep_length in min_episode_lengths:
+        new_params = {
+            "current_params": {
+                "overlap": overlap,
+                "min_episode_length": ep_length,
+                "fixed_window_size": ep_length
+            }
+        }
+        curent_params = update_config("parameters_config.yaml", new_params)["current_params"]
+        print(f"\n#######Testing Parameters: {curent_params}\n")
+        current_metrics = loader.load_metrics(curent_params, "svm")
+        evaluator.print_result(current_metrics["summary"], True)
+
+new_params = {
+            "current_params": {
+                "overlap": 0,
+                "min_episode_length": 20,
+                "fixed_window_size": 20
+            }
+}
+curent_params = update_config("parameters_config.yaml", new_params)["current_params"]
+print(f"\n#######Testing Parameters: {curent_params}\n")
+current_metrics = loader.load_metrics(curent_params, "svm")
+evaluator.print_result(current_metrics["summary"], True)

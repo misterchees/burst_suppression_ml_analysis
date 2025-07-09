@@ -1,7 +1,7 @@
 import pandas as pd
 
 from MachineLearning.IO.save_result import SaveResult, PathUtils
-from MachineLearning.Utils.config_loader import load_config
+from MachineLearning.Utils.config_handler import load_config
 
 
 class QualityControl:
@@ -61,6 +61,7 @@ class QualityControl:
 
 if __name__ == "__main__":
     awake_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Awake_20.csv"
+    normal_an_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Normal_ane_20.csv"
     faw_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Feature_sets_70_080_20_5\\Summary_Episodes_20_000.csv"
 
     quality_control = QualityControl()

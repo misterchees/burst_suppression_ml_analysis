@@ -60,18 +60,7 @@ class MetricsEvaluator:
 
         # Prints a nice summary confusion matrix
         if print_res:
-            print("Summary Statistics:")
-            for metric, stats in summary.items():
-                if metric == "confusion_matrix":
-                    print("\nConfusion Matrix (mean % ± variance %):")
-                    combined_matrix = stats["mean"].copy()
-                    for i in stats["mean"].index:
-                        for j in stats["mean"].columns:
-                            combined_matrix.loc[
-                                i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['variance'].loc[i, j]:.1f}%"
-                    print(combined_matrix)
-                else:
-                    print(f"{metric} - Mean: {stats['mean']:.4f}, Variance: {stats['variance']:.4f}")
+            self.print_result(summary, True)
 
         return {"individual_results": all_results, "summary": summary}
 
@@ -114,14 +103,7 @@ class MetricsEvaluator:
         }
 
         if print_res:
-            print(f"Fold number: {results['result']}")
-            print(f"Accuracy: {results['accuracy']:.4f}")
-            print(f"Precision: {results['precision']:.4f}")
-            print(f"Recall: {results['recall']:.4f}")
-            print(f"F1 Score: {results['f1']:.4f}")
-            print(f"ROC AUC: {results['roc_auc']:.4f}")
-            print(f"Confusion Matrix:")
-            print(f"{results['confusion_matrix']}\n")
+            self.print_result(results, False)
 
         return results
 
@@ -174,3 +156,69 @@ class MetricsEvaluator:
         summary["confusion_matrix"] = {"mean": mean_cm, "variance": var_cm}
 
         return summary
+
+    def print_result(self, result:dict, summary:bool):
+        if summary:
+            self._print_summary(result)
+        else:
+            self._print_single(result)
+
+    @staticmethod
+    def _print_summary(summary_dict: dict):
+        """
+        Prints the summary statistics given in the input dictionary.
+
+        The method processes the provided dictionary, which contains statistical data
+        (e.g., mean and variance) for various metrics, including confusion matrices
+        if available, and outputs the formatted result to the console.
+
+        :param summary_dict: A dictionary containing statistical metrics. The keys are
+            metric names (e.g., "accuracy", "precision", or "confusion_matrix"), and
+            the values are sub-dictionaries with "mean" and "variance" keys. For
+            "confusion_matrix", the values should be DataFrames where the mean and
+            variance are stored by row and column.
+        :type summary_dict: dict
+        :return: None
+        """
+        print("Summary Statistics:")
+        for metric, stats in summary_dict.items():
+            if metric == "confusion_matrix":
+                print("\nConfusion Matrix (mean % ± variance %):")
+                combined_matrix = stats["mean"].copy()
+                for i in stats["mean"].index:
+                    for j in stats["mean"].columns:
+                        combined_matrix.loc[
+                            i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['variance'].loc[i, j]:.1f}%"
+                print(combined_matrix)
+            else:
+                print(f"{metric} - Mean: {stats['mean']:.4f}, Variance: {stats['variance']:.4f}")
+
+    @staticmethod
+    def _print_single(result_dict: dict):
+        """
+        Prints the details of a single result dictionary containing evaluation
+        metrics.
+
+        It prints details including fold number, accuracy, precision, recall,
+        F1 score, ROC AUC, and confusion matrix. The metrics are provided
+        in the `result_dict` parameter.
+
+        :param result_dict: A dictionary containing the following keys:
+            - 'result': Fold number.
+            - 'accuracy': The model's accuracy.
+            - 'precision': The model's precision.
+            - 'recall': The model's recall.
+            - 'f1': The model's F1 score.
+            - 'roc_auc': The model's ROC AUC.
+            - 'confusion_matrix': The confusion matrix of the evaluation.
+        :type result_dict: dict
+        :return: None
+        """
+        print(f"Fold number: {result_dict['result']}")
+        print(f"Accuracy: {result_dict['accuracy']:.4f}")
+        print(f"Precision: {result_dict['precision']:.4f}")
+        print(f"Recall: {result_dict['recall']:.4f}")
+        print(f"F1 Score: {result_dict['f1']:.4f}")
+        print(f"ROC AUC: {result_dict['roc_auc']:.4f}")
+        print(f"Confusion Matrix:")
+        print(f"{result_dict['confusion_matrix']}\n")

@@ -3,7 +3,7 @@ import pandas as pd
 
 from MachineLearning.Models.svm_classifier import SVMClassifier
 from MachineLearning.IO.load_data import LoadData
-from MachineLearning.Utils.config_loader import load_config
+from MachineLearning.Utils.config_handler import load_config
 
 parameter_dict = load_config("parameters_config.yaml")["initial_params"]
 classifier = SVMClassifier()

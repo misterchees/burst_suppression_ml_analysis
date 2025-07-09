@@ -2,7 +2,7 @@
 import os
 import warnings
 from MachineLearning.Utils.path_utils import PathUtils
-from MachineLearning.Utils.config_loader import load_config
+from MachineLearning.Utils.config_handler import load_config
 
 
 class IOCore:

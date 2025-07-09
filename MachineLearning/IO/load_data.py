@@ -344,3 +344,12 @@ class LoadData(IOCore):
         model_fullpath = PathUtils.return_anypath(full_folder_path, model_file)
         model = load(model_fullpath)
         return model
+
+    def load_metrics(self, parameters: dict, model_key: str, ):
+        # Construct the path to the folder from where the file will be loaded
+        folder_path = self.return_all_parameter_fullpath(parameters, False, True, "results", model_key)
+        file_name = f"folds_metrics.json"
+        fullpath = PathUtils.return_anypath(folder_path, file_name)
+
+        return PathUtils.load_json(fullpath)
+

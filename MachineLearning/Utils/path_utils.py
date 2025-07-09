@@ -1,6 +1,9 @@
 import os
+
 import pandas as pd
 import numpy as np
+import json
+from pathlib import Path
 from matplotlib import pyplot as plt
 
 
@@ -232,7 +235,6 @@ class PathUtils:
 
     @staticmethod
     def save_data_as_json(data, fullpath):
-        import json
         serial_result_data = PathUtils.serialize_for_json(data)
         with open(fullpath, "w") as f:
             json.dump(serial_result_data, f, indent=4)
@@ -265,3 +267,47 @@ class PathUtils:
             return [PathUtils.serialize_for_json(item) for item in obj]
         else:
             return obj
+
+    @staticmethod
+    def load_json(path: str | Path) -> dict:
+        """
+        Loads a json file from the given path and returns its content as a dictionary.
+
+        :param path: Path to the json file. Can be a string or a Path object.
+        :return: Dictionary containing the json file's content.
+        """
+        path = Path(path)  # Falls ein String übergeben wurde
+        with open(path, "r", encoding="utf-8") as f:
+            raw_json = json.load(f)
+        return PathUtils.deserialize_from_json(raw_json)
+
+    @staticmethod
+    def deserialize_from_json(obj):
+        """
+        Rekonstruiert Objekte, die mit serialize_for_json serialisiert wurden.
+        Unterstützt pandas.DataFrame und numpy.ndarray.
+
+        :param obj: JSON-kompatibles Objekt (dict, list, ...)
+        :return: Deserialisiertes Originalobjekt (DataFrame, ndarray, ...)
+        """
+        if isinstance(obj, dict):
+            obj_type = obj.get("__type__")
+
+            if obj_type == "DataFrame":
+                return pd.DataFrame(
+                    data=obj["data"],
+                    index=obj["index"],
+                    columns=obj["columns"]
+                )
+            elif obj_type == "ndarray":
+                return np.array(obj["data"]).reshape(obj["shape"])
+            else:
+                # Rekursiv weiter deserialisieren
+                return {k: PathUtils.deserialize_from_json(v) for k, v in obj.items()}
+
+        elif isinstance(obj, list):
+            return [PathUtils.deserialize_from_json(item) for item in obj]
+
+        else:
+            return obj
+

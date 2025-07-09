@@ -6,26 +6,29 @@ from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.transforms import Transforms
 from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
-from MachineLearning.Utils.config_loader import load_config
+from MachineLearning.Utils.config_handler import load_config, update_config
 from MachineLearning.Utils.path_utils import PathUtils
 
 
 class Pipeline:
     result_ids = []
 
-    def __init__(self, initial_data_key: str, epoch_classes: dict):
+    def __init__(self, initial_data_key: str, epoch_classes: dict, parameters: dict = None):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param initial_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
         :param epoch_classes: A dict with two classes (keys 0 and 1), which will be handled throughout the pipeline.
          Valid values are: "awake", "faw" and "normal_an"
+        :param parameters: Parameters for the pipeline. If None, the current parameters will be used.
         """
         loader = LoadData()
 
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
-        self.feature_extractor = EEGFeatureExtractor(*epoch_classes.values())
-        self.transformer = Transforms(*epoch_classes.values())
+
+        epochs_tuple = tuple(epoch_classes.values())
+        self.feature_extractor = EEGFeatureExtractor(epochs_tuple, parameters)
+        self.transformer = Transforms(epochs_tuple, parameters)
         self.result_ids = loader.return_all_result_ids(initial_data_key)
 
     def raw_eeg_filtering(self):
@@ -206,8 +209,19 @@ class Pipeline:
     @staticmethod
     def get_current_parameters() -> dict:
         """Returns the current parameters as a dictionary."""
-        # Return current parameters stored in config
         return load_config("parameters_config.yaml")["current_params"]
+
+    @staticmethod
+    def update_parameters(updated_parameters: dict) -> dict:
+        """Updates the parameters stored in config i.e., globally and returns the updated parameters as a dictionary."""
+        return update_config("parameters_config.yaml", updated_parameters)["current_params"]
+
+    @staticmethod
+    def reset_parameters():
+        """Resets the parameters stored in config i.e., globally."""
+        default_params = load_config("parameters_config.yaml")["initial_params"]
+        return update_config("parameters_config.yaml", {"current_params": default_params})
+
 
     def collect_classification_results(self, split_paths: list, **kwargs) -> tuple[list, list, list]:
         """
