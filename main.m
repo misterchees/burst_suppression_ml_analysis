@@ -39,7 +39,7 @@ bumpSearcherBIS.mergeFlaggedEpisodes();
 bumpSearcherBIS.mergeFlaggedEpisodes(resultsFolderPath, refractoryTimeInSeconds);
 
 %% create fixed Window Episodes with overlap
-bumpSearcherBIS.generate_windowed_episodes(6,0,0,1);
+bumpSearcherBIS.generate_windowed_episodes(20,0.9,0,1);
 
 %% create fixed Window Episodes with overlap (range)
 fixedEpisodesLengthRange = [5,6,7,8,9,10,15,20];

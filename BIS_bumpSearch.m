@@ -7,10 +7,10 @@ classdef BIS_bumpSearch < handle
 
     properties
         % relevant paths
-        inputFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\vitaldb_csvprocessed_BIS_BIS_SR_MAC\';
-        metaDataFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\';
-        resultsFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\results\';
-        plotsFolderPath = 'C:\Users\jesus\OneDrive\Dokumente\Jesús\Studium\Fächer - Bioinformatik\Praktische Arbeit und Bachelorarbeit\Material\Daten\plots\';
+        inputFolderPath = 'D:\Daten\Initial_data\vitaldb_csvprocessed_BIS_BIS_SR_MAC\';
+        metaDataFolderPath = 'D:\Daten\';
+        resultsFolderPath = 'D:\Daten\FAW_subsets\';
+        plotsFolderPath = 'D:\Daten\Plots\';
         inputTablesField = 'inputTables'; % fieldname in data structure of tables with the BIS values
         episodesTablesField = 'episodeTables'; % fieldname with tables of found episodes
         metadataField = 'metadata'; % filedname with metadata from all patients
@@ -339,6 +339,8 @@ classdef BIS_bumpSearch < handle
         % The output is written to a new CSV file named 'Summary_Episodes_X_Y.csv'.
         % mergedEpisodes is a logical parameter, that decides if this looks
         % into 'Summary_Merged_Episodes.csv' or 'Summary_Episodes.csv'
+        % If noOverwrite is set, an existing outputfile won't be
+        % overwritten by the calculated Episodes from this function
 
             % input handling
             if windowlength < 1
