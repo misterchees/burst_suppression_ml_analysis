@@ -26,6 +26,7 @@ for metric in metric_list:
     print(f"Best params: {grid_search.best_params()}")
 """
 
+"""
 from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Utils.config_handler import update_config
@@ -61,3 +62,4 @@ curent_params = update_config("parameters_config.yaml", new_params)["current_par
 print(f"\n#######Testing Parameters: {curent_params}\n")
 current_metrics = loader.load_metrics(curent_params, "svm")
 evaluator.print_result(current_metrics["summary"], True)
+"""

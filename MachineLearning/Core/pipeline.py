@@ -1,35 +1,105 @@
+import warnings
 import pandas as pd
 from fontTools.misc.classifyTools import Classifier
 
-from MachineLearning.IO.load_data import LoadData
+from MachineLearning.IO.load_data import LoadData, PathUtils
 from MachineLearning.IO.save_result import SaveResult
-from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.transforms import Transforms
 from MachineLearning.Features.eeg_feature_extractor import EEGFeatureExtractor
 from MachineLearning.Utils.config_handler import load_config, update_config
-from MachineLearning.Utils.path_utils import PathUtils
+from MachineLearning.Evaluation.comparison import Comparison
+from MachineLearning.Utils.feature_utils import FeatureUtils
 
 
 class Pipeline:
     result_ids = []
 
-    def __init__(self, initial_data_key: str, epoch_classes: dict, parameters: dict = None):
+    def __init__(self, init_data_key: str, epoch_classes: dict, parameters: dict = None, features: list | str = None):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
-        :param initial_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
+        :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
         :param epoch_classes: A dict with two classes (keys 0 and 1), which will be handled throughout the pipeline.
          Valid values are: "awake", "faw" and "normal_an"
         :param parameters: Parameters for the pipeline. If None, the current parameters will be used.
+        :param features: List of features to use in the pipeline. If all existing features should be used, also a string
+                with value "all_features" can be passed.
         """
         loader = LoadData()
 
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
+        self.features = features
 
-        epochs_tuple = tuple(epoch_classes.values())
-        self.feature_extractor = EEGFeatureExtractor(epochs_tuple, parameters)
-        self.transformer = Transforms(epochs_tuple, parameters)
-        self.result_ids = loader.return_all_result_ids(initial_data_key)
+        self.all_features = self._check_features()  # Flag to determine which features to handle
+
+        self.update_parameters(parameters)  # Update current parameters with given parameters
+
+        if self.all_features is None:
+            self.transforms = None
+            self.feature_extractor = None
+        else:
+            # Check for each epoch if calculations can be skipped
+            epochs_tuple = tuple(epoch_classes.values())
+            transform_epochs = []  # list with transform epochs
+            feature_epochs = []  # list with feature extraction epochs
+            for epoch_type in epochs_tuple:
+                if not self.already_calculated("transform", epoch_type):
+                    transform_epochs.append(epoch_type)
+                if not self.already_calculated("extract_features", epoch_type):
+                    feature_epochs.append(epoch_type)
+
+            if not transform_epochs:
+                self.transforms = None
+            else:
+                self.transformer = Transforms(tuple(transform_epochs), parameters)
+            if not feature_epochs:
+                self.feature_extractor = None
+            else:
+                self.feature_extractor = EEGFeatureExtractor(tuple(feature_epochs), parameters)
+        self.result_ids = loader.return_all_result_ids(init_data_key)
+
+    def already_calculated(self, calculation_type: str, epoch_type: str) -> bool:
+        """
+        Checks if calculation type was already performed on given epoch type.
+        :param calculation_type: The type of calculation. Allowed values are "extract_features" and "transform"
+        :param epoch_type: Epoch type. Allowed values are "awake", "faw" and "normal_an".
+        :return: True if calculation type was already performed on given epoch type, else False.
+        """
+
+        # load faw and awake data dependent of epochtypes
+        loader = LoadData()
+        parameters = self.get_current_parameters()
+
+        if epoch_type == "normal_an":
+            return False
+        elif epoch_type == "awake":
+            times_df = loader.load_awake_times_as_df(parameters)
+        elif epoch_type == "faw":
+            times_df = loader.load_faw_times_as_df(parameters)
+        else:
+            raise ValueError("Epoch type must be 'normal_an', 'awake' or 'faw'")
+
+        if calculation_type == 'transform':
+            psd_folderpath = loader.return_file_fullpath(parameters, False, False, epoch_type, "features", "psds")
+            comparison_dict = Comparison.compare_csv_to_psd_folder(times_df, psd_folderpath)
+            identical = bool(comparison_dict["a_in_b"] and comparison_dict["b_in_a"])
+            return identical
+
+        elif calculation_type == 'extract_features':
+            if self.all_features:
+                feature_list = list(self.feature_extractor.feature_extract_funcs.keys())
+            else:
+                feature_list = self.features
+
+            # Returns True if ALL features are already calculated, False otherwise
+            for feature in feature_list:
+                feature_filepath = loader.return_file_fullpath(parameters, True, False, epoch_type, "features", feature)
+                comparison_dict = Comparison.compare_two_csv(feature_filepath, times_df)
+                if (comparison_dict["a_in_b"] and comparison_dict["b_in_a"]) is False:
+                    return False
+            return True
+        else:
+            raise ValueError("Calculation type must be 'transform' or 'extract_features'")
 
     def raw_eeg_filtering(self):
         """ Applies filtering to all EEGs specified by the id-list in this class"""
@@ -39,36 +109,63 @@ class Pipeline:
 
     def transform_eeg_to_psd(self, channel=1, nperseg_seconds=2):
         """Wrapper for transform function implemented in Transforms class"""
+        if self.transforms is None:
+            print("Skipping PSD transforms")
+            return
         self.transformer.transform_eeg_episodes_to_psd(channel, nperseg_seconds)
 
-    def feature_extraction(self, all_features: bool, features: list):
+    def feature_extraction(self):
         """
-        Extracts defined features from all EEGs in the current result_ids subset.
-        :param all_features: If True extracts all features implemented in FeatureExtractor, else will
-        only extract features in custom_feature_dict.
-        :param features: List of features to be extracted (List entries have to be feature keys)
-        :return:
+        Extracts defined features from all EEGs in the current result_ids subset. Depending on the features
+        given to this pipeline instance it will extract features.
         """
+        if self.all_features is None or self.feature_extractor is None:
+            print("Skipping feature extraction")
+            return
+
         feature_functions = self.feature_extractor.feature_extract_funcs
 
         # Calls all feature extraction functions
-        if all_features:
+        if self.all_features:
             for function in feature_functions.values():
                 function(self.feature_extractor)
 
-        # calls all functions specified in custom_feature_dict by function keys
+        # calls all functions implemented in feature extractor
         else:
-            # validate keys
-            feature_keys = FeatureUtils.return_all_features_dict().keys()
-            for key in features:
-                if key not in feature_keys:
-                    raise ValueError(f"'{key}' is no valid feature key. Valid keys are: {feature_keys}")
-            for function_key in features:
+            for function_key in self.features:
                 feature_functions[function_key](self.feature_extractor)
 
-    def combine_features(self, all_features: bool, features: list):
+    def combine_features(self, features: list = None):
         """Wrapper for combining features method implemented in FeatureExtractor"""
-        self.feature_extractor.combine_features(all_features, features)
+        if features is None:
+            features = self.features
+        self.feature_extractor.combine_features(self.all_features, features)
+
+    def _check_features(self) -> bool | None:
+        """
+        Checks self.features and returns None, True or False based on the value of self.features.
+        None -> No features to extract.
+        True -> All features to extract.
+        False -> Features from given features to extract.
+        """
+        # skip if features are None or empty list
+        if self.features is None or not self.features:
+            warnings.warn("No features were given -> No transforms or feature operations will be performed")
+            return None
+
+        # Setting all_features flag depending on value of features
+        if self.features == "all_features":
+            return True
+        elif not isinstance(self.features, list):
+            raise ValueError("Features must be either a list or a string with value 'all_features'")
+        else:
+            known_features = FeatureUtils.return_all_features_dict()
+            # validate features given in list
+            feature_keys = known_features.keys()
+            for key in self.features:
+                if key not in feature_keys:
+                    raise ValueError(f"'{key}' is no valid feature key. Valid keys are: {feature_keys}")
+            return False
 
     def create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None):
         """
@@ -222,7 +319,6 @@ class Pipeline:
         default_params = load_config("parameters_config.yaml")["initial_params"]
         return update_config("parameters_config.yaml", {"current_params": default_params})
 
-
     def collect_classification_results(self, split_paths: list, **kwargs) -> tuple[list, list, list]:
         """
         Collects the classification results from multiple splits.
@@ -250,7 +346,8 @@ class Pipeline:
 
         return predictions, true_labels, probabilities
 
-    def analyze_single_result(self, result_path: str, metadata_col: str, print_analysis=True, save_analysis=True, plots=True):
+    def analyze_single_result(self, result_path: str, metadata_col: str, print_analysis=True, save_analysis=True,
+                              plots=True):
         """
         Analyzes a single result file to evaluate the correlation between metadata and error rates, categorize errors by
         metadata groups, and assess the distribution of classes and confusion matrices for specified metadata.
@@ -344,7 +441,7 @@ class Pipeline:
 
         if save_analysis:
             saver = SaveResult()
-            saver.save_metadata_analysis(agg_err_by_group, "svm", parameters,"dataframe", "Summary_analysis",
+            saver.save_metadata_analysis(agg_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
                                          "agg_error_by_groups")
             saver.save_metadata_analysis(acc_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
                                          "acc_vs_class_distribution")
@@ -373,4 +470,3 @@ class Pipeline:
 
             # Summary Analysis of single analysis results
             self.analyze_meta_analyses(model_key, metadata, print_analysis, save_analysis, plots)
-

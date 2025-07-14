@@ -56,9 +56,6 @@ class QualityControl:
         PathUtils.save_file_as_csv(faw_result_ids, fullpath, False)
 
 
-
-
-
 if __name__ == "__main__":
     awake_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Awake_20.csv"
     normal_an_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Normal_ane_20.csv"

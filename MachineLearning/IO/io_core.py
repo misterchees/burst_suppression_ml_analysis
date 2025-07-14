@@ -10,6 +10,7 @@ class IOCore:
     This class is a superclass for all classes that mainly manage IO stuff. It provides functions that are
     useful for saving and loading data, which is mostly path manipulation methods.
     """
+
     def __init__(self):
         """Intializes the IOCore class with the path and data config to handle paths."""
         self.path_config = load_config("path_config.yaml")
@@ -205,7 +206,7 @@ class IOCore:
 
     def clear_psd_folder(self, parameters: dict, epoch_type: str):
         """
-        Deletes all files (not folders) in the specified folder, that contains normal anesthesia data.
+        Deletes all files (not folders) in the specified psd folder, that contains normal anesthesia data.
         Only folders of this type will be cleared because, normal anesthesia data are created everytime
         completely random and in the worst case, new data can mix with old data.
 
@@ -213,7 +214,7 @@ class IOCore:
         :param epoch_type: Defines the PSD Folder that will be cleared. Valid options are 'awake', 'normal_an' and 'faw'
         """
         if epoch_type != "faw":
-            folder_path = self.return_no_parameters_fullpath(parameters, epoch_type, False, "features","psds")
+            folder_path = self.return_no_parameters_fullpath(parameters, epoch_type, False, "features", "psds")
         elif epoch_type == "faw":
             folder_path = self.return_all_parameter_fullpath(parameters, False, False, "features", "psds")
         else:
@@ -221,4 +222,3 @@ class IOCore:
                              "Epoch_type must be either 'awake', 'normal_an' or 'faw'")
 
         PathUtils.clear_folder(folder_path)
-

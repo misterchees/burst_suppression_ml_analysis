@@ -13,7 +13,6 @@ class MLObject:
 
     PARAM_CONFIG_FILENAME = "parameters_config.yaml"
     param_config = load_config(PARAM_CONFIG_FILENAME)
-    parameter_dict = param_config["current_params"]
 
     VALID_EPOCH_TYPES = ["faw", "awake", "normal_an"]
     faw_epochs = Epochs("faw")
@@ -34,6 +33,8 @@ class MLObject:
 
         if parameter_update is not None:
             self.parameter_dict = update_config(self.PARAM_CONFIG_FILENAME, parameter_update)["current_params"]
+        else:
+            self.parameter_dict = self.param_config["current_params"]
         print(f"Parameters: {self.parameter_dict}. Epoch_types: {self.epoch_types}")
 
     def set_attributes(self, epoch_types: tuple, parameter_update: dict):

@@ -1,3 +1,9 @@
+import os
+import re
+import pandas as pd
+from pathlib import Path
+from typing import Dict, Tuple, Set
+
 from matplotlib import pyplot as plt
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Features.transforms import Transforms
@@ -23,7 +29,7 @@ class Comparison:
         farthest limits of both EEGs.
         """
         loader = LoadData()
-        transforms = Transforms(False, False, False)
+        transforms = Transforms(tuple("faw"), {})
         # Load EEGs from same Patient ID to compare
         fs_raw, raw_eegs = loader.return_eeg_tuple(result_id, False)
         fs_filt, filtered_eegs = loader.return_eeg_tuple(result_id, True)
@@ -69,3 +75,128 @@ class Comparison:
                                  f"Valid options are: 'raw', 'filtered' or 'min-max'")
 
         plt.show()
+
+    @staticmethod
+    def compare_csv_to_psd_folder(
+            csv_data: str | Path | pd.DataFrame,
+            psd_folder: str | Path,
+            key_cols: Tuple[str, str, str] = ("Start", "End", "ResultID"),
+            return_missing: bool = False
+    ) -> Dict[str, object]:
+        """
+        Compares the composite keys (Start, End, ResultID) of one CSV file
+        against the keys encoded in PSD filenames inside *psd_folder*.
+
+        PSD‑Filenames must follow: 'PSD_<start>_<end>_<result_id>.csv'
+
+        :param csv_data: Path to the comparison CSV or the comparison df itself.
+        :param psd_folder: Folder containing many PSD_*.csv files.
+        :param key_cols: Column order that forms the key in the CSV.
+        :param return_missing: If *True*, also return sets of missing keys.
+        :returns: Dict with subset flags and (optionally) missing key sets.
+        """
+        # --read only the relevant columns from the CSV -----------------------
+        df = Comparison._return_key_cols(csv_data, key_cols)
+
+        # to ensure identical matching, cast to str and build hashable tuples
+        keys_csv = set(
+                        tuple(str(row[col]) for col in key_cols)
+                        for _, row in df.iterrows()
+        )
+
+        # --extract keys from PSD filenames -----------------------------------
+        pattern = re.compile(
+            r"^PSD_(?P<start>[^_]+)_(?P<end>[^_]+)_(?P<rid>[^_]+)\.csv$", re.IGNORECASE
+        )
+
+        keys_psd: Set[Tuple[str, str, str]] = set()
+        for fname in os.listdir(psd_folder):
+            match = pattern.match(fname)
+            if match:
+                tup = (
+                    match.group("start"),
+                    match.group("end"),
+                    match.group("rid"),
+                )
+                keys_psd.add(tup)
+
+        # --subset relations ---------------------------------------------------
+        a_in_b = keys_csv.issubset(keys_psd)
+        b_in_a = keys_psd.issubset(keys_csv)
+
+        result: Dict[str, object] = {
+            "a_in_b": a_in_b,  # alle CSV‑Keys in PSD‑Filenames?
+            "b_in_a": b_in_a,  # alle PSD‑Keys auch im CSV?
+        }
+
+        if return_missing:
+            result["missing_from_b"] = keys_csv - keys_psd  # im CSV, aber nicht im PSD‑Ordner
+            result["missing_from_a"] = keys_psd - keys_csv  # im PSD‑Ordner, aber nicht im CSV
+
+        return result
+
+    @staticmethod
+    def compare_two_csv(
+            csv_data_a: str | Path | pd.DataFrame,
+            csv_data_b: str | Path | pd.DataFrame,
+            key_cols: Tuple[str, str, str] = ("Start", "End", "ResultID"),
+            return_missing: bool = False
+    ) -> Dict[str, object]:
+        """
+        Checks whether two CSV files contain identical or nested key‑sets defined
+        by the columns in *key_cols*.
+
+        :param csv_data_a: Path to the first CSV or the df itself.
+        :param csv_data_b: Path to the second CSV or the df itself.
+        :param key_cols: Tuple with the column names that form the composite key.
+        :param return_missing: If *True*, also return the concrete rows missing on
+                               either side (as sets of tuples).
+        :returns: Dict with boolean subset flags and, if requested, the missing
+                  key tuples.
+                  Example::
+                      {
+                          "a_in_b": True,
+                          "b_in_a": False,
+                          "missing_from_a": {...},  # only if return_missing=True
+                          "missing_from_b": {...}
+                      }
+        """
+        # --- read only the needed columns -------------------
+        df_a = Comparison._return_key_cols(csv_data_a, key_cols)
+        df_b = Comparison._return_key_cols(csv_data_b, key_cols)
+
+        # --- build hashable key‑sets ------------------------
+        keys_a: Set[Tuple] = set(map(tuple, df_a[key_cols].to_records(index=False)))
+        keys_b: Set[Tuple] = set(map(tuple, df_b[key_cols].to_records(index=False)))
+
+        # --- subset checks ---------------------------------
+        a_in_b = keys_a.issubset(keys_b)
+        b_in_a = keys_b.issubset(keys_a)
+
+        result: Dict[str, object] = {
+            "a_in_b": a_in_b,
+            "b_in_a": b_in_a,
+        }
+
+        if return_missing:
+            result["missing_from_b"] = keys_a - keys_b  # rows in A, not in B
+            result["missing_from_a"] = keys_b - keys_a  # rows in B, not in A
+
+        return result
+
+    @staticmethod
+    def _return_key_cols(csv_data: str | Path | pd.DataFrame, key_cols: Tuple[str, str, str]) -> pd.DataFrame:
+        """
+        Helping function to unpack the relevant columns from csv data.
+        :param csv_data: Path to the comparison CSV or the comparison df itself.
+        :param key_cols: Relevant columns.
+        :return: Pandas Dataframe with relevant columns.
+        """
+        if isinstance(csv_data, (str, Path)):
+            df = pd.read_csv(csv_data, usecols=list(key_cols))
+        elif isinstance(csv_data, pd.DataFrame):
+            df = csv_data[list(key_cols)]
+        else:
+            raise TypeError("csv data must be a Path/str or a pandas DataFrame")
+
+        return df

@@ -4,7 +4,7 @@ from typing import Tuple
 from scipy.signal import welch
 from MachineLearning.Core.ml_object import MLObject
 from MachineLearning.IO.load_data import LoadData
-from MachineLearning.IO.save_result import SaveResult, PathUtils
+from MachineLearning.IO.save_result import SaveResult
 
 
 class Transforms(MLObject):
@@ -45,40 +45,21 @@ class Transforms(MLObject):
         :param epoch_type: Type of epochs from which to calculate PSD.
         :param result_saver: Result Saver instance.
         """
-        # Acts as a flag to see if diff to the current psd folder is needed to skip PSD creation
-        psd_dir_fullpath = None
-
         # Define epochs and saving function based on epoch type
         if epoch_type == 'faw':
             epochs = self.faw_epochs.epoch_times
             saving_func = result_saver.save_faw_psd
-            # Path to check PSD against current epochs
-            psd_dir_fullpath = result_saver.return_all_parameter_fullpath(
-                self.parameter_dict, False, False, "features", "psds"
-            )
 
         elif epoch_type == 'awake':
             epochs = self.awake_epochs.epoch_times
             saving_func = result_saver.save_awake_psd
-            # Path to check PSD against current epochs
-            psd_dir_fullpath = result_saver.return_no_parameters_fullpath(
-                self.parameter_dict, "awake",False, "features", "psds"
-            )
 
         elif epoch_type == 'normal_an':
             epochs = self.normal_an_epochs.epoch_times
             saving_func = result_saver.save_normal_an_psd
-            # No path given, since the PSD folder should always be cleared to fill with PSDs from new sampled epochs
 
         else:
             raise ValueError(f'Unrecognized epoch type {epoch_type}. Valid types are "faw", "awake", "normal_an"')
-
-        # Skip PSD calculation if all Epochs are already calculated
-        if psd_dir_fullpath is not None:
-            if not PathUtils.diff_epochs_vs_psd_files(psd_dir_fullpath, epochs):
-                print(f"Skipping Calculations for {epoch_type} epochs. "
-                      f"PSDs already calculated for parameters: \n{self.parameter_dict}")
-                return
 
         # Clear folder before calculating new PSDs
         result_saver.clear_psd_folder(self.parameter_dict, epoch_type)

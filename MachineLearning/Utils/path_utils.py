@@ -175,26 +175,6 @@ class PathUtils:
         return f"PSD_{start}_{end}_{result_id}.csv"
 
     @staticmethod
-    def diff_epochs_vs_psd_files(psd_file_path, epochs) -> bool:
-        # Get csv files and number of files in psd_path
-        psd_files_list, existing_psd_count = PathUtils.list_files_in_folder(psd_file_path, ".csv")
-
-        # If there aren't as many epochs as psd_files, there is a diff -> return true
-        if existing_psd_count != len(epochs):
-            return True
-        # If not all epochs have a calculated psd counterpart, there is a diff -> return true
-        else:
-            psd_file_set = set(psd_files_list) # convert to set for optimal search efficiency
-            # Assemble each PSD filename from epoch metadata and check if exists. If not exist -> return true
-            for epoch in epochs:
-                start, end, result_id, _, _ = epoch # Get relevant data of epochs
-                psd_file_name = PathUtils.assemble_psd_file_name(start, end, result_id)
-                if psd_file_name not in psd_file_set:
-                    return True
-        # Number of epochs is equal to number of PSD files and every epoch has its PSD counterpart
-        return False
-
-    @staticmethod
     def save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data):
         if file_type == "dataframe":
             file_name = f"{file_prefix}_{file_suffix}.csv"

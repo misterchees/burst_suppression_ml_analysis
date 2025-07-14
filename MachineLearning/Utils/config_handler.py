@@ -26,6 +26,7 @@ def load_config(filename: str) -> dict:
 
     return config
 
+
 def update_config(filename: str, updates: dict) -> dict:
     """
     Updates existing keys in a YAML config file, forbidding new or unknown keys.
@@ -63,4 +64,3 @@ def update_config(filename: str, updates: dict) -> dict:
         yaml.dump(updated_config, f, sort_keys=False, allow_unicode=True)
 
     return load_config(filename)
-
