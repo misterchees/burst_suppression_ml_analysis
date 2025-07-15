@@ -11,7 +11,7 @@ test_size = 0.15
 random_state = 42
 
 overlaps = [0.0]
-min_episode_lengths = [25, 30]
+min_episode_lengths = [10, 15, 20, 25, 30]
 
 
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project

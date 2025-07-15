@@ -25,5 +25,5 @@ current_params:
   mac_threshold: 0.8
   min_episode_length: 20
   refractory_time: 5
-  fixed_window_size: 25
+  fixed_window_size: 30
   overlap: 0.0

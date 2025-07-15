@@ -10,7 +10,8 @@ class QualityControl:
         self.parameters = load_config("parameters_config.yaml")["initial_params"]
         pass
 
-    def check_awake_and_faw_overlap(self, awake_path, faw_path):
+    @staticmethod
+    def check_awake_and_faw_overlap(awake_path, faw_path):
 
         print("Checking awake and faw overlap")
         saver = SaveResult()
@@ -42,7 +43,8 @@ class QualityControl:
 
         print(f"Check succesful. Data saved to {fullpath}")
 
-    def unique_faw_result_ids(self, faw_path):
+    @staticmethod
+    def unique_faw_result_ids(faw_path):
         print("Saving unique result ids")
         saver = SaveResult()
 
@@ -57,10 +59,10 @@ class QualityControl:
 
 
 if __name__ == "__main__":
-    awake_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Awake_20.csv"
-    normal_an_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Normal_ane_20.csv"
-    faw_path = "D:\\Daten\\Test_and_train\\Feature_sets\\Feature_sets_70_080_20_5\\Summary_Episodes_20_000.csv"
+    awake_path_ = "D:\\Daten\\Test_and_train\\Feature_sets\\Awake_20.csv"
+    normal_an_path_ = "D:\\Daten\\Test_and_train\\Feature_sets\\Normal_ane_20.csv"
+    faw_path_ = "D:\\Daten\\Test_and_train\\Feature_sets\\Feature_sets_70_080_20_5\\Summary_Episodes_20_000.csv"
 
     quality_control = QualityControl()
-    quality_control.check_awake_and_faw_overlap(awake_path, faw_path)
-    quality_control.unique_faw_result_ids(faw_path)
+    quality_control.check_awake_and_faw_overlap(awake_path_, faw_path_)
+    quality_control.unique_faw_result_ids(faw_path_)

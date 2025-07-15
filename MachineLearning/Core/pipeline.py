@@ -49,7 +49,7 @@ class Pipeline:
                     feature_epochs.append(epoch_type)
 
             if not transform_epochs:
-                self.transforms = None
+                self.transformer = None
             else:
                 self.transformer = Transforms(tuple(transform_epochs), parameters)
             if not feature_epochs:
@@ -95,7 +95,7 @@ class Pipeline:
             for feature in feature_list:
                 feature_filepath = loader.return_file_fullpath(parameters, True, False, epoch_type, "features", feature)
                 comparison_dict = Comparison.compare_two_csv(feature_filepath, times_df)
-                if (comparison_dict["a_in_b"] and comparison_dict["b_in_a"]) is False:
+                if not (comparison_dict["a_in_b"] and comparison_dict["b_in_a"]):
                     return False
             return True
         else:
@@ -109,7 +109,7 @@ class Pipeline:
 
     def transform_eeg_to_psd(self, channel=1, nperseg_seconds=2):
         """Wrapper for transform function implemented in Transforms class"""
-        if self.transforms is None:
+        if self.transformer is None:
             print("Skipping PSD transforms")
             return
         self.transformer.transform_eeg_episodes_to_psd(channel, nperseg_seconds)
@@ -139,6 +139,9 @@ class Pipeline:
         """Wrapper for combining features method implemented in FeatureExtractor"""
         if features is None:
             features = self.features
+        if self.feature_extractor is None:
+            print("Skipping feature combination")
+            return
         self.feature_extractor.combine_features(self.all_features, features)
 
     def _check_features(self) -> bool | None:
@@ -346,7 +349,7 @@ class Pipeline:
 
         return predictions, true_labels, probabilities
 
-    def analyze_single_result(self, result_path: str, metadata_col: str, print_analysis=True, save_analysis=True,
+    def analyze_single_result(self, result_path: str, metadata_col: str, label:int, print_analysis=True, save_analysis=True,
                               plots=True):
         """
         Analyzes a single result file to evaluate the correlation between metadata and error rates, categorize errors by
@@ -356,10 +359,14 @@ class Pipeline:
         :type result_path: str
         :param metadata_col: The name of the metadata column in the results CSV to be analyzed.
         :type metadata_col: str
+        :param label: The label of the metadata column to be analyzed.
+        :type label: int
         :param print_analysis: A flag indicating whether the analysis results should be printed to the console.
         :type print_analysis: bool, optional
         :param save_analysis: A flag indicating whether the analysis results should be saved to disk.
         :type save_analysis: bool, optional
+        :param plots: A flag indicating whether plots should be generated for the analysis results.
+        :type plots: bool, optional
         :return: None
         """
         from MachineLearning.Evaluation.metadata_analyzer import MetadataAnalyzer
@@ -376,12 +383,14 @@ class Pipeline:
         # Calculate analysis
         error_correlation = analyzer.correlation_with_error()
         error_by_metadata = analyzer.error_by_group(metadata_col)
+        label_error_by_metadata = analyzer.error_for_label_by_group(metadata_col, label)
         class_dist_per_metadata = analyzer.class_distribution_by_group(metadata_col)
         confusion_matrices_by_metadata = analyzer.confusion_matrix_by_group(metadata_col)
 
         if print_analysis:
             print(f"Correlation with error: {error_correlation}")
             print(f"Error by {metadata_col}: {error_by_metadata}")
+            print(f"Error for label {label} by {metadata_col}: {label_error_by_metadata}")
             print(f"Class distribution by {metadata_col}: {class_dist_per_metadata}")
             print(f"Confusion matrices by {metadata_col}: {confusion_matrices_by_metadata}")
 
@@ -399,6 +408,9 @@ class Pipeline:
 
             saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_parameters(),
                                          "dataframe", filename, f"error_by_{metadata_col}")
+
+            saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_parameters(),
+                                         "dataframe", filename, f"error_label_{label}_by_{metadata_col}")
 
             saver.save_metadata_analysis(class_dist_per_metadata, "svm", self.get_current_parameters(),
                                          "dataframe", filename, f"class_dist_per_{metadata_col}")
@@ -426,12 +438,14 @@ class Pipeline:
         fold_analyzer = MetaFoldAnalyzer(model_key, parameters)
         fold_analyzer.load_all_folds(metadata_col)
         agg_err_by_group = fold_analyzer.aggregate_error_by_group()
+        agg_label_err_by_group = fold_analyzer.aggregate_error_by_group(True)
         acc_vs_class_dist = fold_analyzer.analyze_class_imbalance_vs_metric("accuracy")
         prec_vs_class_dist = fold_analyzer.analyze_class_imbalance_vs_metric("precision")
         rec_vs_class_dist = fold_analyzer.analyze_class_imbalance_vs_metric("recall")
 
         if print_analysis:
             print(f"Aggregated Error by {metadata_col}: {agg_err_by_group}")
+            print(f"Aggregated Error for one label by {metadata_col}: {agg_label_err_by_group}")
             print(f"Accuracy vs class distribution: {acc_vs_class_dist}")
             print(f"Precision vs class distribution: {prec_vs_class_dist}")
             print(f"Recall vs class distribution: {rec_vs_class_dist}")
@@ -443,6 +457,8 @@ class Pipeline:
             saver = SaveResult()
             saver.save_metadata_analysis(agg_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
                                          "agg_error_by_groups")
+            saver.save_metadata_analysis(agg_label_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
+                                         "agg_label_error_by_groups")
             saver.save_metadata_analysis(acc_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
                                          "acc_vs_class_distribution")
             saver.save_metadata_analysis(prec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
@@ -453,7 +469,7 @@ class Pipeline:
                 saver.save_metadata_analysis(error_heatmap, "svm", parameters, "plot", "Summary_analysis",
                                              "error_heatmap")
 
-    print("Analysis of single analysis results complete")
+        print("Analysis of single analysis results complete")
 
     def analyze_results(self, model_key: str, metadata_list: list, print_analysis=True, save_analysis=True, plots=True):
 
@@ -466,7 +482,7 @@ class Pipeline:
         # Analyze all given metadata in all results
         for metadata in metadata_list:
             for result_path in path_list:
-                self.analyze_single_result(result_path, metadata, print_analysis, save_analysis, plots)
+                self.analyze_single_result(result_path, metadata,1, print_analysis, save_analysis, plots)
 
             # Summary Analysis of single analysis results
             self.analyze_meta_analyses(model_key, metadata, print_analysis, save_analysis, plots)

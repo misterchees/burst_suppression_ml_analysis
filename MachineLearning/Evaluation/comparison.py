@@ -110,29 +110,20 @@ class Comparison:
         )
 
         keys_psd: Set[Tuple[str, str, str]] = set()
-        for fname in os.listdir(psd_folder):
-            match = pattern.match(fname)
-            if match:
-                tup = (
-                    match.group("start"),
-                    match.group("end"),
-                    match.group("rid"),
-                )
-                keys_psd.add(tup)
 
-        # --subset relations ---------------------------------------------------
-        a_in_b = keys_csv.issubset(keys_psd)
-        b_in_a = keys_psd.issubset(keys_csv)
+        psd_folder = Path(psd_folder)
+        if psd_folder.is_dir():  # If folder doesn't exist, there are no keys to add
+            for fname in os.listdir(psd_folder):
+                match = pattern.match(fname)
+                if match:
+                    tup = (
+                        match.group("start"),
+                        match.group("end"),
+                        match.group("rid"),
+                    )
+                    keys_psd.add(tup)
 
-        result: Dict[str, object] = {
-            "a_in_b": a_in_b,  # alle CSV‑Keys in PSD‑Filenames?
-            "b_in_a": b_in_a,  # alle PSD‑Keys auch im CSV?
-        }
-
-        if return_missing:
-            result["missing_from_b"] = keys_csv - keys_psd  # im CSV, aber nicht im PSD‑Ordner
-            result["missing_from_a"] = keys_psd - keys_csv  # im PSD‑Ordner, aber nicht im CSV
-
+        result = Comparison._return_diff_dict_from_sets(keys_csv, keys_psd, return_missing)
         return result
 
     @staticmethod
@@ -153,12 +144,12 @@ class Comparison:
                                either side (as sets of tuples).
         :returns: Dict with boolean subset flags and, if requested, the missing
                   key tuples.
-                  Example::
+                  Example:
                       {
                           "a_in_b": True,
                           "b_in_a": False,
-                          "missing_from_a": {...},  # only if return_missing=True
-                          "missing_from_b": {...}
+                          "missing_from_a": {...}, # if return_missing=True
+                          "missing_from_b": {...}  # if return_missing=True
                       }
         """
         # --- read only the needed columns -------------------
@@ -166,10 +157,68 @@ class Comparison:
         df_b = Comparison._return_key_cols(csv_data_b, key_cols)
 
         # --- build hashable key‑sets ------------------------
-        keys_a: Set[Tuple] = set(map(tuple, df_a[key_cols].to_records(index=False)))
-        keys_b: Set[Tuple] = set(map(tuple, df_b[key_cols].to_records(index=False)))
+        keys_a = set(
+            tuple(str(row[col]) for col in key_cols)
+            for _, row in df_a.iterrows()
+        )
 
-        # --- subset checks ---------------------------------
+        keys_b = set(
+            tuple(str(row[col]) for col in key_cols)
+            for _, row in df_b.iterrows()
+        )
+
+        # Create and return a diff dictionary from key sets
+        result = Comparison._return_diff_dict_from_sets(keys_a, keys_b, return_missing)
+        return result
+
+    @staticmethod
+    def _return_key_cols(csv_data: str | Path | pd.DataFrame, key_cols: Tuple[str, str, str]) -> pd.DataFrame:
+        """
+        Helping function to unpack the relevant columns from csv data.
+        :param csv_data: Path to the comparison CSV or the comparison df itself.
+        :param key_cols: Relevant columns.
+        :return: Pandas Dataframe with relevant columns.
+        """
+        # If csv_data is a path, check if the file exists and read. If not, create an empty df with empty columns
+        if isinstance(csv_data, (str, Path)):
+            csv_data = Path(csv_data)
+            if csv_data.is_file():
+                df = pd.read_csv(csv_data, usecols=list(key_cols))
+            else:
+                df = pd.DataFrame(columns=list(key_cols))
+
+        elif isinstance(csv_data, pd.DataFrame):
+            df = csv_data[list(key_cols)]
+        else:
+            raise TypeError("csv data must be a Path/str or a pandas DataFrame")
+
+        return df
+
+    @staticmethod
+    def _return_diff_dict_from_sets(keys_a: set, keys_b: set, return_missing: bool) -> Dict[str, object]:
+        """
+        Compares two sets of keys and determines their subset relationships, as well
+        as computes missing elements depending on the input parameters.
+
+        :param keys_a: The first set of keys to compare.
+        :type keys_a: set
+        :param keys_b: The second set of keys to compare.
+        :type keys_b: set
+        :param return_missing: Flag indicating whether to return missing elements from
+            either set in the result.
+        :type return_missing: bool
+        :return: A dictionary containing the subset relationships and,
+            optionally, the missing elements if `return_missing` is True. The keys of
+            the dictionary are:
+                - "a_in_b": Boolean indicating if `keys_a` is a subset of `keys_b`.
+                - "b_in_a": Boolean indicating if `keys_b` is a subset of `keys_a`.
+                - "missing_from_b": Set of elements in `keys_a` but not in `keys_b`
+                    (only if `return_missing` is True).
+                - "missing_from_a": Set of elements in `keys_b` but not in `keys_a`
+                    (only if `return_missing` is True).
+        :rtype: Dict[str, object]
+        """
+        # subset checks to find diffs
         a_in_b = keys_a.issubset(keys_b)
         b_in_a = keys_b.issubset(keys_a)
 
@@ -183,20 +232,3 @@ class Comparison:
             result["missing_from_a"] = keys_b - keys_a  # rows in B, not in A
 
         return result
-
-    @staticmethod
-    def _return_key_cols(csv_data: str | Path | pd.DataFrame, key_cols: Tuple[str, str, str]) -> pd.DataFrame:
-        """
-        Helping function to unpack the relevant columns from csv data.
-        :param csv_data: Path to the comparison CSV or the comparison df itself.
-        :param key_cols: Relevant columns.
-        :return: Pandas Dataframe with relevant columns.
-        """
-        if isinstance(csv_data, (str, Path)):
-            df = pd.read_csv(csv_data, usecols=list(key_cols))
-        elif isinstance(csv_data, pd.DataFrame):
-            df = csv_data[list(key_cols)]
-        else:
-            raise TypeError("csv data must be a Path/str or a pandas DataFrame")
-
-        return df

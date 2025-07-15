@@ -33,10 +33,11 @@ class MetaFoldAnalyzer:
 
         # Container for analysis data
         self.fold_errors_by_group = {}
+        self.fold_errors_of_label_by_group = {}
         self.fold_class_distributions = {}
         self.fold_metrics = {}
 
-    def load_all_folds(self, group_col: str):
+    def load_all_folds(self, group_col: str, label: int = 1):
         """
         Load all relevant data (error_by_group, class_dist, metrics) from directories.
         """
@@ -51,6 +52,11 @@ class MetaFoldAnalyzer:
             if os.path.exists(err_path):
                 self.fold_errors_by_group[fold_sname] = pd.read_csv(err_path, index_col=0).copy()
 
+            # Load all files containing error of label by group analysis for folds
+            label_err_path = os.path.join(self.metadata_path, f"{fold_lname}_error_label_{label}_by_{group_col}.csv")
+            if os.path.exists(label_err_path):
+                self.fold_errors_of_label_by_group[fold_sname] = pd.read_csv(label_err_path, index_col=0).copy()
+
             # Load all files containing class distribution by group
             dist_path = os.path.join(self.metadata_path, f"{fold_lname}_class_dist_per_{group_col}.csv")
             if os.path.exists(dist_path):
@@ -62,10 +68,20 @@ class MetaFoldAnalyzer:
                 with open(metrics_path, "r") as f:
                     self.fold_metrics[fold_sname] = json.load(f).copy()
 
-    def aggregate_error_by_group(self):
-        """Returns a combined dataframe of errors by group (e.g. ResultID) over all folds."""
+    def aggregate_error_by_group(self, per_label=False):
+        """
+        Returns a combined dataframe of errors by group (e.g. ResultID) over all folds.
+
+        :param per_label: If True, the errors of a single label are aggregated, else of both labels.
+        :return: A dataframe with columns 'fold', 'group', and 'error_rate'.
+        """
         combined = []
-        for fold_name, df in self.fold_errors_by_group.items():
+        if per_label:
+            group_errors_dict = self.fold_errors_of_label_by_group
+        else:
+            group_errors_dict = self.fold_errors_by_group
+
+        for fold_name, df in group_errors_dict.items():
             df = df.copy()
             df["fold"] = fold_name
             df["group"] = df.index

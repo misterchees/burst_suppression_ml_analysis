@@ -30,13 +30,36 @@ class MetadataAnalyzer:
         """
         grouped = self.df.groupby(group_col)
         total = grouped.size()
-        errors = grouped["error"].sum()
+        errors = grouped["error"].sum()  # Sums all errors per group (This works since every error is represented as 1)
         error_rate = errors / total
 
         return pd.DataFrame({
             "total_samples": total,
             "incorrect_predictions": errors,
             "error_rate": error_rate
+        })
+
+    def error_for_label_by_group(self, group_col: str, target_label: int | str = 1) -> pd.DataFrame:
+        """
+        Computes total samples, wrong predictions, and error rate for a single
+        label within each group (e.g. ResultID).
+
+        :param group_col: Column name to group by (e.g. 'ResultID').
+        :param target_label: The label value whose errors should be analyzed.
+        :returns: DataFrame with total count, incorrect count, and error rate –
+                  restricted to rows where self.df['label'] == target_label.
+        """
+        subset = self.df[self.df["label"] == target_label]  # Subset of target label
+
+        grouped = subset.groupby(group_col)
+        total = grouped.size()
+        errors = grouped["error"].sum()  # Sum up all errors per group
+        error_rate = errors / total
+
+        return pd.DataFrame({
+            "total_samples_label": total,
+            "incorrect_predictions_label": errors,
+            "error_rate_label": error_rate
         })
 
     def class_distribution_by_group(self, group_col: str) -> pd.DataFrame:
