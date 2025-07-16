@@ -24,6 +24,7 @@ class MetaFoldAnalyzer:
                            calculated.
         """
         self.model_name = model_key
+        self.parameters = parameters
 
         io_basics = IOCore()
         # Set paths
@@ -140,3 +141,77 @@ class MetaFoldAnalyzer:
             plt.show()
 
         return fig
+
+    import pandas as pd
+
+    def select_outlier_groups(self, df: pd.DataFrame = None, min_errors: int = 5, error_rate_threshold: float|str = "iqr",
+                              iqr_multiplier: float = 1.5, save_res: bool = False) -> pd.DataFrame:
+        """
+        Detects groups (e.g. patients) with unusually high classification errors,
+        based on a given threshold of "error_rate" and an additional minimum
+        number of absolute errors.
+
+        **Fixed column names**
+          • ``error_rate`` – relative error (0...1)
+          • ``incorrect_predictions`` – absolute error count
+
+        :param df: DataFrame that contains at least the two fixed columns above.
+        :param min_errors: Minimum absolute errors a group must have to be retained.
+        :param iqr_multiplier: k in the Tukey rule (default 1.5 ⇒ “mild” outliers).
+        :param error_rate_threshold: Threshold for the IQR method. If "iqr", the IQR is used.
+        :param save_res: If True, the result is saved to a CSV file.
+        :returns: Sub‐DataFrame with the outlier groups. An extra column
+                  ``error_threshold`` is added for reference.
+        """
+        if df is None:
+            from MachineLearning.IO.load_data import LoadData
+            loader = LoadData()
+            df = loader.load_metadata_file(
+                self.parameters, self.model_name, "Summary_analysis_agg_label_error_by_groups.csv"
+            )
+
+        df = df.copy()  # Copy to prevent unwanted effects
+
+        # Calculate threshold with iqr or set it directly depending on given value
+        if error_rate_threshold == "iqr":
+            threshold = self._compute_iqr_threshold(df, iqr_multiplier)
+        else:
+            if not isinstance(error_rate_threshold, float):
+                raise ValueError("error_rate_threshold must be a float or 'iqr'.")
+            threshold = error_rate_threshold
+
+        # --- filter -----------------------------------------------------------
+        mask = (df["error_rate"] >= threshold) & (df["incorrect_predictions"] >= min_errors)
+        outliers = df.loc[mask].copy()
+        outliers["error_threshold"] = threshold  # helpful context in result
+
+        if save_res:
+            from MachineLearning.IO.save_result import SaveResult
+            saver = SaveResult()
+            saver.save_metadata_analysis(outliers,self.model_name, self.parameters, "dataframe","Summary", "outliers_by_groups")
+
+        return outliers
+
+    @staticmethod
+    def _compute_iqr_threshold(df: pd.DataFrame, iqr_multiplier: float):
+        """
+        Computes the IQR (Interquartile Range) threshold for a given DataFrame. The threshold
+        is calculated using the "error_rate" column, where the upper boundary is adjusted
+        based on the specified IQR multiplier. The computed threshold ensures a maximum
+        value of 1.0 (100%).
+
+        :param df: The DataFrame containing the "error_rate" column for calculation.
+                   It must include the specified column for quantile computation.
+        :type df: pd.DataFrame
+        :param iqr_multiplier: A multiplier for the IQR to calculate the threshold.
+                               Higher values result in a less restrictive threshold.
+        :type iqr_multiplier: float
+        :return: The computed IQR threshold with a maximum boundary of 1.0.
+        :rtype: float
+        """
+
+        q1 = df["error_rate"].quantile(0.25)
+        q3 = df["error_rate"].quantile(0.75)
+        iqr = q3 - q1
+        threshold = min(q3 + iqr_multiplier * iqr, 1.0)  # Maximum can't be higher than 100%
+        return threshold

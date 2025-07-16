@@ -236,7 +236,7 @@ class SplitUtils:
         return test_df, train_df
 
     @staticmethod
-    def create_full_df(class_1_df: pd.DataFrame, class_0_df: pd.DataFrame) -> pd.DataFrame:
+    def create_full_df(class_1_df: pd.DataFrame, class_0_df: pd.DataFrame, ignore_ids: list = None) -> pd.DataFrame:
         # Add labels
         class_1_df = class_1_df.copy()
         class_1_df["label"] = 1
@@ -244,12 +244,28 @@ class SplitUtils:
         class_0_df = class_0_df.copy()
         class_0_df["label"] = 0
 
+        if ignore_ids:
+            class_1_df = SplitUtils.remove_entries(class_1_df, ignore_ids, "ResultID")
+            class_0_df = SplitUtils.remove_entries(class_0_df, ignore_ids, "ResultID")
+
         full_df = pd.concat([class_1_df.copy(), class_0_df.copy()], ignore_index=True)
 
         # Save original full_df index to easily retrieve this information later
         full_df = full_df.reset_index().rename(columns={"index": "orig_index"})
 
         return full_df
+
+    @staticmethod
+    def remove_entries(df: pd.DataFrame, result_ids_to_remove: list, col_name: str = "ResultID") -> pd.DataFrame:
+        """
+        Removes all rows from the DataFrame where entries from the provided list are in the specified column..
+
+        :param df: Input DataFrame.
+        :param result_ids_to_remove: List of ResultID values to exclude.
+        :param col_name: Name of the column to check for the specified entries. Default is "ResultID".
+        :return: Filtered DataFrame without the specified entries.
+        """
+        return df[~df[col_name].isin(result_ids_to_remove)].copy()
 
     @staticmethod
     def return_X_y(full_df: pd.DataFrame) -> tuple:

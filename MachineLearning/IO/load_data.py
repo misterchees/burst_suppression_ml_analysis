@@ -345,7 +345,7 @@ class LoadData(IOCore):
         model = load(model_fullpath)
         return model
 
-    def load_metrics(self, parameters: dict, model_key: str, ):
+    def load_metrics(self, parameters: dict, model_key: str ):
         # Construct the path to the folder from where the file will be loaded
         folder_path = self.return_all_parameter_fullpath(parameters, False, True, "results", model_key)
         file_name = f"folds_metrics.json"
@@ -353,3 +353,76 @@ class LoadData(IOCore):
 
         return PathUtils.load_json(fullpath)
 
+    def load_metadata_file(self, parameters: dict, model_key: str, filename: str):
+        """
+        Loads metadata file based on the given parameters, model key, and filename.
+
+        This method retrieves the file path for a metadata file using the specified
+        parameters and determines its extension. The data is then loaded and returned
+        if the file has a supported format.
+
+        :param parameters:
+            A dictionary containing the hyperparameters used to
+            construct the file path.
+        :param model_key:
+            The key associated with a specific model, used as an identifier while
+            forming the directory path for the metadata file.
+        :param filename:
+            The name of the metadata file to be loaded, including its extension.
+        :return:
+            Parsed data from the metadata file. The return type depends on the file
+            format: a JSON object for `.json` files or a pandas DataFrame for `.csv`
+            files.
+        :rtype:
+            Union[dict, pandas.DataFrame]
+        :raises ValueError:
+            If the file's extension is not supported (i.e., not "json" or "csv").
+        """
+        # Construct the path to the folder from where the file will be loaded
+        folder_path = self.return_all_parameter_fullpath(parameters, False, False, "metadata_analysis", model_key)
+        fullpath = PathUtils.return_anypath(folder_path, filename)
+
+        # Load file based on extension
+        extension = filename.split(".")[-1]
+        if extension == "json":
+            return PathUtils.load_json(fullpath)
+        elif extension == "csv":
+            return pd.read_csv(fullpath)
+        else:
+            raise ValueError(f"Unsupported file extension: {extension}")
+
+
+    def load_problematic_ids(self, parameters: dict, model_key: str) -> list | None:
+        """
+        Loads the IDs of outlier groups related to a specific model, from a metadata file.
+        If the specified file does not exist, attempts to create it from previous analysis results.
+
+        :param parameters: A dictionary containing parameter configurations for the model.
+        :type parameters: dict
+        :param model_key: The key or identifier of the model for which problematic IDs are being loaded.
+        :type model_key: str
+        :return: A list of outlier groups extracted from the metadata file.
+        :rtype: list
+
+        :raises FileNotFoundError: If the metadata file does not exist and cannot be created from
+            previous analysis results.
+        """
+
+        print("Loading IDs of outlier groups...")
+        try:
+            outliers_df = self.load_metadata_file(parameters, model_key, "Summary_outliers_by_groups.csv")
+        except FileNotFoundError:
+            print("File 'Summary_outliers_by_groups' not found. Trying to create from previous results...")
+            try:
+                from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
+                fold_analyzer = MetaFoldAnalyzer(model_key, parameters)
+                outliers_df = fold_analyzer.select_outlier_groups(save_res=True)
+            except FileNotFoundError:
+                print("No previous results found to create 'Summary_outliers_by_groups.csv'. "
+                      "No problematic IDs can be loaded.")
+                return None
+
+        outlier_list = outliers_df["group"].values.tolist()
+        print(f"Outlier groups found: {outlier_list}")
+
+        return outlier_list

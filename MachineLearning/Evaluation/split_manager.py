@@ -54,7 +54,7 @@ class SplitManager:
         self.class_0_df = class_0_df
         print("Loading successful")
 
-    def create_single_split(self, save=True):
+    def create_single_split(self, save=True, ignore_ids: list = None):
         """
          Creates splits in the following fashion:
          1. Split on patient level in a way, that samples (epochs) are close to test/train ratio.
@@ -64,18 +64,24 @@ class SplitManager:
          5. Saves sets to this class. To save them to your folder use the save method.
 
          :param save: Boolean flag to save the splits in csv files.
+         :param ignore_ids: List of patient IDs to ignore when creating the split.
          :return: A tuple of the split dataframes in this order (train/test)
         """
 
         print(f"Creating Split. Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
 
-        # Step 1: Assign labels according to file
+        # Step 1: Assign labels according to the file
         class_1_df = self.class_1_df.copy()
         class_1_df["label"] = 1
         class_0_df = self.class_0_df.copy()
         class_0_df["label"] = 0
 
-        # Step 2: Find best split on patient level to reach test/train ratio on sample level
+        # Optional: Remove all Patient IDs specified in ignore_ids
+        if ignore_ids:
+            class_1_df = SplitUtils.remove_entries(class_1_df, ignore_ids, "ResultID")
+            class_0_df = SplitUtils.remove_entries(class_0_df, ignore_ids, "ResultID")
+
+        # Step 2: Find the best split on patient level to reach the test/train ratio on sample level
         train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
             awake_df=self.class_1_df,
             faw_df=self.class_0_df,
@@ -159,7 +165,7 @@ class SplitManager:
 
         return X, y, splits
 
-    def create_custom_splits_by_test_size(self, save=True, min_iterations: int = None):
+    def create_custom_splits_by_test_size(self, save=True, min_iterations: int = None, ignore_ids: list = None):
         splits = []
 
         # Set iterations to maximum possible number of non overlapping splits (default)
@@ -172,7 +178,7 @@ class SplitManager:
         print(f"Creating folded non overlapping Splits. "
               f"Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
 
-        full_df = SplitUtils.create_full_df(self.class_1_df, self.class_0_df)
+        full_df = SplitUtils.create_full_df(self.class_1_df, self.class_0_df, ignore_ids)
 
         used_test_ids = set()
         split_counter = 0

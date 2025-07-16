@@ -14,12 +14,14 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 class Pipeline:
     result_ids = []
 
-    def __init__(self, init_data_key: str, epoch_classes: dict, parameters: dict = None, features: list | str = None):
+    def __init__(self, init_data_key: str, epoch_classes: dict, model_key: str, parameters: dict = None,
+                 features: list | str = None):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
         :param epoch_classes: A dict with two classes (keys 0 and 1), which will be handled throughout the pipeline.
          Valid values are: "awake", "faw" and "normal_an"
+        :param model_key: Key of the model to use."
         :param parameters: Parameters for the pipeline. If None, the current parameters will be used.
         :param features: List of features to use in the pipeline. If all existing features should be used, also a string
                 with value "all_features" can be passed.
@@ -28,6 +30,7 @@ class Pipeline:
 
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
+        self.model = model_key
         self.features = features
 
         self.all_features = self._check_features()  # Flag to determine which features to handle
@@ -146,7 +149,7 @@ class Pipeline:
 
     def _check_features(self) -> bool | None:
         """
-        Checks self.features and returns None, True or False based on the value of self.features.
+        Checks self.features and returns None, True, or False based on the value of self.features.
         None -> No features to extract.
         True -> All features to extract.
         False -> Features from given features to extract.
@@ -170,7 +173,8 @@ class Pipeline:
                     raise ValueError(f"'{key}' is no valid feature key. Valid keys are: {feature_keys}")
             return False
 
-    def create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None):
+    def create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None,
+                      ignore_outlier_ids: bool = False):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
         ratios of faw and awake class in both test and train.
@@ -180,6 +184,7 @@ class Pipeline:
         :param split_paths: If True, this method returns a tuple of paths leading to split train and test files.
         :param folds: If True, the splits will be as many non-overlapping folds as possible for cross-validation.
         :param iterations: Number of iterations for searching folds. Will be ignored if param "folds" is False.
+        :param ignore_outlier_ids: List of patient IDs to ignore when creating the splits.
         :return: If split_paths is True, returns the split paths: (<train set path>, <test set path>).
          Depending on folds, if it is true, a list of tuples will be returned, else a single tuple will be returned.
         """
@@ -189,12 +194,20 @@ class Pipeline:
         split_manager = SplitManager(parameters, self.class_0, self.class_1, test_size, random_state)
         split_manager.load_and_validate()
 
+        if ignore_outlier_ids:
+            loader = LoadData()
+            problematic_ids = loader.load_problematic_ids(parameters, self.model)
+        else:
+            problematic_ids = None
+
+
+
         # create single split or folds
         if folds:
-            split_manager.create_custom_splits_by_test_size(min_iterations=iterations)
+            split_manager.create_custom_splits_by_test_size(min_iterations=iterations, ignore_ids=problematic_ids)
             return_splits = split_manager.return_k_fold_split_paths
         else:
-            split_manager.create_single_split()
+            split_manager.create_single_split(ignore_ids=problematic_ids)
             return_splits = split_manager.return_split_paths
 
         if split_paths:
@@ -274,7 +287,7 @@ class Pipeline:
 
         return evaluation
 
-    def split_classify_evaluate(self, test_size: float, random_state: int, folds=True, **kwargs):
+    def split_classify_evaluate(self, test_size: float, random_state: int, folds=True, ignore_outlier_ids=False, **kwargs):
         """
         Splits data, performs classification, and evaluates the results using a specified test size,
         random state, and optionally in a cross-validation setting.
@@ -283,11 +296,14 @@ class Pipeline:
         :param random_state: Random seed to ensure reproducibility of the data split.
         :param folds: Indicates whether to perform classification using cross-validation.
                       If True, it applies cross-validation; if False, a single split is used.
+        :param ignore_outlier_ids: List of patient IDs to ignore when creating the splits.
         :param kwargs: Additional optional parameters to pass to the classifier or related methods.
         :return: None
         """
         iterations = int(1 // test_size) * 2  # Double the number of minimal necessary iterations
-        split_paths = self.create_splits(test_size, random_state, folds=folds, iterations=iterations)
+        split_paths = self.create_splits(
+            test_size, random_state, folds=folds, iterations=iterations, ignore_outlier_ids=ignore_outlier_ids
+        )
 
         if not folds:
             train_path, test_path = split_paths
@@ -471,12 +487,12 @@ class Pipeline:
 
         print("Analysis of single analysis results complete")
 
-    def analyze_results(self, model_key: str, metadata_list: list, print_analysis=True, save_analysis=True, plots=True):
+    def analyze_results(self, metadata_list: list, print_analysis=True, save_analysis=True, plots=True):
 
         # Gather all results
         loader = LoadData()
         parameter_dict = self.get_current_parameters()
-        result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, "results", model_key)
+        result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, "results", self.model)
         path_list, _ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
 
         # Analyze all given metadata in all results
@@ -485,4 +501,4 @@ class Pipeline:
                 self.analyze_single_result(result_path, metadata,1, print_analysis, save_analysis, plots)
 
             # Summary Analysis of single analysis results
-            self.analyze_meta_analyses(model_key, metadata, print_analysis, save_analysis, plots)
+            self.analyze_meta_analyses(self.model, metadata, print_analysis, save_analysis, plots)
