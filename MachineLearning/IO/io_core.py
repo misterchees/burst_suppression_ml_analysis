@@ -121,12 +121,12 @@ class IOCore:
         """
         Returns a fullpath that is of following structure:
         folder1/folder2/...folderN/<folderN name_A_B_C_D/<episode Name>_X_Y
-        :param parameters: Dictionary of parameters that defines A,B,C,D,X,Y
-        :param last_node_file: Flag to determine, if last node is a csv file.
-        -> fullpath ends then with .../<episode Name>_X_Y.csv
+        :param parameters: Dictionary of parameters that defines A, B, C, D, X, Y
+        :param last_node_file: Flag to determine if the last node is a csv file.
+         -> fullpath ends then with .../<episode Name>_X_Y.csv
         :param create_dirs: Flag to create the necessary folders if not already present.
-        :param folder_parts: Keys of folders from path_config, that define folder1 to folderN
-        :return: Returns a fullpath of above description.
+        :param folder_parts: Keys of folders from the path_config that define folder1 to folderN
+        :return: Return a fullpath of the above description.
         """
         dir_first_part = self.return_folder_path(*folder_parts)
         prefix_name = self.return_folder_name(*folder_parts)

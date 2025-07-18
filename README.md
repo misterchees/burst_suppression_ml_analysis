@@ -32,7 +32,7 @@ Dataset from [VitalDB](https://vitaldb.net/dataset/)
 - [ ] Implement Run-metadata functionalities
   - [x] Create Container class for collection and management of all relevant metadata
   - [ ] Saving Functions
-    - [ ] Metadata file
+    - [x] Metadata file
     - [ ] Save all Data from combined feature files downstream in unique run folders
       - [ ] Combined Features
       - [ ] Splits

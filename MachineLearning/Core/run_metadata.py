@@ -1,8 +1,9 @@
 """This module contains the RunMetadata class."""
+import json
 import os
-import yaml
 from datetime import datetime
 from typing import List, Union, Optional, Dict, Any
+from MachineLearning.IO.save_result import SaveResult
 
 
 class RunMetadata:
@@ -74,12 +75,11 @@ class RunMetadata:
             **self.additional_info
         }
 
-    def save_to_yaml(self, output_dir: str = "Run_informations"):
-        """Save the metadata to a YAML file in the given directory."""
-        os.makedirs(output_dir, exist_ok=True)
-        path = os.path.join(output_dir, f"{self.run_name}.yaml")
-        with open(path, "w") as f:
-            yaml.dump(self.to_dict(), f, default_flow_style=False, sort_keys=False)
+    def save_to_json(self):
+        """Save the metadata to a JSON file."""
+        saver = SaveResult()
+        saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, self.to_dict(), f"{self.run_name}.json")
 
     def __repr__(self):
+        """String representation of the RunMetadata object."""
         return f"<RunMetadata run='{self.run_name}' model='{self.model_key}'>"

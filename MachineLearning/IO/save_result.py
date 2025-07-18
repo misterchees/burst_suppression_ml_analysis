@@ -349,4 +349,26 @@ class SaveResult(IOCore):
         test_filename = PathUtils.return_filename_from_fullpath(test_path)
         self.save_ml_result(test_df_copy, model_key, parameters, "dataframe", test_filename, "full_and_pred")
 
-    def save_run_metadata(self):
+    def save_run_metadata_to_json(self, parameters: dict, model_key: str, run_metadata: dict, filename: str):
+        """
+        Save run metadata as a JSON file in the specified location.
+
+        This method generates a file path by combining the provided folder structure
+        with the given filename. The metadata is saved as a JSON file in the constructed
+        path for later retrieval. It uses utility functions to determine file paths
+        and handle the saving process.
+
+        :param parameters: Dict containing parameters used to generate the path.
+        :type parameters: dict
+        :param model_key: A string representing the specific model key associated
+            with this run metadata.
+        :type model_key: str
+        :param run_metadata: The metadata of the run that needs to be saved.
+        :type run_metadata: dict
+        :param filename: The name of the file where the metadata will be saved.
+        :type filename: str
+        :return: None
+        """
+        folderpath = self.return_all_parameter_fullpath(parameters, False, True, "run_metadata", model_key)
+        fullpath = PathUtils.return_anypath(folderpath, filename)
+        PathUtils.save_data_as_json(run_metadata, fullpath)
