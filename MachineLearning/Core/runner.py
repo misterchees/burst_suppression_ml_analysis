@@ -14,23 +14,34 @@ random_state = 42
 overlaps = [0.0]
 min_episode_lengths = [10, 15, 20, 25, 30]
 
-
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
 # epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 
 model_key = "svm"
+filtermethod = "butterworth"
+
 
 def run(new_params_: dict = None):
     """
     Function to execute any code
     """
-    # Initialize with key of directory with patient ID subset of interest. Faw and awake flags are default true
-    pipeline = Pipeline(INITIAL_DATA_SUBDIR_KEY, epoch_classes, model_key, new_params_, feature_list)
+    pipeline = Pipeline(
+        init_data_key=INITIAL_DATA_SUBDIR_KEY,
+        epoch_classes=epoch_classes,
+        model_key=model_key,
+        filter_method=filtermethod,
+        hyperparams=new_params_,
+        features=feature_list,
+        features_to_combine=features_to_combine,
+        random_seed=random_state,
+        test_size=test_size,
+        remove_outliers=True
+    )
     # pipeline.raw_eeg_filtering()
     pipeline.transform_eeg_to_psd()
     pipeline.feature_extraction()
-    pipeline.combine_features(features_to_combine)
-    pipeline.split_classify_evaluate(test_size, random_state, True)
+    pipeline.combine_features()
+    pipeline.split_classify_evaluate()
     pipeline.analyze_results(["ResultID"], plots=False)
 
 

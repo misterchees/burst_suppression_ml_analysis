@@ -16,7 +16,8 @@ class Pipeline:
     result_ids = []
 
     def __init__(self, init_data_key: str, epoch_classes: dict, model_key: str, filter_method: str = "butterworth",
-                 hyperparams: dict = None, features: list | str = None):
+                 hyperparams: dict = None, features: list | str = None, features_to_combine: list = None,
+                 random_seed: int = 42, test_size: float = 0.15, remove_outliers: bool = False):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
@@ -27,6 +28,10 @@ class Pipeline:
         :param filter_method: Filter method to use. Allowed values are "butterworth".
         :param features: List of features to use in the pipeline. If all existing features should be used, also a string
                 with value "all_features" can be passed.
+        :param features_to_combine: List of features to combine.
+        :param random_seed: Random seed for reproducibility.
+        :param test_size: Float between 0 and 1 -> determines the test_size and therefore the test/train ratio.
+        :param remove_outliers: List of patient IDs to remove from classification.
         """
         loader = LoadData()
 
@@ -34,7 +39,11 @@ class Pipeline:
         self.class_1 = epoch_classes[1]
         self.model = model_key
         self.filter_method = filter_method
+        self.random_seed = random_seed
+        self.test_size = test_size
+        self.remove_outliers = remove_outliers
         self.features = features
+        self.features_to_combine = features_to_combine
 
         self.all_features = self._check_features()  # Flag to determine which features to handle
 
@@ -51,6 +60,31 @@ class Pipeline:
         self.run_metadata = RunMetadata(
             epoch_list, self.model, self.result_ids, self.get_current_hyperparams(), filt_params_dict
         )
+
+    def complete_run(self, subworkflows_list: list[str] = None):
+
+        func_dict = {
+            "filter": self.raw_eeg_filtering,
+            "transform": self.transform_eeg_to_psd,
+            "extract": self.feature_extraction,
+            "combine": self.combine_features,
+            "classify": self.split_classify_evaluate,
+            "analyze": self.analyze_results
+        }
+
+        if subworkflows_list is None:
+            all_subs = True
+
+        #### Dictionaries mit daten an init übergeben (extraction_dict, classification_dict, analysis_dict)
+        #### Damit explizit alle Variablen übergeben und in run_metadata speichern
+        #### Alle methoden hier sollen aus den internen Variablen gespeist werden; Keine externen!
+
+        self.raw_eeg_filtering()
+        self.transform_eeg_to_psd()
+        self.feature_extraction()
+        self.combine_features()
+        self.split_classify_evaluate()
+        self.analyze_results(["ResultID"], plots=False)
 
     def already_calculated(self, calculation_type: str, epoch_type: str) -> bool:
         """
@@ -131,14 +165,12 @@ class Pipeline:
             for function_key in self.features:
                 feature_functions[function_key](self.feature_extractor)
 
-    def combine_features(self, features: list = None):
+    def combine_features(self):
         """Wrapper for combining features method implemented in FeatureExtractor"""
-        if features is None:
-            features = self.features
         if self.feature_extractor is None:
             print("Skipping feature combination")
             return
-        self.feature_extractor.combine_features(self.all_features, features)
+        self.feature_extractor.combine_features(self.all_features, self.features_to_combine)
 
     def _set_transforms_and_feature_extractor_instances(self, epoch_classes: dict, parameters: dict):
         if self.all_features is None:
@@ -191,7 +223,7 @@ class Pipeline:
             return False
 
     def create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None,
-                      ignore_outlier_ids: bool = False):
+                      remove_outlier_ids: bool = False):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
         ratios of faw and awake class in both test and train.
@@ -201,7 +233,7 @@ class Pipeline:
         :param split_paths: If True, this method returns a tuple of paths leading to split train and test files.
         :param folds: If True, the splits will be as many non-overlapping folds as possible for cross-validation.
         :param iterations: Number of iterations for searching folds. Will be ignored if param "folds" is False.
-        :param ignore_outlier_ids: List of patient IDs to ignore when creating the splits.
+        :param remove_outlier_ids: List of patient IDs to ignore when creating the splits.
         :return: If split_paths is True, returns the split paths: (<train set path>, <test set path>).
          Depending on folds, if it is true, a list of tuples will be returned, else a single tuple will be returned.
         """
@@ -211,7 +243,7 @@ class Pipeline:
         split_manager = SplitManager(parameters, self.class_0, self.class_1, test_size, random_state)
         split_manager.load_and_validate()
 
-        if ignore_outlier_ids:
+        if remove_outlier_ids:
             loader = LoadData()
             problematic_ids = loader.load_problematic_ids(parameters, self.model)
         else:
@@ -302,23 +334,19 @@ class Pipeline:
 
         return evaluation
 
-    def split_classify_evaluate(self, test_size: float, random_state: int, folds=True, ignore_outlier_ids=False, **kwargs):
+    def split_classify_evaluate(self, folds=True, **kwargs):
         """
         Splits data, performs classification, and evaluates the results using a specified test size,
         random state, and optionally in a cross-validation setting.
 
-        :param test_size: Fraction of the dataset to include in the test split. Must be a float between 0 and 1.
-        :param random_state: Random seed to ensure reproducibility of the data split.
         :param folds: Indicates whether to perform classification using cross-validation.
                       If True, it applies cross-validation; if False, a single split is used.
-        :param ignore_outlier_ids: List of patient IDs to ignore when creating the splits.
         :param kwargs: Additional optional parameters to pass to the classifier or related methods.
         :return: None
         """
-        iterations = int(1 // test_size) * 2  # Double the number of minimal necessary iterations
-        split_paths = self.create_splits(
-            test_size, random_state, folds=folds, iterations=iterations, ignore_outlier_ids=ignore_outlier_ids
-        )
+        iterations = int(1 // self.test_size) * 2  # Double the number of minimal necessary iterations
+        split_paths = self.create_splits(self.test_size, self.random_seed, folds=folds, iterations=iterations,
+                                         remove_outlier_ids=self.remove_outliers)
 
         if not folds:
             train_path, test_path = split_paths
