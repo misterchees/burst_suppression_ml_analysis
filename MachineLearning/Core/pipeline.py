@@ -2,6 +2,7 @@ import warnings
 import pandas as pd
 from fontTools.misc.classifyTools import Classifier
 
+from MachineLearning.Core.run_metadata import RunMetadata
 from MachineLearning.IO.load_data import LoadData, PathUtils
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Features.transforms import Transforms
@@ -14,15 +15,16 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 class Pipeline:
     result_ids = []
 
-    def __init__(self, init_data_key: str, epoch_classes: dict, model_key: str, parameters: dict = None,
-                 features: list | str = None):
+    def __init__(self, init_data_key: str, epoch_classes: dict, model_key: str, filter_method: str = "butterworth",
+                 hyperparams: dict = None, features: list | str = None):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
         :param epoch_classes: A dict with two classes (keys 0 and 1), which will be handled throughout the pipeline.
          Valid values are: "awake", "faw" and "normal_an"
         :param model_key: Key of the model to use."
-        :param parameters: Parameters for the pipeline. If None, the current parameters will be used.
+        :param hyperparams: Hyperparameters for the pipeline. If None, the current parameters will be used.
+        :param filter_method: Filter method to use. Allowed values are "butterworth".
         :param features: List of features to use in the pipeline. If all existing features should be used, also a string
                 with value "all_features" can be passed.
         """
@@ -31,35 +33,24 @@ class Pipeline:
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
         self.model = model_key
+        self.filter_method = filter_method
         self.features = features
 
         self.all_features = self._check_features()  # Flag to determine which features to handle
 
-        self.update_parameters(parameters)  # Update current parameters with given parameters
+        self.update_hyperparams(hyperparams)  # Update current parameters with given parameters
 
-        if self.all_features is None:
-            self.transforms = None
-            self.feature_extractor = None
-        else:
-            # Check for each epoch if calculations can be skipped
-            epochs_tuple = tuple(epoch_classes.values())
-            transform_epochs = []  # list with transform epochs
-            feature_epochs = []  # list with feature extraction epochs
-            for epoch_type in epochs_tuple:
-                if not self.already_calculated("transform", epoch_type):
-                    transform_epochs.append(epoch_type)
-                if not self.already_calculated("extract_features", epoch_type):
-                    feature_epochs.append(epoch_type)
+        # Initialize Transform and EEG-Extractor
+        self._set_transforms_and_feature_extractor_instances(epoch_classes, hyperparams)
 
-            if not transform_epochs:
-                self.transformer = None
-            else:
-                self.transformer = Transforms(tuple(transform_epochs), parameters)
-            if not feature_epochs:
-                self.feature_extractor = None
-            else:
-                self.feature_extractor = EEGFeatureExtractor(tuple(feature_epochs), parameters)
         self.result_ids = loader.return_all_result_ids(init_data_key)
+
+        # Set run metadata class
+        epoch_list = [self.class_0, self.class_1]
+        filt_params_dict = {self.filter_method: self.get_current_filterparams()}
+        self.run_metadata = RunMetadata(
+            epoch_list, self.model, self.result_ids, self.get_current_hyperparams(), filt_params_dict
+        )
 
     def already_calculated(self, calculation_type: str, epoch_type: str) -> bool:
         """
@@ -71,7 +62,7 @@ class Pipeline:
 
         # load faw and awake data dependent of epochtypes
         loader = LoadData()
-        parameters = self.get_current_parameters()
+        parameters = self.get_current_hyperparams()
 
         if epoch_type == "normal_an":
             return False
@@ -107,7 +98,9 @@ class Pipeline:
     def raw_eeg_filtering(self):
         """ Applies filtering to all EEGs specified by the id-list in this class"""
         from MachineLearning.Preprocessing.filtering import Filtering
-        filtering = Filtering()
+
+        filterparams = self.get_current_filterparams()
+        filtering = Filtering(self.filter_method, filterparams)
         filtering.filter_multiple_eeg(eeg_list=self.result_ids)
 
     def transform_eeg_to_psd(self, channel=1, nperseg_seconds=2):
@@ -146,6 +139,30 @@ class Pipeline:
             print("Skipping feature combination")
             return
         self.feature_extractor.combine_features(self.all_features, features)
+
+    def _set_transforms_and_feature_extractor_instances(self, epoch_classes: dict, parameters: dict):
+        if self.all_features is None:
+            self.transforms = None
+            self.feature_extractor = None
+        else:
+            # Check for each epoch if calculations can be skipped
+            epochs_tuple = tuple(epoch_classes.values())
+            transform_epochs = []  # list with transform epochs
+            feature_epochs = []  # list with feature extraction epochs
+            for epoch_type in epochs_tuple:
+                if not self.already_calculated("transform", epoch_type):
+                    transform_epochs.append(epoch_type)
+                if not self.already_calculated("extract_features", epoch_type):
+                    feature_epochs.append(epoch_type)
+
+            if not transform_epochs:
+                self.transformer = None
+            else:
+                self.transformer = Transforms(tuple(transform_epochs), parameters)
+            if not feature_epochs:
+                self.feature_extractor = None
+            else:
+                self.feature_extractor = EEGFeatureExtractor(tuple(feature_epochs), parameters)
 
     def _check_features(self) -> bool | None:
         """
@@ -190,7 +207,7 @@ class Pipeline:
         """
         from MachineLearning.Evaluation.split_manager import SplitManager
 
-        parameters = self.get_current_parameters()
+        parameters = self.get_current_hyperparams()
         split_manager = SplitManager(parameters, self.class_0, self.class_1, test_size, random_state)
         split_manager.load_and_validate()
 
@@ -199,8 +216,6 @@ class Pipeline:
             problematic_ids = loader.load_problematic_ids(parameters, self.model)
         else:
             problematic_ids = None
-
-
 
         # create single split or folds
         if folds:
@@ -227,7 +242,7 @@ class Pipeline:
         :return: Tuple -> (predicted values, test labels, probabilities)
         """
 
-        parameters = self.get_current_parameters()
+        parameters = self.get_current_hyperparams()
         svm_key = "svm"
         test_df = pd.read_csv(test_path)
 
@@ -283,7 +298,7 @@ class Pipeline:
         if save_metrics:
             saver = SaveResult()
             prefix = "folds" if folds else "single"
-            saver.save_ml_result(evaluation, "svm", self.get_current_parameters(), "dict", prefix, "metrics")
+            saver.save_ml_result(evaluation, "svm", self.get_current_hyperparams(), "dict", prefix, "metrics")
 
         return evaluation
 
@@ -323,20 +338,24 @@ class Pipeline:
         self.result_ids = loader.return_all_result_ids(initial_data_key)
 
     @staticmethod
-    def get_current_parameters() -> dict:
+    def get_current_hyperparams() -> dict:
         """Returns the current parameters as a dictionary."""
         return load_config("parameters_config.yaml")["current_params"]
 
     @staticmethod
-    def update_parameters(updated_parameters: dict) -> dict:
+    def update_hyperparams(updated_parameters: dict) -> dict:
         """Updates the parameters stored in config i.e., globally and returns the updated parameters as a dictionary."""
         return update_config("parameters_config.yaml", updated_parameters)["current_params"]
 
     @staticmethod
-    def reset_parameters():
+    def reset_hyperparams():
         """Resets the parameters stored in config i.e., globally."""
         default_params = load_config("parameters_config.yaml")["initial_params"]
         return update_config("parameters_config.yaml", {"current_params": default_params})
+
+    def get_current_filterparams(self) -> dict:
+        """Returns the current parameters as a dictionary."""
+        return load_config("parameters_config.yaml")["filtering_params"][self.filter_method]
 
     def collect_classification_results(self, split_paths: list, **kwargs) -> tuple[list, list, list]:
         """
@@ -419,26 +438,26 @@ class Pipeline:
             print(f"Saving analysis results to disk...")
             filename = PathUtils.return_filename_from_fullpath(result_path)
             saver = SaveResult()
-            saver.save_metadata_analysis(error_correlation, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(error_correlation, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, "error_correlation")
 
-            saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, f"error_by_{metadata_col}")
 
-            saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, f"error_label_{label}_by_{metadata_col}")
 
-            saver.save_metadata_analysis(class_dist_per_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(class_dist_per_metadata, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, f"class_dist_per_{metadata_col}")
 
-            saver.save_metadata_analysis(confusion_matrices_by_metadata, "svm", self.get_current_parameters(),
+            saver.save_metadata_analysis(confusion_matrices_by_metadata, "svm", self.get_current_hyperparams(),
                                          "dict", filename, f"confusion_matrices_by_{metadata_col}")
 
             if plots:
-                saver.save_metadata_analysis(error_dist_by_metadata, "svm", self.get_current_parameters(),
+                saver.save_metadata_analysis(error_dist_by_metadata, "svm", self.get_current_hyperparams(),
                                              "plot", filename, f"error_dist_by_{metadata_col}")
 
-                saver.save_metadata_analysis(temp_error_by_metadata, "svm", self.get_current_parameters(),
+                saver.save_metadata_analysis(temp_error_by_metadata, "svm", self.get_current_hyperparams(),
                                              "plot", filename, f"temp_error_by_{metadata_col}")
 
         print("Analysis complete.")
@@ -450,7 +469,7 @@ class Pipeline:
         print("Analyzing single fold analysis results")
 
         # Carry out analysis
-        parameters = self.get_current_parameters()
+        parameters = self.get_current_hyperparams()
         fold_analyzer = MetaFoldAnalyzer(model_key, parameters)
         fold_analyzer.load_all_folds(metadata_col)
         agg_err_by_group = fold_analyzer.aggregate_error_by_group()
@@ -491,7 +510,7 @@ class Pipeline:
 
         # Gather all results
         loader = LoadData()
-        parameter_dict = self.get_current_parameters()
+        parameter_dict = self.get_current_hyperparams()
         result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, "results", self.model)
         path_list, _ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
 

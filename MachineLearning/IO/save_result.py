@@ -348,3 +348,5 @@ class SaveResult(IOCore):
 
         test_filename = PathUtils.return_filename_from_fullpath(test_path)
         self.save_ml_result(test_df_copy, model_key, parameters, "dataframe", test_filename, "full_and_pred")
+
+    def save_run_metadata(self):

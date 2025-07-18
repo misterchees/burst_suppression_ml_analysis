@@ -23,11 +23,28 @@ Dataset from [VitalDB](https://vitaldb.net/dataset/)
 - [ ] Implement the Rest of the Features
   - [x] Add missing docstrings
   - [x] Make helper functions for code block, that loops through epochs in feature_extractor functions
-- [ ] Implement Epoching of awake episodes
-- [ ] Implement train and test set functions
-- [ ] Implement SVM
+- [x] Implement Epoching of awake episodes
+- [x] Implement train and test set functions
+- [x] Implement SVM
 - [ ] Implement modular Workflow
-- [ ] Implement Pipeline subworkflows
+  - [x] Implement Pipeline subworkflows
+  - [ ] Implement coordinating method for workflows
+- [ ] Implement Run-metadata functionalities
+  - [x] Create Container class for collection and management of all relevant metadata
+  - [ ] Saving Functions
+    - [ ] Metadata file
+    - [ ] Save all Data from combined feature files downstream in unique run folders
+      - [ ] Combined Features
+      - [ ] Splits
+      - [ ] Results
+      - [ ] Metrics
+      - [ ] Analysis
+  - [ ] Check for unique Name when created (with automatic uniquifying with appended timestamp)
+  - [ ] Collect data from every step
+    - [x] Filtering
+    - [ ] Feature extraction and selection
+    - [ ] Classification
+    - [ ] Metrics and Analytics
 
 # Matlab Section
 **TO-DO**

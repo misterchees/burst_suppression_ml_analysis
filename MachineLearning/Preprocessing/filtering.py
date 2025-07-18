@@ -6,20 +6,39 @@ from MachineLearning.Utils.filter_utils import FilterUtils
 
 class Filtering:
 
-    def __init__(self):
-        pass
-
-    def filter_multiple_eeg(self, eeg_list: list, lowcut=0.5, highcut=30.0, order=4):
+    def __init__(self, method: str, filter_params: dict):
         """
-        Applies a filter function to all raw-EEGs specified by the result IDs in given list and saves
+        Represents a class for initializing with a method name and its corresponding
+        filter parameters in the form of a dictionary.
+
+        This class is used to specify a method and its respective configuration
+        parameters to perform a specific operation or filtering.
+
+        :param method: The name of the method to be initialized.
+        :type method: str
+        :param filter_params: A dictionary containing the filtering parameters
+            for the method.
+        :type filter_params: dict
+        """
+        self.method = method
+        self.filter_params = filter_params
+
+    def filter_multiple_eeg(self, eeg_list: list):
+        """
+        Applies a filter function to all raw-EEGs specified by the result IDs in a given list and saves
         the result in the filtered subdirectory.
         :param eeg_list: list with all result_ids of EEGs to be filtered
-        :param lowcut: Lower bound of the bandpass filter (Hz)
-        :param highcut: Upper bound of the bandpass filter (Hz)
-        :param order: Order of the bandpass filter -> How steep is the power transition to the filtered frequencies
         """
-        for result_id in eeg_list:
-            self.butterworth(result_id, lowcut, highcut, order)
+        if self.method == "butterworth":
+            lowcut = self.filter_params["lowcut"]
+            highcut = self.filter_params["highcut"]
+            order = self.filter_params["order"]
+
+            for result_id in eeg_list:
+                self.butterworth(result_id, lowcut, highcut, order)
+
+        else:
+            raise ValueError(f"Unrecognized filter method: {self.method}")
 
     @staticmethod
     def butterworth(result_id: int, lowcut, highcut, order):

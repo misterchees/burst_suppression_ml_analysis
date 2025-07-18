@@ -27,3 +27,8 @@ current_params:
   refractory_time: 5
   fixed_window_size: 20
   overlap: 0.9
+filtering_params:
+  butterworth:
+    lowcut: 0.5
+    highcut: 30.0
+    order: 4
