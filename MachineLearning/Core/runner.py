@@ -4,9 +4,16 @@ This module is to execute all pipeline commands and therefore the main point to 
 from MachineLearning.Core.pipeline import Pipeline
 
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
-feature_list = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
+
+# Use None for variable to skip step; Use "all_features" if all features should be used in step
+features = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
 features_to_combine = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
-# feature_list = "all_features"  # If all features should be extracted
+
+# Set dict to None if no extraction AND no combination shall be conduced
+features_dict = {
+    "features": features,
+    "features_to_combine": features_to_combine
+}
 
 test_size = 0.15
 random_state = 42
@@ -31,8 +38,7 @@ def run(new_params_: dict = None):
         model_key=model_key,
         filter_method=filtermethod,
         hyperparams=new_params_,
-        features=feature_list,
-        features_to_combine=features_to_combine,
+        features_dict=features_dict,
         random_seed=random_state,
         test_size=test_size,
         remove_outliers=True

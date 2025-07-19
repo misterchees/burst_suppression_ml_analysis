@@ -614,7 +614,7 @@ class EEGFeatureExtractor(MLObject):
         """
         Combines features of all epochs and saves them together in one file.
         :param all_features: If True will combine all features in the features folder.
-        :param features: All features to be combined. Is ignored if all_features is True.
+        :param features: A list of features to be combined. Is ignored if all_features is True.
         """
         for epoch_type in self.epoch_types:
             FeatureUtils.combine_features(self.parameter_dict, epoch_type, all_features, features)

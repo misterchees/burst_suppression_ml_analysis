@@ -16,7 +16,7 @@ class Pipeline:
     result_ids = []
 
     def __init__(self, init_data_key: str, epoch_classes: dict, model_key: str, filter_method: str = "butterworth",
-                 hyperparams: dict = None, features: list | str = None, features_to_combine: list = None,
+                 hyperparams: dict = None, features_dict: dict = None,
                  random_seed: int = 42, test_size: float = 0.15, remove_outliers: bool = False):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
@@ -28,7 +28,8 @@ class Pipeline:
         :param filter_method: Filter method to use. Allowed values are "butterworth".
         :param features: List of features to use in the pipeline. If all existing features should be used, also a string
                 with value "all_features" can be passed.
-        :param features_to_combine: List of features to combine.
+        :param features_to_combine: List of features to combine. If all existing features should be used, also a string
+                with value "all_features" can be passed.
         :param random_seed: Random seed for reproducibility.
         :param test_size: Float between 0 and 1 -> determines the test_size and therefore the test/train ratio.
         :param remove_outliers: List of patient IDs to remove from classification.
@@ -42,8 +43,13 @@ class Pipeline:
         self.random_seed = random_seed
         self.test_size = test_size
         self.remove_outliers = remove_outliers
-        self.features = features
-        self.features_to_combine = features_to_combine
+
+        if features_dict is not None:
+            self.features = features_dict["features"]
+            self.features_to_combine = features_dict["features_to_combine"]
+        else:
+            self.features = None
+            self.features_to_combine = None
 
         self.all_features = self._check_features()  # Flag to determine which features to handle
 
@@ -63,6 +69,7 @@ class Pipeline:
 
     def complete_run(self, subworkflows_list: list[str] = None):
 
+        # Valid subworkflows
         func_dict = {
             "filter": self.raw_eeg_filtering,
             "transform": self.transform_eeg_to_psd,
@@ -72,8 +79,16 @@ class Pipeline:
             "analyze": self.analyze_results
         }
 
+        # Set the subworkflows to be executed
         if subworkflows_list is None:
-            all_subs = True
+            exec_funcs = func_dict
+        else:
+            for subworkflow in subworkflows_list:  ###### Reihenfolge wichtig!
+                if subworkflow not in func_dict.keys():
+                    raise ValueError(
+                        f"Subworkflow '{subworkflow}' not recognized. Valid values are: {func_dict.keys()}"
+                    )
+                exec_funcs = func_dict[subworkflow]
 
         #### Dictionaries mit daten an init übergeben (extraction_dict, classification_dict, analysis_dict)
         #### Damit explizit alle Variablen übergeben und in run_metadata speichern
@@ -167,10 +182,25 @@ class Pipeline:
 
     def combine_features(self):
         """Wrapper for combining features method implemented in FeatureExtractor"""
-        if self.feature_extractor is None:
-            print("Skipping feature combination")
+        # No combination if no features given
+        if self.features_to_combine is None:
+            print("Skipping feature combination method")
             return
-        self.feature_extractor.combine_features(self.all_features, self.features_to_combine)
+
+        # Ensure feature extractor is not None
+        if self.feature_extractor is None:
+            epoch_tuple = self.class_0, self.class_1
+            feature_extractor = EEGFeatureExtractor(epoch_tuple, {})
+        else:
+            feature_extractor = self.feature_extractor
+
+        # Combine features based on value in features_to_combine
+        if self.features_to_combine == "all_features":
+            feature_extractor.combine_features(True, [])
+        elif not isinstance(self.features_to_combine, list):
+            raise ValueError("Features must be either a list or a string with value 'all_features'")
+        else:
+            feature_extractor.combine_features(False, self.features_to_combine)
 
     def _set_transforms_and_feature_extractor_instances(self, epoch_classes: dict, parameters: dict):
         if self.all_features is None:
