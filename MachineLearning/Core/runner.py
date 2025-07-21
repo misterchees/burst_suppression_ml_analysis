@@ -5,6 +5,8 @@ from MachineLearning.Core.pipeline import Pipeline
 
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
 
+filtermethod = "butterworth"
+
 # Use None for variable to skip step; Use "all_features" if all features should be used in step
 features = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
 features_to_combine = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
@@ -15,17 +17,31 @@ features_dict = {
     "features_to_combine": features_to_combine
 }
 
-test_size = 0.15
-random_state = 42
+# Dict containing params for svm classifier
+svm_dict = {
+    "model_key": "svm",
+    "params": {
+        'C':  1,
+        'kernel': 'rbf',
+    }
+}
+
+# Classification attributes
+classification_dict = {
+    "test_size": 0.15,
+    "random_seed": 42,
+    "remove_outliers": False,
+    "model": svm_dict
+}
+
+# Metadata to analyze for errors
+metadata_to_analyze = ["ResultID"]
 
 overlaps = [0.0]
 min_episode_lengths = [10, 15, 20, 25, 30]
 
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
 # epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
-
-model_key = "svm"
-filtermethod = "butterworth"
 
 
 def run(new_params_: dict = None):
@@ -35,13 +51,11 @@ def run(new_params_: dict = None):
     pipeline = Pipeline(
         init_data_key=INITIAL_DATA_SUBDIR_KEY,
         epoch_classes=epoch_classes,
-        model_key=model_key,
         filter_method=filtermethod,
         hyperparams=new_params_,
         features_dict=features_dict,
-        random_seed=random_state,
-        test_size=test_size,
-        remove_outliers=True
+        classification_dict=classification_dict,
+        metadata_to_analyze=metadata_to_analyze
     )
     # pipeline.raw_eeg_filtering()
     pipeline.transform_eeg_to_psd()

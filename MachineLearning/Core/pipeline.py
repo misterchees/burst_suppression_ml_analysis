@@ -15,34 +15,32 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 class Pipeline:
     result_ids = []
 
-    def __init__(self, init_data_key: str, epoch_classes: dict, model_key: str, filter_method: str = "butterworth",
-                 hyperparams: dict = None, features_dict: dict = None,
-                 random_seed: int = 42, test_size: float = 0.15, remove_outliers: bool = False):
+    def __init__(self, init_data_key: str, epoch_classes: dict, filter_method: str = "butterworth",
+                 hyperparams: dict = None, features_dict: dict = None, classification_dict: dict = None,
+                 metadata_to_analyze: list = None):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
         :param epoch_classes: A dict with two classes (keys 0 and 1), which will be handled throughout the pipeline.
          Valid values are: "awake", "faw" and "normal_an"
-        :param model_key: Key of the model to use."
-        :param hyperparams: Hyperparameters for the pipeline. If None, the current parameters will be used.
         :param filter_method: Filter method to use. Allowed values are "butterworth".
-        :param features: List of features to use in the pipeline. If all existing features should be used, also a string
-                with value "all_features" can be passed.
-        :param features_to_combine: List of features to combine. If all existing features should be used, also a string
-                with value "all_features" can be passed.
-        :param random_seed: Random seed for reproducibility.
-        :param test_size: Float between 0 and 1 -> determines the test_size and therefore the test/train ratio.
-        :param remove_outliers: List of patient IDs to remove from classification.
+        :param hyperparams: Hyperparameters for the pipeline. If None, the current parameters will be used.
+        :param features_dict: Dictionary containing a list of features to extract and another to combine.
+        :param classification_dict: Dictionary containing the parameters of the classification.
+        :param metadata_to_analyze: List of metadata to analyze for error patterns in the classification.
         """
         loader = LoadData()
 
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
-        self.model = model_key
         self.filter_method = filter_method
-        self.random_seed = random_seed
-        self.test_size = test_size
-        self.remove_outliers = remove_outliers
+        self.metadata_to_analyze = metadata_to_analyze
+
+        self.random_seed = classification_dict["random_seed"]
+        self.test_size = classification_dict["test_size"]
+        self.remove_outliers = classification_dict["remove_outliers"]
+        self.model_key = classification_dict["model"]["model_key"]
+        self.model_params = classification_dict["model"]["params"]
 
         if features_dict is not None:
             self.features = features_dict["features"]
@@ -63,13 +61,18 @@ class Pipeline:
         # Set run metadata class
         epoch_list = [self.class_0, self.class_1]
         filt_params_dict = {self.filter_method: self.get_current_filterparams()}
-        self.run_metadata = RunMetadata(
-            epoch_list, self.model, self.result_ids, self.get_current_hyperparams(), filt_params_dict
+        self.run_metadata_collector = RunMetadata(
+            epoch_list, self.model_key, self.result_ids, self.get_current_hyperparams(), filt_params_dict
         )
 
     def complete_run(self, subworkflows_list: list[str] = None):
+        """
+        Executes the complete pipeline or a specified subset of workflow steps.
 
-        # Valid subworkflows
+        :param subworkflows_list: List of keys (e.g. ["filter", "extract", "classify"]) to run only selected steps.
+        """
+
+        # Reference dict with all implemented steps. ORDER is important (order preservation in dict since Python 3.7)
         func_dict = {
             "filter": self.raw_eeg_filtering,
             "transform": self.transform_eeg_to_psd,
@@ -79,27 +82,25 @@ class Pipeline:
             "analyze": self.analyze_results
         }
 
-        # Set the subworkflows to be executed
+        # Validation of given list
+        invalid = [step for step in subworkflows_list if step not in func_dict]
+        if invalid:
+            raise ValueError(f"Invalid subworkflow keys: {invalid}. Valid keys are: {list(func_dict)}")
+
+        # If no subworkflow list given -> All steps will be carried out
         if subworkflows_list is None:
-            exec_funcs = func_dict
-        else:
-            for subworkflow in subworkflows_list:  ###### Reihenfolge wichtig!
-                if subworkflow not in func_dict.keys():
-                    raise ValueError(
-                        f"Subworkflow '{subworkflow}' not recognized. Valid values are: {func_dict.keys()}"
-                    )
-                exec_funcs = func_dict[subworkflow]
+            selected_funcs = func_dict.items()
+        else:  # Else create custom list of steps, preserving the order of the reference dict
+            selected_funcs = [
+                (name, func)
+                for name, func in func_dict.items()
+                if name in subworkflows_list
+            ]
 
-        #### Dictionaries mit daten an init übergeben (extraction_dict, classification_dict, analysis_dict)
-        #### Damit explizit alle Variablen übergeben und in run_metadata speichern
-        #### Alle methoden hier sollen aus den internen Variablen gespeist werden; Keine externen!
-
-        self.raw_eeg_filtering()
-        self.transform_eeg_to_psd()
-        self.feature_extraction()
-        self.combine_features()
-        self.split_classify_evaluate()
-        self.analyze_results(["ResultID"], plots=False)
+        # Execute requested steps of pipeline. All params of the steps are already defined in initialization
+        for name, func in selected_funcs:
+            print(f"Running step: {name}")
+            func()
 
     def already_calculated(self, calculation_type: str, epoch_type: str) -> bool:
         """
@@ -275,7 +276,7 @@ class Pipeline:
 
         if remove_outlier_ids:
             loader = LoadData()
-            problematic_ids = loader.load_problematic_ids(parameters, self.model)
+            problematic_ids = loader.load_problematic_ids(parameters, self.model_key)
         else:
             problematic_ids = None
 
@@ -364,7 +365,7 @@ class Pipeline:
 
         return evaluation
 
-    def split_classify_evaluate(self, folds=True, **kwargs):
+    def split_classify_evaluate(self, folds=True):
         """
         Splits data, performs classification, and evaluates the results using a specified test size,
         random state, and optionally in a cross-validation setting.
@@ -380,11 +381,11 @@ class Pipeline:
 
         if not folds:
             train_path, test_path = split_paths
-            y_pred, y_test, y_proba = self.run_svm_classifier(train_path, test_path, save_clf=False, **kwargs)
+            y_pred, y_test, y_proba = self.run_svm_classifier(train_path, test_path, save_clf=False, **self.model_params)
             self.evaluate_metrics(y_test, y_pred, y_proba, folds)
 
         else:
-            y_pred, y_test, y_proba = self.collect_classification_results(split_paths, **kwargs)
+            y_pred, y_test, y_proba = self._collect_classification_results(split_paths, **self.model_params)
             self.evaluate_metrics(y_test, y_pred, y_proba, folds)
 
     def set_result_ids(self, initial_data_key: str):
@@ -415,7 +416,7 @@ class Pipeline:
         """Returns the current parameters as a dictionary."""
         return load_config("parameters_config.yaml")["filtering_params"][self.filter_method]
 
-    def collect_classification_results(self, split_paths: list, **kwargs) -> tuple[list, list, list]:
+    def _collect_classification_results(self, split_paths: list, **kwargs) -> tuple[list, list, list]:
         """
         Collects the classification results from multiple splits.
         Args:
@@ -442,8 +443,8 @@ class Pipeline:
 
         return predictions, true_labels, probabilities
 
-    def analyze_single_result(self, result_path: str, metadata_col: str, label:int, print_analysis=True, save_analysis=True,
-                              plots=True):
+    def _analyze_single_result(self, result_path: str, metadata_col: str, label: int, print_analysis=True, save_analysis=True,
+                               plots=True):
         """
         Analyzes a single result file to evaluate the correlation between metadata and error rates, categorize errors by
         metadata groups, and assess the distribution of classes and confusion matrices for specified metadata.
@@ -520,7 +521,7 @@ class Pipeline:
 
         print("Analysis complete.")
 
-    def analyze_meta_analyses(self, model_key: str, metadata_col, print_analysis=True, save_analysis=True, plots=True):
+    def _analyze_meta_analyses(self, model_key: str, metadata_col, print_analysis=True, save_analysis=True, plots=True):
 
         from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
 
@@ -564,18 +565,18 @@ class Pipeline:
 
         print("Analysis of single analysis results complete")
 
-    def analyze_results(self, metadata_list: list, print_analysis=True, save_analysis=True, plots=True):
+    def analyze_results(self, print_analysis=True, save_analysis=True, plots=False):
 
         # Gather all results
         loader = LoadData()
         parameter_dict = self.get_current_hyperparams()
-        result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, "results", self.model)
+        result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, "results", self.model_key)
         path_list, _ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
 
         # Analyze all given metadata in all results
-        for metadata in metadata_list:
+        for metadata in self.metadata_to_analyze:
             for result_path in path_list:
-                self.analyze_single_result(result_path, metadata,1, print_analysis, save_analysis, plots)
+                self._analyze_single_result(result_path, metadata, 1, print_analysis, save_analysis, plots)
 
             # Summary Analysis of single analysis results
-            self.analyze_meta_analyses(self.model, metadata, print_analysis, save_analysis, plots)
+            self._analyze_meta_analyses(self.model_key, metadata, print_analysis, save_analysis, plots)

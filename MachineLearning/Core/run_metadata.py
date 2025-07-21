@@ -1,9 +1,10 @@
 """This module contains the RunMetadata class."""
-import json
-import os
 from datetime import datetime
 from typing import List, Union, Optional, Dict, Any
-from MachineLearning.IO.save_result import SaveResult
+
+import pandas as pd
+
+from MachineLearning.IO.save_result import SaveResult, PathUtils
 
 
 class RunMetadata:
@@ -37,6 +38,13 @@ class RunMetadata:
         self.initial_patient_ids = sorted(list(initial_patient_ids))
         self.hyperparameters = hyperparameters
         self.filtering_params = filtering_params
+
+        self.final_patient_ids = None
+        self.feature_params = None
+        self.split_data = {}
+        self.classification_params = None
+        self.metrics = None
+        self.meta_analysis = None
         self.additional_info = {}
 
         # Timestamp as the default Run-Name and as meta-information
@@ -46,19 +54,78 @@ class RunMetadata:
 
     def set_final_result_ids(self, result_ids: List[int]):
         """Store ResultIDs that were finally used for the classification."""
-        self.additional_info["final_patient_ids"] = sorted(result_ids)
+        self.final_patient_ids = sorted(result_ids)
 
-    def set_split_file(self, filename: str):
-        """Save the split filename that was used (e.g. for train/test split)."""
-        self.additional_info["split_file"] = filename
+    def set_feature_info(self, feature_params: dict):
+        """Store all feature params. Contains list of used features and params of every feature"""
+        self.feature_params = feature_params
 
-    def set_metrics(self, metrics: Dict[str, float]):
+    def set_split_data(self, split_paths: list):
+        """
+        Save the split data as a dictionary, using given split paths to retrieve the correct splits.
+        Stucture in the end is:
+        split_data: {
+            fold_<fold number>:{
+                test: {
+                    Start: <List of starts>
+                    End: <List of ends>
+                    ResultID: <List of resultIDs>
+                }
+                train: {
+                    Start: <List of starts>
+                    End: <List of ends>
+                    ResultID: <List of resultIDs>
+                }
+            }
+        }
+
+        :param split_paths: List of split paths to retrieve the correct splits.
+        """
+
+        for train_path, test_path in split_paths:
+
+            # It doesn't matter from which path the fold number is retrieved (same for both)
+            fold_number = PathUtils.return_filename_from_fullpath(train_path).split("_")[0]
+            fold_key = f"fold_{fold_number}"
+
+            # Create dicts for the single instances of the splits
+            test_dict = self._create_split_subdict(test_path)
+            train_dict = self._create_split_subdict(train_path)
+
+            # Append to split data
+            self.split_data[fold_key] = {
+                "test": test_dict,
+                "train": train_dict
+                }
+
+    @staticmethod
+    def _create_split_subdict(split_path: str):
+        """Creates entry for split path with Lists of Start, End, ResultID in the same order."""
+
+        fold_df = pd.read_csv(split_path)
+        starts = fold_df["Start"].to_list()  # Order is preserved in this operation
+        ends = fold_df["End"].to_list()
+        result_ids = fold_df["ResultID"].to_list()
+
+        subdict = {
+            "Start": starts,
+            "End": ends,
+            "ResultID": result_ids
+        }
+
+        return subdict
+
+    def set_classification_params(self, classification_params: dict):
+        """Store all classification params."""
+        self.classification_params = classification_params
+
+    def set_metrics(self, metrics: dict):
         """Store evaluation metrics."""
-        self.additional_info["metrics"] = metrics
+        self.metrics = metrics
 
-    def set_feature_info(self, features_used: List[str]):
-        """Store list of features used."""
-        self.additional_info["features_used"] = features_used
+    def set_meta_analysis(self, meta_analysis: dict):
+        """Store meta analysis."""
+        self.meta_analysis = meta_analysis
 
     def add_info(self, key: str, value: Any):
         """Generic setter for any extra metadata."""
@@ -71,8 +138,16 @@ class RunMetadata:
             "timestamp": self.timestamp,
             "epoch_type": self.epoch_types,
             "model_key": self.model_key,
-            "patient_ids": self.initial_patient_ids,
-            **self.additional_info
+            "initial_patient_ids": self.initial_patient_ids,
+            "final_patient_ids": self.final_patient_ids,
+            "hyperparameters": self.hyperparameters,
+            "filtering_params": self.filtering_params,
+            "feature_params": self.feature_params,
+            "split_data": self.split_data,
+            "classification_params": self.classification_params,
+            "metrics": self.metrics,
+            "meta_analysis": self.meta_analysis,
+            "additional_info": self.additional_info
         }
 
     def save_to_json(self):

@@ -28,9 +28,10 @@ Dataset from [VitalDB](https://vitaldb.net/dataset/)
 - [x] Implement SVM
 - [ ] Implement modular Workflow
   - [x] Implement Pipeline subworkflows
-  - [ ] Implement coordinating method for workflows
+  - [x] Implement coordinating method for workflows
 - [ ] Implement Run-metadata functionalities
   - [x] Create Container class for collection and management of all relevant metadata
+  - [ ] Create Reader functionalities to retrieve and compare information in run metadata
   - [ ] Saving Functions
     - [x] Metadata file
     - [ ] Save all Data from combined feature files downstream in unique run folders
