@@ -43,8 +43,11 @@ Dataset from [VitalDB](https://vitaldb.net/dataset/)
   - [ ] Check for unique Name when created (with automatic uniquifying with appended timestamp)
   - [ ] Collect data from every step
     - [x] Filtering
-    - [ ] Feature extraction and selection
+    - [x] Transforms
+    - [x] Feature extraction and selection
     - [ ] Classification
+      - [ ] Classification data
+      - [x] Model Data
     - [ ] Metrics and Analytics
 
 # Matlab Section

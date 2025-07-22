@@ -25,3 +25,16 @@ for metric in metric_list:
     print(f"Best score: {grid_search.best_score()}")
     print(f"Best params: {grid_search.best_params()}")
 """
+
+filter_params = {
+    "butterworth":{
+        "lowcut": 0.5,
+        "highcut": 30.0,
+        "order": 4
+    }
+}
+
+(filter_method, filter_params), = filter_params.items()
+
+print(filter_method)
+print(filter_params)

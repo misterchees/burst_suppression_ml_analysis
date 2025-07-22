@@ -39,8 +39,8 @@ class Comparison:
         filtered_eeg = filtered_eegs[:, channel - 1]
 
         # Create PSD for both
-        raw_freq, raw_power = transforms.return_psd(raw_eeg, fs_raw)
-        filt_freq, filt_power = transforms.return_psd(filtered_eeg, fs_filt)
+        raw_freq, raw_power = transforms.calculate_psd_welch(raw_eeg, fs_raw)
+        filt_freq, filt_power = transforms.calculate_psd_welch(filtered_eeg, fs_filt)
 
         if same_plot:
             # Create one plot and write second plot into it with different color and label

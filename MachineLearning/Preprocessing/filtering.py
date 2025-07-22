@@ -2,11 +2,12 @@ import scipy.signal as signal
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.filter_utils import FilterUtils
+from MachineLearning.Utils.config_handler import load_config
 
 
 class Filtering:
 
-    def __init__(self, method: str, filter_params: dict):
+    def __init__(self, method: str, filter_params: dict = None):
         """
         Represents a class for initializing with a method name and its corresponding
         filter parameters in the form of a dictionary.
@@ -21,7 +22,10 @@ class Filtering:
         :type filter_params: dict
         """
         self.method = method
-        self.filter_params = filter_params
+        if filter_params is None:
+            self.filter_params = load_config("parameters_config.yaml")["filtering_params"]
+        else:
+            self.filter_params = filter_params
 
     def filter_multiple_eeg(self, eeg_list: list):
         """

@@ -5,6 +5,7 @@ from typing import List, Union, Optional, Dict, Any
 import pandas as pd
 
 from MachineLearning.IO.save_result import SaveResult, PathUtils
+from MachineLearning.Utils.config_handler import load_config
 
 
 class RunMetadata:
@@ -16,31 +17,37 @@ class RunMetadata:
     def __init__(
             self,
             epoch_types: list,
-            model_key: str,
+            model_params: dict,
             initial_patient_ids: Union[List[int], set],
             hyperparameters: dict,
             filtering_params: dict,
+            transform_params: dict,
             run_name: Optional[str] = None
     ):
         """
         :param epoch_types: List of exactly 2 epoch types to classify. Valid options are "normal_an", "awake", "faw"
-        :param model_key: String identifier for the ML model (e.g. "svm")
+        :param model_params: Params for the model used in this run.
         :param initial_patient_ids: List or set of patient IDs used in this run
         :param hyperparameters: Dictionary of hyperparameters used in this run
         :param filtering_params: Dictionary of filtering parameters used in this run.
+        :param transform_params: Dictionary of transform parameters used in this run.
         :param run_name: Optional manual run name (e.g. timestamp or hash)
         """
         if epoch_types not in {"normal_an", "awake", "faw"}:
             raise ValueError(f"Invalid epoch_type: {epoch_types}")
 
+        # Initial params
         self.epoch_types = epoch_types
-        self.model_key = model_key
+        self.model_key = next(iter(model_params))
+        self.model_dict = model_params
         self.initial_patient_ids = sorted(list(initial_patient_ids))
         self.hyperparameters = hyperparameters
         self.filtering_params = filtering_params
+        self.transform_params = transform_params
 
-        self.final_patient_ids = None
-        self.feature_params = None
+        # Params that are collected in and after the pipeline
+        self.final_patient_ids = set()
+        self.feature_params = {}
         self.split_data = {}
         self.classification_params = None
         self.metrics = None
@@ -52,20 +59,20 @@ class RunMetadata:
         self.timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         self.run_name = run_name or timestamp.strftime("%Y_%m_%dT%H_%M_%S")
 
-    def set_final_result_ids(self, result_ids: List[int]):
-        """Store ResultIDs that were finally used for the classification."""
-        self.final_patient_ids = sorted(result_ids)
+    def set_feature_info(self, feature_list: list):
+        """Store all feature params based on the given list of used features."""
+        featureset_params = load_config("parameters_config.yaml")["feature_params"]
 
-    def set_feature_info(self, feature_params: dict):
-        """Store all feature params. Contains list of used features and params of every feature"""
-        self.feature_params = feature_params
+        for feature in feature_list:
+            feature_params = featureset_params[feature]
+            self.feature_params[feature] = feature_params
 
     def set_split_data(self, split_paths: list):
         """
         Save the split data as a dictionary, using given split paths to retrieve the correct splits.
         Stucture in the end is:
         split_data: {
-            fold_<fold number>:{
+            fold_<fold number>: {
                 test: {
                     Start: <List of starts>
                     End: <List of ends>
@@ -98,6 +105,10 @@ class RunMetadata:
                 "train": train_dict
                 }
 
+            # Update final patient IDs
+            self.set_final_result_ids(test_dict)
+            self.set_final_result_ids(train_dict)
+
     @staticmethod
     def _create_split_subdict(split_path: str):
         """Creates entry for split path with Lists of Start, End, ResultID in the same order."""
@@ -114,6 +125,10 @@ class RunMetadata:
         }
 
         return subdict
+
+    def set_final_result_ids(self, folds_dict: dict):
+        """Store ResultIDs that were finally used for the classification."""
+        self.final_patient_ids.update(folds_dict["ResultID"])
 
     def set_classification_params(self, classification_params: dict):
         """Store all classification params."""
@@ -137,11 +152,12 @@ class RunMetadata:
             "run_name": self.run_name,
             "timestamp": self.timestamp,
             "epoch_type": self.epoch_types,
-            "model_key": self.model_key,
+            "model": self.model_dict,
             "initial_patient_ids": self.initial_patient_ids,
-            "final_patient_ids": self.final_patient_ids,
+            "final_patient_ids": sorted(self.final_patient_ids),
             "hyperparameters": self.hyperparameters,
             "filtering_params": self.filtering_params,
+            "transform_params": self.transform_params,
             "feature_params": self.feature_params,
             "split_data": self.split_data,
             "classification_params": self.classification_params,

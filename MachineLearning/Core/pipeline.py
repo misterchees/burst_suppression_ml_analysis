@@ -15,33 +15,48 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 class Pipeline:
     result_ids = []
 
-    def __init__(self, init_data_key: str, epoch_classes: dict, filter_method: str = "butterworth",
-                 hyperparams: dict = None, features_dict: dict = None, classification_dict: dict = None,
-                 metadata_to_analyze: list = None):
+    def __init__(self, init_data_key: str, epoch_classes: dict, filter_dict: dict = None, hyperparams: dict = None,
+                 transform_dict: dict = None, features_dict: dict = None, classification_dict: dict = None,
+                 model_dict: dict = None, metadata_to_analyze: list = None, run_name: str = None):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
         :param epoch_classes: A dict with two classes (keys 0 and 1), which will be handled throughout the pipeline.
          Valid values are: "awake", "faw" and "normal_an"
-        :param filter_method: Filter method to use. Allowed values are "butterworth".
+        :param filter_dict: Dictionary containing the filter method as the only key and its parameters as value.
         :param hyperparams: Hyperparameters for the pipeline. If None, the current parameters will be used.
+        :param transform_dict: Dictionary containing the parameters of the transform.
         :param features_dict: Dictionary containing a list of features to extract and another to combine.
         :param classification_dict: Dictionary containing the parameters of the classification.
+        :param model_dict: Dictionary containing the model (with params) to use for classification.
         :param metadata_to_analyze: List of metadata to analyze for error patterns in the classification.
+        :param run_name: Name of the run. If None, a timestamp will be used instead.
         """
-        loader = LoadData()
-
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
-        self.filter_method = filter_method
-        self.metadata_to_analyze = metadata_to_analyze
 
+        # Filter section
+        self.filter_method = next(iter(filter_dict))  # Getting the only key, which is the filter method
+        updated_filter_params = self._update_filterparams_config(filter_dict)
+        filt_params_dict = {self.filter_method: updated_filter_params}  # Dict for the run_metadata class
+
+        # Transform section
+        self.transform_method = next(iter(transform_dict))
+        updated_transform_params = self._update_transformparams_config(transform_dict)
+        transform_params_dict = {self.transform_method: updated_transform_params}
+
+
+        # Classification section
         self.random_seed = classification_dict["random_seed"]
         self.test_size = classification_dict["test_size"]
         self.remove_outliers = classification_dict["remove_outliers"]
-        self.model_key = classification_dict["model"]["model_key"]
-        self.model_params = classification_dict["model"]["params"]
 
+        # Model subsection
+        self.model_key = next(iter(model_dict))
+        self.model_params = self._update_modelparams_config(model_dict)
+        model_params_dict = {self.model_key: self.model_params}
+
+        # Set params related to feature extraction and combination
         if features_dict is not None:
             self.features = features_dict["features"]
             self.features_to_combine = features_dict["features_to_combine"]
@@ -50,19 +65,28 @@ class Pipeline:
             self.features_to_combine = None
 
         self.all_features = self._check_features()  # Flag to determine which features to handle
-
-        self.update_hyperparams(hyperparams)  # Update current parameters with given parameters
+        self._update_param_config(hyperparams)  # Update current parameters with given parameters
 
         # Initialize Transform and EEG-Extractor
         self._set_transforms_and_feature_extractor_instances(epoch_classes, hyperparams)
 
+        # Set list of metadata to analyze after classification
+        self.metadata_to_analyze = metadata_to_analyze
+
+        # Get ResultIDs specified by the folder of initial_data_key
+        loader = LoadData()
         self.result_ids = loader.return_all_result_ids(init_data_key)
 
-        # Set run metadata class
+        # Set run metadata class, collecting initial data
         epoch_list = [self.class_0, self.class_1]
-        filt_params_dict = {self.filter_method: self.get_current_filterparams()}
         self.run_metadata_collector = RunMetadata(
-            epoch_list, self.model_key, self.result_ids, self.get_current_hyperparams(), filt_params_dict
+            epoch_types=epoch_list,
+            model_params=model_params_dict,
+            initial_patient_ids=self.result_ids,
+            hyperparameters=self.get_current_hyperparams(),
+            filtering_params=filt_params_dict,
+            transform_params=transform_params_dict,
+            run_name=run_name
         )
 
     def complete_run(self, subworkflows_list: list[str] = None):
@@ -82,7 +106,7 @@ class Pipeline:
             "analyze": self.analyze_results
         }
 
-        # Validation of given list
+        # Validation of the given list
         invalid = [step for step in subworkflows_list if step not in func_dict]
         if invalid:
             raise ValueError(f"Invalid subworkflow keys: {invalid}. Valid keys are: {list(func_dict)}")
@@ -90,21 +114,21 @@ class Pipeline:
         # If no subworkflow list given -> All steps will be carried out
         if subworkflows_list is None:
             selected_funcs = func_dict.items()
-        else:  # Else create custom list of steps, preserving the order of the reference dict
+        else:  # Else create a custom list of steps, preserving the order of the reference dict
             selected_funcs = [
                 (name, func)
                 for name, func in func_dict.items()
                 if name in subworkflows_list
             ]
 
-        # Execute requested steps of pipeline. All params of the steps are already defined in initialization
+        # Execute requested steps of the pipeline. All params of the steps are already defined in initialization
         for name, func in selected_funcs:
             print(f"Running step: {name}")
             func()
 
     def already_calculated(self, calculation_type: str, epoch_type: str) -> bool:
         """
-        Checks if calculation type was already performed on given epoch type.
+        Checks if the calculation type was already performed on given epoch type.
         :param calculation_type: The type of calculation. Allowed values are "extract_features" and "transform"
         :param epoch_type: Epoch type. Allowed values are "awake", "faw" and "normal_an".
         :return: True if calculation type was already performed on given epoch type, else False.
@@ -149,21 +173,20 @@ class Pipeline:
         """ Applies filtering to all EEGs specified by the id-list in this class"""
         from MachineLearning.Preprocessing.filtering import Filtering
 
-        filterparams = self.get_current_filterparams()
-        filtering = Filtering(self.filter_method, filterparams)
+        filtering = Filtering(self.filter_method)
         filtering.filter_multiple_eeg(eeg_list=self.result_ids)
 
-    def transform_eeg_to_psd(self, channel=1, nperseg_seconds=2):
+    def transform_eeg_to_psd(self):
         """Wrapper for transform function implemented in Transforms class"""
         if self.transformer is None:
             print("Skipping PSD transforms")
             return
-        self.transformer.transform_eeg_episodes_to_psd(channel, nperseg_seconds)
+        self.transformer.transform_eeg_episodes_to_psd()
 
     def feature_extraction(self):
         """
         Extracts defined features from all EEGs in the current result_ids subset. Depending on the features
-        given to this pipeline instance it will extract features.
+        given to this pipeline instance, it will extract features.
         """
         if self.all_features is None or self.feature_extractor is None:
             print("Skipping feature extraction")
@@ -176,7 +199,7 @@ class Pipeline:
             for function in feature_functions.values():
                 function(self.feature_extractor)
 
-        # calls all functions implemented in feature extractor
+        # Calls all functions implemented in the feature extractor
         else:
             for function_key in self.features:
                 feature_functions[function_key](self.feature_extractor)
@@ -188,7 +211,7 @@ class Pipeline:
             print("Skipping feature combination method")
             return
 
-        # Ensure feature extractor is not None
+        # Ensure the feature extractor is not None
         if self.feature_extractor is None:
             epoch_tuple = self.class_0, self.class_1
             feature_extractor = EEGFeatureExtractor(epoch_tuple, {})
@@ -372,12 +395,13 @@ class Pipeline:
 
         :param folds: Indicates whether to perform classification using cross-validation.
                       If True, it applies cross-validation; if False, a single split is used.
-        :param kwargs: Additional optional parameters to pass to the classifier or related methods.
         :return: None
         """
         iterations = int(1 // self.test_size) * 2  # Double the number of minimal necessary iterations
         split_paths = self.create_splits(self.test_size, self.random_seed, folds=folds, iterations=iterations,
                                          remove_outlier_ids=self.remove_outliers)
+        # Collect split data
+        self.run_metadata_collector.set_split_data(split_paths)
 
         if not folds:
             train_path, test_path = split_paths
@@ -402,19 +426,10 @@ class Pipeline:
         return load_config("parameters_config.yaml")["current_params"]
 
     @staticmethod
-    def update_hyperparams(updated_parameters: dict) -> dict:
-        """Updates the parameters stored in config i.e., globally and returns the updated parameters as a dictionary."""
-        return update_config("parameters_config.yaml", updated_parameters)["current_params"]
-
-    @staticmethod
     def reset_hyperparams():
         """Resets the parameters stored in config i.e., globally."""
         default_params = load_config("parameters_config.yaml")["initial_params"]
         return update_config("parameters_config.yaml", {"current_params": default_params})
-
-    def get_current_filterparams(self) -> dict:
-        """Returns the current parameters as a dictionary."""
-        return load_config("parameters_config.yaml")["filtering_params"][self.filter_method]
 
     def _collect_classification_results(self, split_paths: list, **kwargs) -> tuple[list, list, list]:
         """
@@ -580,3 +595,80 @@ class Pipeline:
 
             # Summary Analysis of single analysis results
             self._analyze_meta_analyses(self.model_key, metadata, print_analysis, save_analysis, plots)
+
+    def collect_remaining_pipeline_paramaters(self, used_features: list):
+        self.run_metadata_collector.set_feature_info(used_features)
+
+
+
+    def _update_filterparams_config(self, filter_dict: dict) -> dict:
+        """
+        Updates the filtering parameters stored in config i.e., globally and returns
+        the updated parameters of the filtermethod in this class as a dictionary.
+        :param filter_dict: Dictionary with the new filter parameters.
+        """
+        updated_filter_params = self._update_second_level_dict_in_config(
+            "filtering_params", filter_dict, self.filter_method
+        )
+
+        return updated_filter_params
+
+    def _update_transformparams_config(self, transform_dict: dict) -> dict:
+        """
+        Updates the transform parameters stored in config i.e., globally and returns
+        the updated parameters of the transform method in this class as a dictionary.
+        :param transform_dict: Dictionary with the new transform parameters.
+        """
+        updated_transform_params = self._update_second_level_dict_in_config(
+            "transform_params", transform_dict, self.transform_method
+        )
+
+        return updated_transform_params
+
+    def _update_modelparams_config(self, model_dict: dict) -> dict:
+        """
+        Updates the model parameters stored in config i.e., globally and returns
+        the updated parameters of the model in this class as a dictionary.
+        :param model_dict: Dictionary with the new model parameters.
+        """
+        updated_model_params = self._update_second_level_dict_in_config(
+            "classification_params", model_dict, self.model_key
+        )
+
+        return updated_model_params
+
+
+    def _update_second_level_dict_in_config(self, config_key: str, update_dict: dict ,
+                                            second_level_dict_key: str):
+        """
+        Updates a second-level dictionary within the configuration data.
+
+        This method modifies a specific second-level dictionary within the provided
+        configuration structure, using the ``config_key`` and ``second_level_dict_key``
+        to locate the required section and the ``update_dict`` to apply the updates.
+        The updated second-level dictionary is then returned.
+
+        :param config_key: The key of the first-level dictionary in the configuration
+                           that needs to be updated.
+        :type config_key: str
+        :param update_dict: Dictionary containing the updated key-value pairs for the
+                            specified second-level dictionary.
+        :type update_dict: dict
+        :param second_level_dict_key: The key for the second-level dictionary within
+                                       the configuration that will be updated.
+        :type second_level_dict_key: str
+        :return: The updated second-level dictionary from the configuration data after
+                 applying the updates.
+        :rtype: dict
+        """
+        first_level_key = config_key
+        filter_update_info = {first_level_key: update_dict}
+        updated_config_data = self._update_param_config(filter_update_info)
+        updated_second_level_dict = updated_config_data[first_level_key][second_level_dict_key]
+
+        return updated_second_level_dict
+
+    @staticmethod
+    def _update_param_config(update_params: dict) -> dict:
+        """Updates the parameters stored in config i.e., globally and returns the updated parameters as a dictionary."""
+        return update_config("parameters_config.yaml", update_params)

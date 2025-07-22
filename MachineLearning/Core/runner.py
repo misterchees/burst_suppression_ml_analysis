@@ -5,7 +5,21 @@ from MachineLearning.Core.pipeline import Pipeline
 
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
 
-filtermethod = "butterworth"
+filter_params = {
+    "butterworth":{
+        "lowcut": 0.5,
+        "highcut": 30.0,
+        "order": 4
+    }
+}
+
+transform_params = {
+    "welch":{
+        "channel": 1,
+        "nperseg_seconds": 2,
+        "fs": 128
+    }
+}
 
 # Use None for variable to skip step; Use "all_features" if all features should be used in step
 features = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
@@ -30,8 +44,7 @@ svm_dict = {
 classification_dict = {
     "test_size": 0.15,
     "random_seed": 42,
-    "remove_outliers": False,
-    "model": svm_dict
+    "remove_outliers": False
 }
 
 # Metadata to analyze for errors
@@ -51,7 +64,7 @@ def run(new_params_: dict = None):
     pipeline = Pipeline(
         init_data_key=INITIAL_DATA_SUBDIR_KEY,
         epoch_classes=epoch_classes,
-        filter_method=filtermethod,
+        filter_dict=filter_params,
         hyperparams=new_params_,
         features_dict=features_dict,
         classification_dict=classification_dict,
