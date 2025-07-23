@@ -123,7 +123,7 @@ class PathUtils:
         :param extension_filter: Optional file extension to filter by (e.g. ".csv" or ".txt").
         :param print_to_console: If true will print out all files to console.
         :param fullpaths: If true returns full file paths instead of just file names.
-        :returns: List of file names and the total count of these files.
+        :returns: List of file names and the total count of these files (list of file, length of list).
         """
         if not os.path.exists(folder_path):
             print(f"Folder does not exist: {folder_path}")

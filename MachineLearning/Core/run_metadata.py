@@ -14,6 +14,16 @@ class RunMetadata:
     Container for collecting and managing metadata for a single ML run.
     Allows step-by-step population of fields and final export to YAML.
     """
+    # Keys that are used multiple times in this class
+    epoch_types_key = "epoch_type"
+    model_params_key = "model"
+    initial_patient_ids_key = "initial_patient_ids"
+    hyperparameters_key = "hyperparameters"
+    filtering_params_key = "filtering_params"
+    transform_params_key = "transform_params"
+    feature_params_key = "feature_params"
+    classification_params_key = "classification_params"
+
 
     def __init__(
             self,
@@ -36,8 +46,9 @@ class RunMetadata:
         :param classification_params: Dictionary of classification parameters used in this run.
         :param run_name: Optional manual run name (e.g. timestamp or hash)
         """
-        if epoch_types not in {"normal_an", "awake", "faw"}:
-            raise ValueError(f"Invalid epoch_type: {epoch_types}")
+        for epoch_type in epoch_types:
+            if epoch_type not in ["normal_an", "awake", "faw"]:
+                raise ValueError(f"Invalid epoch_type: {epoch_type}")
 
         # Initial params
         self.epoch_types = epoch_types
@@ -48,6 +59,13 @@ class RunMetadata:
         self.filtering_params = filtering_params
         self.transform_params = transform_params
         self.classification_params = classification_params
+        self.param_hash = self._calculate_dict_hash(epoch_types, model_params, initial_patient_ids, hyperparameters,
+                                                    filtering_params, transform_params, classification_params)
+
+        # Cancel run, if there is already one existent
+        path_of_exact_same_run = self._find_run_with_same_parameters()
+        if path_of_exact_same_run:
+            raise ValueError(f"A run with the same parameters already exists at {path_of_exact_same_run}.")
 
         # Params that are collected in and after the pipeline run
         self.final_patient_ids = set()
@@ -56,10 +74,8 @@ class RunMetadata:
         self.metrics = None
         self.additional_info = {}
 
-        # Timestamp as the default Run-Name and as meta-information
-        timestamp = datetime.now()
-        self.timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-        self.run_name = run_name or timestamp.strftime("%Y_%m_%dT%H_%M_%S")
+        # Set run_name and timestamp for this instance
+        self.run_name, self.timestamp = self._init_run_name(run_name)
         # Set run_name globally
         update_config("parameters_config.yaml", {"run_name": self.run_name})
 
@@ -134,23 +150,6 @@ class RunMetadata:
             self.set_final_result_ids(test_dict)
             self.set_final_result_ids(train_dict)
 
-    @staticmethod
-    def _create_split_subdict(split_path: str):
-        """Creates entry for split path with Lists of Start, End, ResultID in the same order."""
-
-        fold_df = pd.read_csv(split_path)
-        starts = fold_df["Start"].to_list()  # Order is preserved in this operation
-        ends = fold_df["End"].to_list()
-        result_ids = fold_df["ResultID"].to_list()
-
-        subdict = {
-            "Start": starts,
-            "End": ends,
-            "ResultID": result_ids
-        }
-
-        return subdict
-
     def set_final_result_ids(self, folds_dict: dict):
         """Store ResultIDs that were finally used for the classification."""
         self.final_patient_ids.update(folds_dict["ResultID"])
@@ -168,18 +167,19 @@ class RunMetadata:
         return {
             "run_name": self.run_name,
             "timestamp": self.timestamp,
-            "epoch_type": self.epoch_types,
-            "model": self.model_dict,
-            "initial_patient_ids": self.initial_patient_ids,
+            self.epoch_types_key: self.epoch_types,
+            self.model_params_key: self.model_dict,
+            self.initial_patient_ids_key: self.initial_patient_ids,
             "final_patient_ids": sorted(self.final_patient_ids),
-            "hyperparameters": self.hyperparameters,
-            "filtering_params": self.filtering_params,
-            "transform_params": self.transform_params,
-            "feature_params": self.feature_params,
+            self.hyperparameters_key: self.hyperparameters,
+            self.filtering_params_key: self.filtering_params,
+            self.transform_params_key: self.transform_params,
+            self.feature_params_key: self.feature_params,
             "split_data": self.split_data,
-            "classification_params": self.classification_params,
+            self.classification_params_key: self.classification_params,
             "metrics": self.metrics,
-            "additional_info": self.additional_info
+            "additional_info": self.additional_info,
+            "param_hash": self.param_hash
         }
 
     def save_to_json(self):
@@ -190,3 +190,147 @@ class RunMetadata:
     def __repr__(self):
         """String representation of the RunMetadata object."""
         return f"<RunMetadata run='{self.run_name}' model='{self.model_key}'>"
+
+    def _init_run_name(self, run_name: str | None) -> tuple[str, str]:
+        """
+        Initializes the run name, ensuring uniqueness within the metadata directory.
+
+        :param run_name: Optional base name for the run.
+        :return: Unique run name as string.
+        """
+        timestamp = datetime.now()
+        metadata_timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")  # Timestamp for the metadata dict
+
+        timestamp_suffix = timestamp.strftime("%Y_%m_%dT%H_%M_%S")  # Timestamp suffix for the run_name
+        default_run_name = f"Run_{timestamp_suffix}"
+
+        base_name = run_name or default_run_name
+
+        # Get folder with files and return a list of them
+        loader = LoadData()
+        metadata_dir = loader.return_all_parameter_fullpath(
+            self.hyperparameters, False, False, "run_metadata", self.model_key
+        )
+        files,_ = PathUtils.list_files_in_folder(metadata_dir, ".json")
+
+        # Files list to set and then check if run_name already exists
+        existing_runs = set(files) if files else set()
+
+        if f"{base_name}.json" in existing_runs:
+            base_name = f"{base_name}_{timestamp_suffix}"  # Append timestamp if name already exists
+
+        return base_name, metadata_timestamp
+
+    @staticmethod
+    def _create_split_subdict(split_path: str):
+        """Creates entry for split path with Lists of Start, End, ResultID in the same order."""
+
+        fold_df = pd.read_csv(split_path)
+        starts = fold_df["Start"].to_list()  # Order is preserved in this operation
+        ends = fold_df["End"].to_list()
+        result_ids = fold_df["ResultID"].to_list()
+
+        subdict = {
+            "Start": starts,
+            "End": ends,
+            "ResultID": result_ids
+        }
+
+        return subdict
+
+    def _find_run_with_same_parameters(self) -> str | None:
+        """
+        Checks for the existence of a specific parameter hash in previously stored metadata
+        files within a given model's metadata directory. If the hash exists, the path to
+        the corresponding metadata file is returned.
+
+        This method iterates over metadata files associated with the current model. It
+        verifies whether the `param_hash` matches the stored hash in the metadata. If
+        found, it returns the path to the matching file. If no associated hash exists
+        within the metadata structure, a new hash is added for existing runs and checked
+        against the current parameter hash.
+
+        :rtype: str or None
+        :return: The path to the metadata file containing the matching parameter hash if
+            found, otherwise returns None.
+        """
+
+        # Get folder with files and return a list of them
+        loader = LoadData()
+        metadata_dir = loader.return_all_parameter_fullpath(
+            self.hyperparameters, False, False, "run_metadata", self.model_key
+        )
+        files, _ = PathUtils.list_files_in_folder(metadata_dir, ".json")
+
+        for filename in files:
+            # Load metadata file
+            fullpath = PathUtils.return_anypath(metadata_dir, filename)
+            metadata_dict = PathUtils.load_json(fullpath)
+
+            # Check if there is a hash present in old runs. If not create one and update existing run
+            if "param_hash" in metadata_dict:
+                if metadata_dict["param_hash"] == self.param_hash:
+                    return fullpath
+            else:
+                other_hash = self._add_hash_to_existing_run(metadata_dict, filename)
+                if other_hash == self.param_hash:
+                    return fullpath
+
+        return None
+
+
+    def _add_hash_to_existing_run(self, metadata_dict: dict, file: str) -> str:
+        """
+        Adds a hash based on provided metadata to an existing run and updates the metadata file.
+
+        The method calculates a hash from specific metadata fields and appends it to the given
+        metadata dictionary before saving it to a file. The hash is returned after being added to
+        the dictionary.
+
+        :param metadata_dict: Metadata dictionary containing information used to generate the hash.
+        :param file: File path where the metadata, along with the generated hash, will be saved.
+        :return: The hash string generated from the provided metadata.
+        """
+        other_hash = self._calculate_dict_hash(
+            epoch_types=metadata_dict[self.epoch_types_key],
+            model_params=metadata_dict[self.model_params_key],
+            initial_patient_ids=metadata_dict[self.initial_patient_ids_key],
+            hyperparameters=metadata_dict[self.hyperparameters_key],
+            filtering_params=metadata_dict[self.filtering_params_key],
+            transform_params=metadata_dict[self.transform_params_key],
+            classification_params=metadata_dict[self.classification_params_key]
+        )
+        metadata_dict["param_hash"] = other_hash
+        saver = SaveResult()
+        saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, metadata_dict,
+                                        file)
+        return other_hash
+
+    def _calculate_dict_hash(
+            self,
+            epoch_types: list,
+            model_params: dict,
+            initial_patient_ids: Union[List[int], set],
+            hyperparameters: dict,
+            filtering_params: dict,
+            transform_params: dict,
+            classification_params: dict,) -> str:
+        """
+        Generates a unique hash for the given parameters. For more information about the params, see: __init__
+        :return: SHA256 hash string.
+        """
+        import json
+        import hashlib
+        param_fingerprint_dict = {
+            self.epoch_types_key: sorted(epoch_types),
+            self.model_params_key: model_params,
+            self.initial_patient_ids_key: sorted(list(initial_patient_ids)),
+            self.hyperparameters_key: hyperparameters,
+            self.filtering_params_key: filtering_params,
+            self.transform_params_key: transform_params,
+            self.classification_params_key: classification_params
+        }
+
+        # Convert to stable JSON string (sort keys, remove whitespace)
+        param_str = json.dumps(param_fingerprint_dict, sort_keys=True, separators=(',', ':'))
+        return hashlib.sha256(param_str.encode('utf-8')).hexdigest()

@@ -117,7 +117,9 @@ class Pipeline:
             print(f"Running step: {name}")
             func()
 
-        self.collect_remaining_pipeline_paramaters()
+        # Collect remaining metadata and save them
+        self._collect_remaining_pipeline_paramaters()
+        self.run_metadata_collector.save_to_json()
 
     def already_calculated(self, calculation_type: str, epoch_type: str) -> bool:
         """
@@ -593,102 +595,11 @@ class Pipeline:
             # Summary Analysis of single analysis results
             self._analyze_meta_analyses(self.model_key, metadata, print_analysis, save_analysis, plots)
 
-    def collect_remaining_pipeline_paramaters(self):
+    def _collect_remaining_pipeline_paramaters(self):
         self.run_metadata_collector.set_feature_info()
         self.run_metadata_collector.set_split_data(self.split_paths)
         self.run_metadata_collector.set_metrics(self.metrics)
 
-
-    def _update_filterparams_config(self, filter_dict: dict) -> dict:
-        """
-        Updates the filtering parameters stored in config i.e., globally and returns
-        the updated parameters of the filtermethod in this class as a dictionary.
-        :param filter_dict: Dictionary with the new filter parameters.
-        """
-        updated_filter_params = self._update_second_level_dict_in_config(
-            "filtering_params", filter_dict, self.filter_method
-        )
-
-        return updated_filter_params
-
-    def _update_transformparams_config(self, transform_dict: dict) -> dict:
-        """
-        Updates the transform parameters stored in config i.e., globally and returns
-        the updated parameters of the transform method in this class as a dictionary.
-        :param transform_dict: Dictionary with the new transform parameters.
-        """
-        updated_transform_params = self._update_second_level_dict_in_config(
-            "transform_params", transform_dict, self.transform_method
-        )
-
-        return updated_transform_params
-
-    def _update_modelparams_config(self, model_dict: dict) -> dict:
-        """
-        Updates the model parameters stored in config i.e., globally and returns
-        the updated parameters of the model in this class as a dictionary.
-        :param model_dict: Dictionary with the new model parameters.
-        """
-        updated_model_params = self._update_second_level_dict_in_config(
-            "classification_params", model_dict, self.model_key
-        )
-
-        return updated_model_params
-
-    def _update_classificationparams_config(self, classification_dict: dict) -> dict:
-        """
-        Updates classification parameters in the configuration and retrieves the relevant
-        updated values.
-
-        This method accepts a dictionary of classification parameters, updates the appropriate
-        section in the configuration, and returns the relevant parameters such as random seed,
-        test size, and outlier removal flag in a dictionary.
-
-        :param classification_dict: A dictionary containing classification parameter values to be updated
-                                    in the configuration.
-        :type classification_dict: dict
-        :return: A dict containing the updated random seed, test size, and outlier removal flag
-        :rtype: dict
-        """
-        # Update config and retrieve the correct section of updated parameters
-        first_key = "classification_params"
-        update_dict = {first_key: classification_dict}
-        updated_classfication_params = self._update_param_config(update_dict)[first_key]
-
-        return updated_classfication_params
-
-
-
-
-    def _update_second_level_dict_in_config(self, config_key: str, update_dict: dict ,
-                                            second_level_dict_key: str):
-        """
-        Updates a second-level dictionary within the configuration data.
-
-        This method modifies a specific second-level dictionary within the provided
-        configuration structure, using the ``config_key`` and ``second_level_dict_key``
-        to locate the required section and the ``update_dict`` to apply the updates.
-        The updated second-level dictionary is then returned.
-
-        :param config_key: The key of the first-level dictionary in the configuration
-                           that needs to be updated.
-        :type config_key: str
-        :param update_dict: Dictionary containing the updated key-value pairs for the
-                            specified second-level dictionary.
-        :type update_dict: dict
-        :param second_level_dict_key: The key for the second-level dictionary within
-                                       the configuration that will be updated.
-        :type second_level_dict_key: str
-        :return: The updated second-level dictionary from the configuration data after
-                 applying the updates.
-        :rtype: dict
-        """
-        first_level_key = config_key
-        filter_update_info = {first_level_key: update_dict}
-        updated_config_data = self._update_param_config(filter_update_info)
-        updated_second_level_dict = updated_config_data[first_level_key][second_level_dict_key]
-
-        return updated_second_level_dict
 
     @staticmethod
     def _update_param_config(update_params: dict) -> dict:

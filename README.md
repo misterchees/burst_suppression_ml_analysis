@@ -32,14 +32,13 @@ Dataset from [VitalDB](https://vitaldb.net/dataset/)
 - [ ] Implement Run-metadata functionalities
   - [x] Create Container class for collection and management of all relevant metadata
   - [ ] Create Reader functionalities to retrieve and compare information in run metadata
-  - [ ] Saving Functions
+  - [x] Saving Functions
     - [x] Metadata file
-    - [ ] Save all Data from combined feature files downstream in unique run folders
-      - [ ] Combined Features
-      - [ ] Splits
-      - [ ] Results
-      - [ ] Metrics
-      - [ ] Analysis
+    - [x] Save all Data from combined feature files downstream in unique run folders
+      - [x] Splits
+      - [x] Results
+      - [x] Metrics
+      - [x] Analysis
   - [ ] Check for unique Name when created (with automatic uniquifying with appended timestamp)
   - [x] Collect data from every step
     - [x] Filtering

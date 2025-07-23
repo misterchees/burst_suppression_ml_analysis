@@ -150,7 +150,7 @@ class IOCore:
             fullpath = PathUtils.return_anypath(fullpath, run_name)
 
         if create_dirs:
-            os.makedirs(folder_path, exist_ok=True)
+            os.makedirs(os.path.dirname(fullpath) if last_node_file else fullpath, exist_ok=True)
 
         return fullpath
 
