@@ -5,7 +5,8 @@ from typing import List, Union, Optional, Dict, Any
 import pandas as pd
 
 from MachineLearning.IO.save_result import SaveResult, PathUtils
-from MachineLearning.Utils.config_handler import load_config
+from MachineLearning.IO.load_data import LoadData
+from MachineLearning.Utils.config_handler import load_config, update_config
 
 
 class RunMetadata:
@@ -22,6 +23,7 @@ class RunMetadata:
             hyperparameters: dict,
             filtering_params: dict,
             transform_params: dict,
+            classification_params: dict,
             run_name: Optional[str] = None
     ):
         """
@@ -31,6 +33,7 @@ class RunMetadata:
         :param hyperparameters: Dictionary of hyperparameters used in this run
         :param filtering_params: Dictionary of filtering parameters used in this run.
         :param transform_params: Dictionary of transform parameters used in this run.
+        :param classification_params: Dictionary of classification parameters used in this run.
         :param run_name: Optional manual run name (e.g. timestamp or hash)
         """
         if epoch_types not in {"normal_an", "awake", "faw"}:
@@ -44,26 +47,48 @@ class RunMetadata:
         self.hyperparameters = hyperparameters
         self.filtering_params = filtering_params
         self.transform_params = transform_params
+        self.classification_params = classification_params
 
-        # Params that are collected in and after the pipeline
+        # Params that are collected in and after the pipeline run
         self.final_patient_ids = set()
         self.feature_params = {}
         self.split_data = {}
-        self.classification_params = None
         self.metrics = None
-        self.meta_analysis = None
         self.additional_info = {}
 
         # Timestamp as the default Run-Name and as meta-information
         timestamp = datetime.now()
         self.timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         self.run_name = run_name or timestamp.strftime("%Y_%m_%dT%H_%M_%S")
+        # Set run_name globally
+        update_config("parameters_config.yaml", {"run_name": self.run_name})
 
-    def set_feature_info(self, feature_list: list):
+
+    def set_feature_info(self):
         """Store all feature params based on the given list of used features."""
         featureset_params = load_config("parameters_config.yaml")["feature_params"]
+        rel_bandpower_key = "relative_bandpower"
 
+        # Assemble path and read header of combined features csv
+        loader = LoadData()
+        combined_features_path = loader.return_file_fullpath(
+            self.hyperparameters, True, False, self.epoch_types[0],
+            "test_and_train_data", "feature_sets"
+        )
+        combined_features_df_header = pd.read_csv(combined_features_path, nrows=0)
+
+        # Change to list and remove non-feature columns as well as single bands
+        header_list = combined_features_df_header.columns.to_list()
+        bands_to_remove = list(featureset_params[rel_bandpower_key]["frequency_bands"].keys())
+        feature_list = [col for col in header_list if col not in {"Start", "End", "ResultID"} and col not in bands_to_remove]
+
+        # Add "relative_bandpower" as a replacement if single bands were present
+        if any(col in header_list for col in bands_to_remove):
+            feature_list.append(rel_bandpower_key)
+
+        # Get all relevant features with params from all params dict
         for feature in feature_list:
+            feature = feature.lower()  # Features to lower case, to match with param keys
             feature_params = featureset_params[feature]
             self.feature_params[feature] = feature_params
 
@@ -130,17 +155,9 @@ class RunMetadata:
         """Store ResultIDs that were finally used for the classification."""
         self.final_patient_ids.update(folds_dict["ResultID"])
 
-    def set_classification_params(self, classification_params: dict):
-        """Store all classification params."""
-        self.classification_params = classification_params
-
     def set_metrics(self, metrics: dict):
         """Store evaluation metrics."""
         self.metrics = metrics
-
-    def set_meta_analysis(self, meta_analysis: dict):
-        """Store meta analysis."""
-        self.meta_analysis = meta_analysis
 
     def add_info(self, key: str, value: Any):
         """Generic setter for any extra metadata."""
@@ -162,7 +179,6 @@ class RunMetadata:
             "split_data": self.split_data,
             "classification_params": self.classification_params,
             "metrics": self.metrics,
-            "meta_analysis": self.meta_analysis,
             "additional_info": self.additional_info
         }
 

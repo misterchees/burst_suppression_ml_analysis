@@ -15,70 +15,56 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 class Pipeline:
     result_ids = []
 
-    def __init__(self, init_data_key: str, epoch_classes: dict, filter_dict: dict = None, hyperparams: dict = None,
-                 transform_dict: dict = None, features_dict: dict = None, classification_dict: dict = None,
-                 model_dict: dict = None, metadata_to_analyze: list = None, run_name: str = None):
+    def __init__(self, init_data_key: str, epoch_classes: dict, update_dict: dict, filter_method: str, model_key: str,
+                 transform_method: str, features_dict: dict = None, metadata_to_analyze: list = None,
+                 run_name: str = None):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
         :param epoch_classes: A dict with two classes (keys 0 and 1), which will be handled throughout the pipeline.
          Valid values are: "awake", "faw" and "normal_an"
-        :param filter_dict: Dictionary containing the filter method as the only key and its parameters as value.
-        :param hyperparams: Hyperparameters for the pipeline. If None, the current parameters will be used.
-        :param transform_dict: Dictionary containing the parameters of the transform.
+        :param update_dict: A dict with all relevant parameters to update them globally i.e. in the params config.
+        :param filter_method: Name of filter-method to use.
+        :param model_key: Name of model to use.
+        :param transform_method: Name of transform-method to use.
         :param features_dict: Dictionary containing a list of features to extract and another to combine.
-        :param classification_dict: Dictionary containing the parameters of the classification.
-        :param model_dict: Dictionary containing the model (with params) to use for classification.
         :param metadata_to_analyze: List of metadata to analyze for error patterns in the classification.
         :param run_name: Name of the run. If None, a timestamp will be used instead.
         """
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
 
-        # Filter section
-        self.filter_method = next(iter(filter_dict))  # Getting the only key, which is the filter method
-        updated_filter_params = self._update_filterparams_config(filter_dict)
-        filt_params_dict = {self.filter_method: updated_filter_params}  # Dict for the run_metadata class
+        # Update parameter config and get updated params
+        updated_params = self._update_param_config(update_dict)
 
-        # Transform section
-        self.transform_method = next(iter(transform_dict))
-        updated_transform_params = self._update_transformparams_config(transform_dict)
-        transform_params_dict = {self.transform_method: updated_transform_params}
+        # Set instance values
+        self.filter_method = filter_method
+        self.transform_method = transform_method
+        self.model_key = model_key
+        self.classification_params = updated_params["classification_params"]
+        self.model_params = self.classification_params[self.model_key]
+        self.hyperparams = updated_params["current_params"]
+        self.metadata_to_analyze = metadata_to_analyze
 
-
-        # Classification section
-        self.random_seed = classification_dict["random_seed"]
-        self.test_size = classification_dict["test_size"]
-        self.remove_outliers = classification_dict["remove_outliers"]
-
-        # Model subsection
-        self.model_key = next(iter(model_dict))
-        self.model_params = self._update_modelparams_config(model_dict)
-        model_params_dict = {self.model_key: self.model_params}
-
+        # Section to determine which operations can be skipped
         # Set params related to feature extraction and combination
-        if features_dict is not None:
-            self.features = features_dict["features"]
-            self.features_to_combine = features_dict["features_to_combine"]
-        else:
-            self.features = None
-            self.features_to_combine = None
-
+        self.features = features_dict["features"] if features_dict is not None else None
+        self.features_to_combine = features_dict["features_to_combine"] if features_dict is not None else None
         self.all_features = self._check_features()  # Flag to determine which features to handle
-        self._update_param_config(hyperparams)  # Update current parameters with given parameters
 
         # Initialize Transform and EEG-Extractor
-        self._set_transforms_and_feature_extractor_instances(epoch_classes, hyperparams)
-
-        # Set list of metadata to analyze after classification
-        self.metadata_to_analyze = metadata_to_analyze
+        self._set_transforms_and_feature_extractor_instances(epoch_classes, self.hyperparams)
 
         # Get ResultIDs specified by the folder of initial_data_key
         loader = LoadData()
         self.result_ids = loader.return_all_result_ids(init_data_key)
 
         # Set run metadata class, collecting initial data
+        filt_params_dict = {filter_method: updated_params["filtering_params"][filter_method]}
+        transform_params_dict = {transform_method: updated_params["transform_params"][transform_method]}
+        model_params_dict = {self.model_key: self.model_params}
         epoch_list = [self.class_0, self.class_1]
+
         self.run_metadata_collector = RunMetadata(
             epoch_types=epoch_list,
             model_params=model_params_dict,
@@ -86,8 +72,13 @@ class Pipeline:
             hyperparameters=self.get_current_hyperparams(),
             filtering_params=filt_params_dict,
             transform_params=transform_params_dict,
+            classification_params=self.classification_params,
             run_name=run_name
         )
+
+        # Set variables to use later
+        self.split_paths = None
+        self.metrics = None
 
     def complete_run(self, subworkflows_list: list[str] = None):
         """
@@ -125,6 +116,8 @@ class Pipeline:
         for name, func in selected_funcs:
             print(f"Running step: {name}")
             func()
+
+        self.collect_remaining_pipeline_paramaters()
 
     def already_calculated(self, calculation_type: str, epoch_type: str) -> bool:
         """
@@ -244,7 +237,7 @@ class Pipeline:
             if not transform_epochs:
                 self.transformer = None
             else:
-                self.transformer = Transforms(tuple(transform_epochs), parameters)
+                self.transformer = Transforms(tuple(transform_epochs), self.transform_method, parameters)
             if not feature_epochs:
                 self.feature_extractor = None
             else:
@@ -276,8 +269,8 @@ class Pipeline:
                     raise ValueError(f"'{key}' is no valid feature key. Valid keys are: {feature_keys}")
             return False
 
-    def create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None,
-                      remove_outlier_ids: bool = False):
+    def _create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None,
+                       remove_outlier_ids: bool = False):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
         ratios of faw and awake class in both test and train.
@@ -315,8 +308,8 @@ class Pipeline:
             return return_splits()
         return None
 
-    def run_svm_classifier(self, train_path: str, test_path: str,
-                           classifier: Classifier = None, save_clf=True, save_pred=True, **kwargs):
+    def _run_svm_classifier(self, train_path: str, test_path: str,
+                            classifier: Classifier = None, save_clf=True, save_pred=True, **kwargs):
         """
         Runs SVM classifier on train and test sets of given paths. It takes a pretrained Classifier or trains
         the base model if None is given.
@@ -366,7 +359,7 @@ class Pipeline:
 
         return y_pred, y_test, y_proba
 
-    def evaluate_metrics(self, y_test, y_pred, y_proba, folds: bool, print_metrics=True, save_metrics=True):
+    def _evaluate_metrics(self, y_test, y_pred, y_proba, folds: bool, print_metrics=True, save_metrics=True):
         """
         Wrapper for the metric evaluator of Machine Learning algorithm.
         :param y_test: Test labels which contain ground truth.
@@ -397,20 +390,24 @@ class Pipeline:
                       If True, it applies cross-validation; if False, a single split is used.
         :return: None
         """
-        iterations = int(1 // self.test_size) * 2  # Double the number of minimal necessary iterations
-        split_paths = self.create_splits(self.test_size, self.random_seed, folds=folds, iterations=iterations,
-                                         remove_outlier_ids=self.remove_outliers)
-        # Collect split data
-        self.run_metadata_collector.set_split_data(split_paths)
+        # Retrive classification params
+        test_size = self.classification_params["test_size"]
+        random_seed = self.classification_params["random_seed"]
+        remove_outliers = self.classification_params["remove_outliers"]
+
+
+        iterations = int(1 // test_size) * 2  # Double the number of minimal necessary iterations
+        self.split_paths = self._create_splits(test_size, random_seed, folds=folds, iterations=iterations,
+                                          remove_outlier_ids=remove_outliers)
 
         if not folds:
-            train_path, test_path = split_paths
-            y_pred, y_test, y_proba = self.run_svm_classifier(train_path, test_path, save_clf=False, **self.model_params)
-            self.evaluate_metrics(y_test, y_pred, y_proba, folds)
+            train_path, test_path = self.split_paths
+            y_pred, y_test, y_proba = self._run_svm_classifier(train_path, test_path, save_clf=False, **self.model_params)
+            self.metrics = self._evaluate_metrics(y_test, y_pred, y_proba, folds)
 
         else:
-            y_pred, y_test, y_proba = self._collect_classification_results(split_paths, **self.model_params)
-            self.evaluate_metrics(y_test, y_pred, y_proba, folds)
+            y_pred, y_test, y_proba = self._collect_classification_results(self.split_paths, **self.model_params)
+            self.metrics = self._evaluate_metrics(y_test, y_pred, y_proba, folds)
 
     def set_result_ids(self, initial_data_key: str):
         """
@@ -446,7 +443,7 @@ class Pipeline:
         probabilities = []
 
         for train_path, test_path in split_paths:
-            prediction, true_label, probability = self.run_svm_classifier(
+            prediction, true_label, probability = self._run_svm_classifier(
                 train_path,
                 test_path,
                 save_clf=False,
@@ -596,9 +593,10 @@ class Pipeline:
             # Summary Analysis of single analysis results
             self._analyze_meta_analyses(self.model_key, metadata, print_analysis, save_analysis, plots)
 
-    def collect_remaining_pipeline_paramaters(self, used_features: list):
-        self.run_metadata_collector.set_feature_info(used_features)
-
+    def collect_remaining_pipeline_paramaters(self):
+        self.run_metadata_collector.set_feature_info()
+        self.run_metadata_collector.set_split_data(self.split_paths)
+        self.run_metadata_collector.set_metrics(self.metrics)
 
 
     def _update_filterparams_config(self, filter_dict: dict) -> dict:
@@ -636,6 +634,30 @@ class Pipeline:
         )
 
         return updated_model_params
+
+    def _update_classificationparams_config(self, classification_dict: dict) -> dict:
+        """
+        Updates classification parameters in the configuration and retrieves the relevant
+        updated values.
+
+        This method accepts a dictionary of classification parameters, updates the appropriate
+        section in the configuration, and returns the relevant parameters such as random seed,
+        test size, and outlier removal flag in a dictionary.
+
+        :param classification_dict: A dictionary containing classification parameter values to be updated
+                                    in the configuration.
+        :type classification_dict: dict
+        :return: A dict containing the updated random seed, test size, and outlier removal flag
+        :rtype: dict
+        """
+        # Update config and retrieve the correct section of updated parameters
+        first_key = "classification_params"
+        update_dict = {first_key: classification_dict}
+        updated_classfication_params = self._update_param_config(update_dict)[first_key]
+
+        return updated_classfication_params
+
+
 
 
     def _update_second_level_dict_in_config(self, config_key: str, update_dict: dict ,

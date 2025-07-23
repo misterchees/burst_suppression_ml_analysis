@@ -128,8 +128,10 @@ class IOCore:
         :param folder_parts: Keys of folders from the path_config that define folder1 to folderN
         :return: Return a fullpath of the above description.
         """
+        individual_run_keys = ["splits", "models", "results", "metadata_analysis"]  # Keys to create individual run folders
         dir_first_part = self.return_folder_path(*folder_parts)
         prefix_name = self.return_folder_name(*folder_parts)
+
         if not last_node_file:
             dir_abcd_xy_part = PathUtils.return_A_B_C_D_X_Y_path(prefix_name, parameters)
             folder_path = PathUtils.return_anypath(dir_first_part, dir_abcd_xy_part)
@@ -139,6 +141,13 @@ class IOCore:
             folder_path = PathUtils.return_anypath(dir_first_part, dir_abcd_part)
             xy_part = PathUtils.return_X_Y_name(parameters)
             fullpath = PathUtils.return_anypath(folder_path, f"{xy_part}.csv")
+
+        # Append run_name if necessary
+        if any(key in folder_parts for key in individual_run_keys):
+            run_name = load_config("parameters_config.yaml")["run_name"]
+            if run_name is None:
+                raise ValueError("Expected run_name in parameters_config but got None.")
+            fullpath = PathUtils.return_anypath(fullpath, run_name)
 
         if create_dirs:
             os.makedirs(folder_path, exist_ok=True)

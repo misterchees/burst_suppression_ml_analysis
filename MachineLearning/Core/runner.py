@@ -4,20 +4,45 @@ This module is to execute all pipeline commands and therefore the main point to 
 from MachineLearning.Core.pipeline import Pipeline
 
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
+channel = 1
+model_key = "svm"
+model_params = {"C":  1, "kernel": "rbf"}
+filter_method = "butterworth"
+transform_method = "welch"
 
-filter_params = {
-    "butterworth":{
-        "lowcut": 0.5,
-        "highcut": 30.0,
-        "order": 4
-    }
-}
-
-transform_params = {
-    "welch":{
-        "channel": 1,
-        "nperseg_seconds": 2,
-        "fs": 128
+all_run_params_dict = {
+    "current_params": {
+        "merged_episodes": False,
+        "bis_threshold": 70,
+        "mac_threshold": 0.8,
+        "min_episode_length": 20,
+        "refractory_time": 5,
+        "fixed_window_size": 20,
+        "overlap": 0.0
+    },
+    "filtering_params" : {
+        filter_method: {"lowcut": 0.5, "highcut": 30.0, "order": 4}
+    },
+    "transform_params" : {
+        transform_method: {"channel": channel, "nperseg_seconds": 2, "fs": 128}
+    },
+    "feature_params" : {
+        "relative_bandpower": {"normalize_to": "bands"},
+        "shannon_entropy": {"normalize": True},
+        "spectral_skewness": {"normalize": True, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
+        "spectral_kurtosis": {"normalize": True, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
+        "mean": {"channel": channel},
+        "variance": {"channel": channel},
+        "amplitude": {"channel": channel},
+        "sample_entropy": {"channel": channel, "emb_dim": 2, "tolerance": 0.2},
+        "permutation_entropy": {"channel": channel, "order": 3, "delay": 1, "normalize": True},
+        "fuzzy_entropy": {"channel": channel, "m": 2,"r": 0.2,"n": 2}
+    },
+    "classification_params": {
+        "test_size": 0.15,
+        "random_seed": 42,
+        "remove_outliers": False,
+        model_key : model_params
     }
 }
 
@@ -31,60 +56,32 @@ features_dict = {
     "features_to_combine": features_to_combine
 }
 
-# Dict containing params for svm classifier
-svm_dict = {
-    "model_key": "svm",
-    "params": {
-        'C':  1,
-        'kernel': 'rbf',
-    }
-}
-
-# Classification attributes
-classification_dict = {
-    "test_size": 0.15,
-    "random_seed": 42,
-    "remove_outliers": False
-}
-
 # Metadata to analyze for errors
 metadata_to_analyze = ["ResultID"]
-
-overlaps = [0.0]
-min_episode_lengths = [10, 15, 20, 25, 30]
 
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
 # epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 
+steps_of_workflow = ["transform", "extract", "combine", "classify", "analyze"]
 
-def run(new_params_: dict = None):
+
+def run():
     """
     Function to execute any code
     """
     pipeline = Pipeline(
         init_data_key=INITIAL_DATA_SUBDIR_KEY,
         epoch_classes=epoch_classes,
-        filter_dict=filter_params,
-        hyperparams=new_params_,
+        update_dict=all_run_params_dict,
+        filter_method=filter_method,
+        model_key=model_key,
+        transform_method=transform_method,
         features_dict=features_dict,
-        classification_dict=classification_dict,
-        metadata_to_analyze=metadata_to_analyze
+        metadata_to_analyze=metadata_to_analyze,
+        run_name="test_run_0"
     )
-    # pipeline.raw_eeg_filtering()
-    pipeline.transform_eeg_to_psd()
-    pipeline.feature_extraction()
-    pipeline.combine_features()
-    pipeline.split_classify_evaluate()
-    pipeline.analyze_results(["ResultID"], plots=False)
 
+    pipeline.complete_run(steps_of_workflow)
 
 if __name__ == "__main__":
-    for ep_length in min_episode_lengths:
-        for overlap in overlaps:
-            param_changes = {
-                "current_params": {
-                    "fixed_window_size": ep_length,
-                    "overlap": overlap
-                }
-            }
-            run(param_changes)
+    run()

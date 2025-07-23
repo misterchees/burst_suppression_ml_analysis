@@ -94,7 +94,7 @@ class EEGFeatureExtractor(MLObject):
         """
 
         loader = self.data_loader
-        frequency_bands = self.param_config["frequency_bands"]
+        frequency_bands = self.param_config["feature_params"]["relative_bandpower"]["frequency_bands"]
         # column names
         psd_cols = loader.data_names["psd_files"]
         freq_col = psd_cols["psd_freq_col"]
