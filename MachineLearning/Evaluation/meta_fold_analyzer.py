@@ -190,7 +190,9 @@ class MetaFoldAnalyzer:
         if save_res:
             from MachineLearning.IO.save_result import SaveResult
             saver = SaveResult()
-            saver.save_metadata_analysis(outliers,self.model_name, self.parameters, "dataframe","Summary", "outliers_by_groups")
+            saver.save_metadata_analysis(
+                outliers, self.model_name, self.parameters, "dataframe",
+                "Summary", "outliers_by_groups", outlier_run_name)
 
         return outliers
 
