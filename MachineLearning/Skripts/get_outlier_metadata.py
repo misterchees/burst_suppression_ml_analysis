@@ -1,15 +1,18 @@
 from MachineLearning.Skripts.outlier_selection import select_multiple_outliers
 from MachineLearning.IO.load_data import LoadData
+from MachineLearning.IO.save_result import SaveResult
+from MachineLearning.Utils.config_handler import load_config
 import pandas as pd
 
 loader = LoadData()
+saver = SaveResult()
 
 
-
-def select_and_calculate_outliers(new_params, model_key, metadata_to_check, outlier_run_name):
+def select_and_calculate_outliers(new_params, model_key, metadata_to_check, outlier_run_name, save_result=True):
     numeric_cols = ["age", "asa"]
 
-    outlier_df = select_multiple_outliers(new_params, model_key, print_outliers=False, outlier_run_name=outlier_run_name)
+    outlier_df = select_multiple_outliers(new_params, model_key, print_outliers=False,
+                                          outlier_run_name=outlier_run_name)
     outlier_ids = outlier_df["group"].tolist()
     metadata_path = loader.return_csv_path_from_basedir("metadata")
     metadata_df = pd.read_csv(metadata_path)
@@ -19,7 +22,18 @@ def select_and_calculate_outliers(new_params, model_key, metadata_to_check, outl
         metadata_df[col] = pd.to_numeric(metadata_df[col], errors="coerce")
 
     outlier_metadata_df, analysis_df = analyze_outlier_metadata(outlier_ids, metadata_df, metadata_to_check)
+
+    if save_result:
+        hyperparams = load_config("parameters_config.yaml")["current_params"]
+        saver.save_metadata_analysis(
+            outlier_metadata_df, model_key, hyperparams, "dataframe", "outliers_metadata", "slice"
+        )
+        saver.save_metadata_analysis(
+            analysis_df, model_key, hyperparams, "dataframe", "outliers_metadata", "analysis"
+        )
+
     return outlier_metadata_df, analysis_df
+
 
 def analyze_outlier_metadata(result_ids, metadata_df, metadata_to_check):
     """
@@ -33,7 +47,6 @@ def analyze_outlier_metadata(result_ids, metadata_df, metadata_to_check):
     # Convert ids and metadata ids to string
     result_ids = [str(rid) for rid in result_ids]
     metadata_df["caseid"] = metadata_df["caseid"].astype(str)
-
 
     # 1. filter metadata for outlier
     outlier_metadata_df = metadata_df[metadata_df["caseid"].isin(result_ids)].copy()
@@ -86,6 +99,7 @@ def analyze_outlier_metadata(result_ids, metadata_df, metadata_to_check):
     analysis_df = pd.DataFrame(analysis_rows)
 
     return outlier_metadata_df, analysis_df
+
 
 if __name__ == "__main__":
     # asa: American Society of Anaesthesiologists Score

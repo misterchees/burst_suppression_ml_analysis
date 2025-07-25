@@ -283,7 +283,7 @@ class SaveResult(IOCore):
         PathUtils.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
 
     def save_metadata_analysis(self, result_data, model_key: str, parameters: dict,
-                       file_type: str, file_prefix: str = "", file_suffix: str = ""):
+                       file_type: str, file_prefix: str = "", file_suffix: str = "", outlier_run_name: str = None):
         """
         Save metadata analysis data to a specified file format and location.
 
@@ -313,10 +313,14 @@ class SaveResult(IOCore):
         :param file_suffix: An optional suffix added to the filename. Should contain information
                             about the result type (e.g. "metrics" or "analysis_plot").
         :type file_suffix: str
+        :param outlier_run_name: The run name of the metadata analysis run.
+        :type outlier_run_name: str
         :return: None
         """
         # Construct the path to the folder, where the file will be saved
-        folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["metadata_analysis", model_key])
+        folder_path = self.return_all_parameter_fullpath(
+            parameters, False, True, ["metadata_analysis", model_key], outlier_run_name
+        )
 
         # Save file depending on filetype
         PathUtils.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)

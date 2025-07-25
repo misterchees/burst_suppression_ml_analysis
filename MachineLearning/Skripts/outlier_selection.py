@@ -1,18 +1,19 @@
 from MachineLearning.Utils.config_handler import update_config
 from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
 
-def select_multiple_outliers(_new_params, _model_key, print_outliers=True, outlier_run_name=None):
-            all_params = update_config("parameters_config.yaml", _new_params)
-            fold_analyzer = MetaFoldAnalyzer(_model_key, all_params["current_params"])
-            outlier_df = fold_analyzer.select_outlier_groups(
-                save_res=True,
-                error_rate_threshold=0.5,
-                outlier_run_name=outlier_run_name
-            )
 
-            if print_outliers:
-                print(outlier_df)
-            return outlier_df
+def select_multiple_outliers(_new_params, _model_key, print_outliers=True, outlier_run_name=None):
+    all_params = update_config("parameters_config.yaml", _new_params)
+    fold_analyzer = MetaFoldAnalyzer(_model_key, all_params["current_params"])
+    outlier_df = fold_analyzer.select_outlier_groups(
+        save_res=True,
+        error_rate_threshold=0.5,
+        outlier_run_name=outlier_run_name
+    )
+
+    if print_outliers:
+        print(outlier_df)
+    return outlier_df
 
 
 if __name__ == "__main__":
