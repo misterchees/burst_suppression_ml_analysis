@@ -143,7 +143,7 @@ class Pipeline:
             raise ValueError("Epoch type must be 'normal_an', 'awake' or 'faw'")
 
         if calculation_type == 'transform':
-            psd_folderpath = loader.return_file_fullpath(parameters, False, False, epoch_type, "features", "psds")
+            psd_folderpath = loader.return_file_fullpath(parameters, False, False, epoch_type, ["features", "psds"])
             comparison_dict = Comparison.compare_csv_to_psd_folder(times_df, psd_folderpath)
             identical = bool(comparison_dict["a_in_b"] and comparison_dict["b_in_a"])
             return identical
@@ -156,7 +156,7 @@ class Pipeline:
 
             # Returns True if ALL features are already calculated, False otherwise
             for feature in feature_list:
-                feature_filepath = loader.return_file_fullpath(parameters, True, False, epoch_type, "features", feature)
+                feature_filepath = loader.return_file_fullpath(parameters, True, False, epoch_type, ["features", feature])
                 comparison_dict = Comparison.compare_two_csv(feature_filepath, times_df)
                 if not (comparison_dict["a_in_b"] and comparison_dict["b_in_a"]):
                     return False
@@ -272,7 +272,7 @@ class Pipeline:
             return False
 
     def _create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None,
-                       remove_outlier_ids: bool = False):
+                       remove_outlier_ids: bool = False, outlier_run_name: str = None,):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
         ratios of faw and awake class in both test and train.
@@ -283,6 +283,7 @@ class Pipeline:
         :param folds: If True, the splits will be as many non-overlapping folds as possible for cross-validation.
         :param iterations: Number of iterations for searching folds. Will be ignored if param "folds" is False.
         :param remove_outlier_ids: List of patient IDs to ignore when creating the splits.
+        :param outlier_run_name: Name of the run to load the problematic IDs from.
         :return: If split_paths is True, returns the split paths: (<train set path>, <test set path>).
          Depending on folds, if it is true, a list of tuples will be returned, else a single tuple will be returned.
         """
@@ -294,7 +295,7 @@ class Pipeline:
 
         if remove_outlier_ids:
             loader = LoadData()
-            problematic_ids = loader.load_problematic_ids(parameters, self.model_key)
+            problematic_ids = loader.load_problematic_ids(parameters, self.model_key, outlier_run_name)
         else:
             problematic_ids = None
 
@@ -396,11 +397,12 @@ class Pipeline:
         test_size = self.classification_params["test_size"]
         random_seed = self.classification_params["random_seed"]
         remove_outliers = self.classification_params["remove_outliers"]
+        outlier_run_name = self.classification_params["outlier_run_name"] if remove_outliers else None
 
 
         iterations = int(1 // test_size) * 2  # Double the number of minimal necessary iterations
         self.split_paths = self._create_splits(test_size, random_seed, folds=folds, iterations=iterations,
-                                          remove_outlier_ids=remove_outliers)
+                                          remove_outlier_ids=remove_outliers, outlier_run_name=outlier_run_name)
 
         if not folds:
             train_path, test_path = self.split_paths
@@ -584,7 +586,7 @@ class Pipeline:
         # Gather all results
         loader = LoadData()
         parameter_dict = self.get_current_hyperparams()
-        result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, "results", self.model_key)
+        result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, ["results", self.model_key])
         path_list, _ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
 
         # Analyze all given metadata in all results

@@ -46,7 +46,7 @@ class LoadData(IOCore):
         :param parameters: A dictionary with all episode parameters from the project
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
-        faw_dir = self.return_folder_path("faw")
+        faw_dir = self.return_folder_path(["faw"])
         parameter_dir = PathUtils.return_A_B_C_D_X_Y_path("result", parameters)
         csv_fullpath = PathUtils.return_anypath(faw_dir, f"{parameter_dir}.csv")
         # validate fullpath
@@ -108,7 +108,7 @@ class LoadData(IOCore):
         random.seed(random_state)
         anestart_csv_path = self.return_csv_path_from_basedir("awake_times")
         epoch_length_sec = int(parameters["fixed_window_size"])
-        filtered_data_dir = self.return_folder_path("filtered_data")
+        filtered_data_dir = self.return_folder_path(["filtered_data"])
 
         anestart_df = pd.read_csv(anestart_csv_path)
         result = []
@@ -211,7 +211,7 @@ class LoadData(IOCore):
         import scipy.io
 
         # Assemble Path to directory with .mat files
-        vitaldb_eeg_dir = self.return_folder_path("initial_data", "raw_eeg_mat")
+        vitaldb_eeg_dir = self.return_folder_path(["initial_data", "raw_eeg_mat"])
 
         mat_file_path = os.path.join(vitaldb_eeg_dir, f"{result_id}.mat")
         if not os.path.isfile(mat_file_path):
@@ -232,7 +232,7 @@ class LoadData(IOCore):
         :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
         """
         # Assemble Path to directory with .csv files
-        filtered_eeg_dir = self.return_folder_path("filtered_data")
+        filtered_eeg_dir = self.return_folder_path(["filtered_data"])
 
         filepath = os.path.join(filtered_eeg_dir, f"{result_id}.csv")
         if not os.path.isfile(filepath):
@@ -262,7 +262,7 @@ class LoadData(IOCore):
         :returns: Tuple of (sampling rate as int, dict of (start, end) -> EEG segment as ndarray)
         """
         # Step 0: Assemble Path to directory with .csv files
-        filtered_eeg_dir = self.return_folder_path("filtered_data")
+        filtered_eeg_dir = self.return_folder_path(["filtered_data"])
 
         filepath = os.path.join(filtered_eeg_dir, f"{result_id}.csv")
         if not os.path.isfile(filepath):
@@ -325,7 +325,7 @@ class LoadData(IOCore):
         return grouped
 
     def return_csv_path_from_basedir(self, file_key: str) -> str:
-        """Returns a path to a file in the base directory"""
+        """Takes the path_config key of a file in the base directory and returns a path to that file."""
         base_dir = self.path_config["base_dir"]["path_name"]
         file_name = self.path_config["base_dir"]["files"][file_key]
         file_path = PathUtils.return_anypath(base_dir, f"{file_name}.csv")
@@ -339,7 +339,7 @@ class LoadData(IOCore):
         """
 
         from joblib import load
-        full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, "models", model_key)
+        full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["models", model_key])
         model_file = f"{model_key}.joblib"
         model_fullpath = PathUtils.return_anypath(full_folder_path, model_file)
         model = load(model_fullpath)
@@ -347,13 +347,13 @@ class LoadData(IOCore):
 
     def load_metrics(self, parameters: dict, model_key: str ):
         # Construct the path to the folder from where the file will be loaded
-        folder_path = self.return_all_parameter_fullpath(parameters, False, True, "results", model_key)
+        folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["results", model_key])
         file_name = f"folds_metrics.json"
         fullpath = PathUtils.return_anypath(folder_path, file_name)
 
         return PathUtils.load_json(fullpath)
 
-    def load_metadata_file(self, parameters: dict, model_key: str, filename: str):
+    def load_metadata_file(self, parameters: dict, model_key: str, filename: str, outlier_run_name: str | None):
         """
         Loads metadata file based on the given parameters, model key, and filename.
 
@@ -369,6 +369,8 @@ class LoadData(IOCore):
             forming the directory path for the metadata file.
         :param filename:
             The name of the metadata file to be loaded, including its extension.
+        :param outlier_run_name:
+            The name of the outlier run to load metadata for. If None, loads metadata for the current run_name.
         :return:
             Parsed data from the metadata file. The return type depends on the file
             format: a JSON object for `.json` files or a pandas DataFrame for `.csv`
@@ -379,7 +381,9 @@ class LoadData(IOCore):
             If the file's extension is not supported (i.e., not "json" or "csv").
         """
         # Construct the path to the folder from where the file will be loaded
-        folder_path = self.return_all_parameter_fullpath(parameters, False, False, "metadata_analysis", model_key)
+        folder_path = self.return_all_parameter_fullpath(
+            parameters, False, False, ["metadata_analysis", model_key], outlier_run_name
+        )
         fullpath = PathUtils.return_anypath(folder_path, filename)
 
         # Load file based on extension
@@ -392,7 +396,7 @@ class LoadData(IOCore):
             raise ValueError(f"Unsupported file extension: {extension}")
 
 
-    def load_problematic_ids(self, parameters: dict, model_key: str) -> list | None:
+    def load_problematic_ids(self, parameters: dict, model_key: str, outlier_run_name: str | None) -> list | None:
         """
         Loads the IDs of outlier groups related to a specific model, from a metadata file.
         If the specified file does not exist, attempts to create it from previous analysis results.
@@ -401,6 +405,8 @@ class LoadData(IOCore):
         :type parameters: dict
         :param model_key: The key or identifier of the model for which problematic IDs are being loaded.
         :type model_key: str
+        :param outlier_run_name: The name of the outlier run to load IDs for. If None, loads IDs for the current run_name.
+        :type outlier_run_name: str | None
         :return: A list of outlier groups extracted from the metadata file.
         :rtype: list
 
@@ -410,7 +416,9 @@ class LoadData(IOCore):
 
         print("Loading IDs of outlier groups...")
         try:
-            outliers_df = self.load_metadata_file(parameters, model_key, "Summary_outliers_by_groups.csv")
+            outliers_df = self.load_metadata_file(
+                parameters, model_key, "Summary_outliers_by_groups.csv", outlier_run_name
+            )
         except FileNotFoundError:
             print("File 'Summary_outliers_by_groups' not found. Trying to create from previous results...")
             try:

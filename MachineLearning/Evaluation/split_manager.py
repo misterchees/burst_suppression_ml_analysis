@@ -26,9 +26,9 @@ class SplitManager:
         """
         self.parameters = parameters
         self.class_1_path = self.io_core.return_file_fullpath(parameters, True, False, class_1,
-                                                              "test_and_train_data", "feature_sets")
+                                                              ["test_and_train_data", "feature_sets"])
         self.class_0_path = self.io_core.return_file_fullpath(parameters, True, False, class_0,
-                                                              "test_and_train_data", "feature_sets")
+                                                              ["test_and_train_data", "feature_sets"])
         self.test_size = test_size
         self.random_state = random_state
         self.class_0 = class_0

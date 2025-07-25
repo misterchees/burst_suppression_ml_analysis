@@ -36,7 +36,7 @@ class QualityControl:
         comparison_df["awake_ids"] = awake_result_ids
         comparison_df["faw_exist"] = both_classes
 
-        base_dir_path = saver.return_folder_path()
+        base_dir_path = saver.return_folder_path([])
         file_name = "comparison_df.csv"
         fullpath = PathUtils.return_anypath(base_dir_path, file_name)
         PathUtils.save_file_as_csv(comparison_df, fullpath, False)
@@ -52,7 +52,7 @@ class QualityControl:
         faw_df = pd.read_csv(faw_path)
         faw_result_ids = pd.DataFrame(list(faw_df["ResultID"].unique()))
 
-        base_dir_path = saver.return_folder_path()
+        base_dir_path = saver.return_folder_path([])
         file_name = "unique_faw_result_ids.csv"
         fullpath = PathUtils.return_anypath(base_dir_path, file_name)
         PathUtils.save_file_as_csv(faw_result_ids, fullpath, False)

@@ -28,9 +28,9 @@ class MetaFoldAnalyzer:
 
         io_basics = IOCore()
         # Set paths
-        self.ml_results_path = io_basics.return_all_parameter_fullpath(parameters, False, False, "results", model_key)
+        self.ml_results_path = io_basics.return_all_parameter_fullpath(parameters, False, False, ["results", model_key])
         self.metadata_path = io_basics.return_all_parameter_fullpath(
-            parameters, False, False, "metadata_analysis", model_key)
+            parameters, False, False, ["metadata_analysis", model_key])
 
         # Container for analysis data
         self.fold_errors_by_group = {}
@@ -145,7 +145,7 @@ class MetaFoldAnalyzer:
     import pandas as pd
 
     def select_outlier_groups(self, df: pd.DataFrame = None, min_errors: int = 5, error_rate_threshold: float|str = "iqr",
-                              iqr_multiplier: float = 1.5, save_res: bool = False) -> pd.DataFrame:
+                              iqr_multiplier: float = 1.5, save_res: bool = False, outlier_run_name : str = None) -> pd.DataFrame:
         """
         Detects groups (e.g. patients) with unusually high classification errors,
         based on a given threshold of "error_rate" and an additional minimum
@@ -155,11 +155,13 @@ class MetaFoldAnalyzer:
           • ``error_rate`` – relative error (0...1)
           • ``incorrect_predictions`` – absolute error count
 
-        :param df: DataFrame that contains at least the two fixed columns above.
+        :param df: DataFrame that contains at least the two fixed columns above. If None,
+                it will be loaded from existing result analysis for given parameters.
         :param min_errors: Minimum absolute errors a group must have to be retained.
         :param iqr_multiplier: k in the Tukey rule (default 1.5 ⇒ “mild” outliers).
         :param error_rate_threshold: Threshold for the IQR method. If "iqr", the IQR is used.
         :param save_res: If True, the result is saved to a CSV file.
+        :param outlier_run_name: Name of the run from which the outliers are calculated.
         :returns: Sub‐DataFrame with the outlier groups. An extra column
                   ``error_threshold`` is added for reference.
         """
@@ -167,7 +169,7 @@ class MetaFoldAnalyzer:
             from MachineLearning.IO.load_data import LoadData
             loader = LoadData()
             df = loader.load_metadata_file(
-                self.parameters, self.model_name, "Summary_analysis_agg_label_error_by_groups.csv"
+                self.parameters, self.model_name, "Summary_analysis_agg_label_error_by_groups.csv", outlier_run_name
             )
 
         df = df.copy()  # Copy to prevent unwanted effects

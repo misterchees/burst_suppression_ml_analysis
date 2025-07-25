@@ -75,8 +75,9 @@ feature_params:
 classification_params:
   test_size: 0.15
   random_seed: 42
-  remove_outliers: false
+  remove_outliers: true
+  outlier_run_name: test_run_0
   svm:
     C: 1
     kernel: rbf
-run_name: test_run_0_2025_07_23T16_49_49
+run_name: rm_outliers_0

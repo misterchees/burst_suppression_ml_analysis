@@ -35,7 +35,7 @@ class FeatureUtils:
             try:
                 print(f"Merging feature {loader.return_feature_name(feature)}...")
                 # loads feature
-                feature_path = loader.return_file_fullpath(parameters, True, False, epoch_type, "features", feature)
+                feature_path = loader.return_file_fullpath(parameters, True, False, epoch_type, ["features", feature])
                 df = pd.read_csv(feature_path)
                 # Merge or initialize
                 if merged_df is None:

@@ -24,7 +24,7 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir_fullpath = self.return_all_parameter_fullpath(parameters, False, True, "features", "psds")
+        psd_dir_fullpath = self.return_all_parameter_fullpath(parameters, False, True, ["features", "psds"])
 
         # Save file in directory
         self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
@@ -42,7 +42,7 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir_fullpath = self.return_no_parameters_fullpath(parameters, "awake", False, "features", "psds")
+        psd_dir_fullpath = self.return_no_parameters_fullpath(parameters, "awake", False, ["features", "psds"])
 
         # make sure directory exists
         os.makedirs(psd_dir_fullpath, exist_ok=True)
@@ -62,7 +62,7 @@ class SaveResult(IOCore):
         """
 
         # assemble path to directory
-        psd_dir_fullpath = self.return_no_parameters_fullpath(parameters, "normal_an", False, "features", "psds")
+        psd_dir_fullpath = self.return_no_parameters_fullpath(parameters, "normal_an", False, ["features", "psds"])
 
         # make sure directory exists
         os.makedirs(psd_dir_fullpath, exist_ok=True)
@@ -105,7 +105,7 @@ class SaveResult(IOCore):
         :param result_id: Patient ID corresponding to EEG.
         """
         # assemble path to directory
-        psd_dir = self.return_folder_path("features", "psds")
+        psd_dir = self.return_folder_path(["features", "psds"])
 
         if filtered:
             filter_prefix = "filtered"
@@ -144,7 +144,7 @@ class SaveResult(IOCore):
         """
         result_df = pd.DataFrame(results)
         fullpath = self.return_file_fullpath(parameters, True, True, episode_type,
-                                             "features", feature_key)
+                                             ["features", feature_key])
 
         result_df.to_csv(fullpath, index=False)
 
@@ -158,7 +158,7 @@ class SaveResult(IOCore):
         """
         channels = self.data_names["eeg_files"]["eeg_channels"]
         df = pd.DataFrame(filtered_eeg, columns=channels)
-        filtered_eeg_subdir = self.return_folder_path("filtered_data")
+        filtered_eeg_subdir = self.return_folder_path(["filtered_data"])
         os.makedirs(os.path.dirname(filtered_eeg_subdir), exist_ok=True)
         fullpath = PathUtils.return_anypath(filtered_eeg_subdir, f"{result_id}.csv")
 
@@ -176,7 +176,7 @@ class SaveResult(IOCore):
         :param merged_df: Dataframe of all features combined to save
         :param epoch_type: Defines the epochs from which the features are calculated.
         """
-        fullpath = self.return_file_fullpath(parameters, True, True, epoch_type, "test_and_train_data", "feature_sets")
+        fullpath = self.return_file_fullpath(parameters, True, True, epoch_type, ["test_and_train_data", "feature_sets"])
         merged_df.to_csv(fullpath, index=False)
         print(f"Combined feature set saved to: {fullpath}")
 
@@ -238,7 +238,7 @@ class SaveResult(IOCore):
         """
 
         from joblib import dump
-        full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, "models", model_key)
+        full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["models", model_key])
         model_file = f"{model_key}.joblib"
         fullpath = PathUtils.return_anypath(full_folder_path, model_file)
         dump(model, fullpath)
@@ -277,7 +277,7 @@ class SaveResult(IOCore):
         :return: None
         """
         # Construct the path to the folder, where the file will be saved
-        folder_path = self.return_all_parameter_fullpath(parameters, False, True, "results", model_key)
+        folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["results", model_key])
 
         # Save file depending on filetype
         PathUtils.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
@@ -316,7 +316,7 @@ class SaveResult(IOCore):
         :return: None
         """
         # Construct the path to the folder, where the file will be saved
-        folder_path = self.return_all_parameter_fullpath(parameters, False, True, "metadata_analysis", model_key)
+        folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["metadata_analysis", model_key])
 
         # Save file depending on filetype
         PathUtils.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
@@ -369,6 +369,6 @@ class SaveResult(IOCore):
         :type filename: str
         :return: None
         """
-        folderpath = self.return_all_parameter_fullpath(parameters, False, True, "run_metadata", model_key)
+        folderpath = self.return_all_parameter_fullpath(parameters, False, True, ["run_metadata", model_key])
         fullpath = PathUtils.return_anypath(folderpath, filename)
         PathUtils.save_data_as_json(run_metadata, fullpath)

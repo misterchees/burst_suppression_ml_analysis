@@ -9,6 +9,7 @@ model_key = "svm"
 model_params = {"C":  1, "kernel": "rbf"}
 filter_method = "butterworth"
 transform_method = "welch"
+run_name = "rm_outliers_0"
 
 all_run_params_dict = {
     "current_params": {
@@ -41,7 +42,8 @@ all_run_params_dict = {
     "classification_params": {
         "test_size": 0.15,
         "random_seed": 42,
-        "remove_outliers": False,
+        "remove_outliers": True,
+        "outlier_run_name": "test_run_0",
         model_key : model_params
     }
 }
@@ -78,7 +80,7 @@ def run():
         transform_method=transform_method,
         features_dict=features_dict,
         metadata_to_analyze=metadata_to_analyze,
-        run_name="test_run_0"
+        run_name=run_name
     )
 
     pipeline.complete_run(steps_of_workflow)

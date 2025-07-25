@@ -89,7 +89,7 @@ class RunMetadata:
         loader = LoadData()
         combined_features_path = loader.return_file_fullpath(
             self.hyperparameters, True, False, self.epoch_types[0],
-            "test_and_train_data", "feature_sets"
+            ["test_and_train_data", "feature_sets"]
         )
         combined_features_df_header = pd.read_csv(combined_features_path, nrows=0)
 
@@ -209,7 +209,7 @@ class RunMetadata:
         # Get folder with files and return a list of them
         loader = LoadData()
         metadata_dir = loader.return_all_parameter_fullpath(
-            self.hyperparameters, False, False, "run_metadata", self.model_key
+            self.hyperparameters, False, False, ["run_metadata", self.model_key]
         )
         files,_ = PathUtils.list_files_in_folder(metadata_dir, ".json")
 
@@ -258,7 +258,7 @@ class RunMetadata:
         # Get folder with files and return a list of them
         loader = LoadData()
         metadata_dir = loader.return_all_parameter_fullpath(
-            self.hyperparameters, False, False, "run_metadata", self.model_key
+            self.hyperparameters, False, False, ["run_metadata", self.model_key]
         )
         files, _ = PathUtils.list_files_in_folder(metadata_dir, ".json")
 
