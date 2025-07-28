@@ -62,7 +62,7 @@ class FeatureUtils:
         saver.save_combined_features(parameters, merged_df, epoch_type)
 
     @staticmethod
-    def return_eeg_epochs(epoch_type: str, parameters: dict, channel=1, num_an: int = None) -> list:
+    def return_eeg_epochs(epoch_type: str, parameters: dict, channel=1, num_an: int = None, allowed_ids: list = None) -> list:
         """
         Takes parameters and returns a list of all epochs (+ metadata) of this list
 
@@ -82,6 +82,9 @@ class FeatureUtils:
             print(f"Retrieving Epochs for {epoch_type} for Parameters: {parameters}")
         else:
             print(f"Sampling {num_an} Epochs from normal anesthesia")
+
+        if allowed_ids is not None:
+            episode_times_df = {pid: df for pid, df in episode_times_df.items() if pid in allowed_ids}
 
         for result_id, epoch_list in episode_times_df.items():
             # get times, segments and fs from grouped times list

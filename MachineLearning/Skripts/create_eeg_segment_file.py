@@ -2,13 +2,20 @@ import numpy as np
 import pandas as pd
 
 from MachineLearning.Utils.feature_utils import FeatureUtils
+from MachineLearning.IO.load_data import LoadData, PathUtils
+from typing import List, Any
 
 
-def create_eeg_segment_file(epoch_type_0: str, epoch_type_1: str, parameters: dict):
-    type_0_eeg_tuples = FeatureUtils.return_eeg_epochs(epoch_type_0, parameters)
-    type_1_eeg_tuples = FeatureUtils.return_eeg_epochs(epoch_type_1, parameters)
+def create_eeg_segment_file(epoch_type_0: str, epoch_type_1: str, parameters: dict, _run_name: str = None):
+    if _run_name is not None:
+        ids_from_run = get_ids_from_run(_run_name)
+    else:
+        ids_from_run = None
 
-    segment_df = create_epoch_dataframe(type_0_eeg_tuples, type_1_eeg_tuples)
+    type_0_eeg_tuples = FeatureUtils.return_eeg_epochs(epoch_type_0, parameters, allowed_ids=ids_from_run)
+    type_1_eeg_tuples = FeatureUtils.return_eeg_epochs(epoch_type_1, parameters, allowed_ids=ids_from_run)
+
+    segment_df = create_epoch_dataframes(type_0_eeg_tuples, type_1_eeg_tuples)
 
     filtered_df = remove_empty_eeg_segments(segment_df)
 
@@ -16,19 +23,19 @@ def create_eeg_segment_file(epoch_type_0: str, epoch_type_1: str, parameters: di
     eeg_array = np.stack(filtered_df['eeg'].values)  # (n_samples, 896)
     eeg_df = pd.DataFrame(eeg_array, columns=[f"eeg_{i}" for i in range(896)])
 
-    # Kombinieren mit result_id und label
+    # Combine with result_id und label
     df_combined = pd.concat([filtered_df[['patient_id']].reset_index(drop=True),
                              eeg_df,
                              filtered_df[['label']].reset_index(drop=True)], axis=1)
 
     min_episode_length = parameters["min_episode_length"]
-    path_to_folder = f"D:\\Daten\\Other\\minlength_{min_episode_length}_fixlength_7_overlap_075"
+    path_to_folder = f"D:\\Daten\\Other\\minlength_{min_episode_length}_fixlength_7_overlap_075_no_outliers"
     df_combined.to_pickle(f"{path_to_folder}.pkl")
     df_combined.to_feather(f"{path_to_folder}.feather")
     df_combined.to_parquet(f"{path_to_folder}.parquet")
 
 
-def create_epoch_dataframe(label_0_list: list[tuple], label_1_list: list[tuple]) -> pd.DataFrame:
+def create_epoch_dataframes(label_0_list: list[tuple], label_1_list: list[tuple]) -> pd.DataFrame:
     """
     Creates a DataFrame from two lists of EEG epoch tuples with labels 0 and 1.
 
@@ -37,20 +44,32 @@ def create_epoch_dataframe(label_0_list: list[tuple], label_1_list: list[tuple])
     :return: pd.DataFrame with columns: ['patient_id', 'eeg', 'label']
     """
 
-    def convert_list_to_df(data_list, label):
-        return pd.DataFrame([
-            {
-                "patient_id": tup[2],
-                "eeg": tup[4],
-                "label": label
-            }
-            for tup in data_list
-        ])
-
     df_0 = convert_list_to_df(label_0_list, label=0)
     df_1 = convert_list_to_df(label_1_list, label=1)
 
     return pd.concat([df_0, df_1], ignore_index=True)
+
+
+def convert_list_to_df(data_list: List[tuple], label: Any) -> pd.DataFrame:
+    """
+    Converts a list of tuples into a DataFrame with patient_id, eeg, and label columns.
+    Filters by patient_ids if provided, and sorts the result by patient_id.
+
+    :param data_list: List of tuples, where tup[2] is patient_id and tup[4] is EEG data
+    :param label: Label value to assign to all rows
+    :return: Filtered and sorted DataFrame
+    """
+    df = pd.DataFrame([
+        {
+            "patient_id": tup[2],
+            "eeg": tup[4],
+            "label": label
+        }
+        for tup in data_list
+    ])
+
+    df = df.sort_values(by="patient_id").reset_index(drop=True)
+    return df
 
 
 def remove_empty_eeg_segments(df: pd.DataFrame, eeg_col: str = "eeg") -> pd.DataFrame:
@@ -74,15 +93,36 @@ def remove_empty_eeg_segments(df: pd.DataFrame, eeg_col: str = "eeg") -> pd.Data
     return filtered_df
 
 
+def get_ids_from_run(_run_name: str) -> list:
+    loader = LoadData()
+    metadata_params = {
+        "merged_episodes": False,
+        "bis_threshold": 70,
+        "mac_threshold": 0.8,
+        "min_episode_length": 20,
+        "refractory_time": 5,
+        "fixed_window_size": 20,
+        "overlap": 0.0
+    }
+    run_folderpath = loader.return_all_parameter_fullpath(metadata_params, False, False, ["run_metadata", "svm"])
+    fullpath = PathUtils.return_anypath(run_folderpath, f"{_run_name}.json")
+
+    run_metadata = PathUtils.load_json(fullpath)
+    used_patient_ids = run_metadata["final_patient_ids"]
+    print(f"Patient IDs that will be used: {used_patient_ids}")
+    return used_patient_ids
+
+
 if __name__ == '__main__':
     hyperparams = {
         "merged_episodes": False,
         "bis_threshold": 70,
         "mac_threshold": 0.8,
-        "min_episode_length": 10,
+        "min_episode_length": 20,
         "refractory_time": 5,
         "fixed_window_size": 7,
         "overlap": 0.75
     }
+    run_name = "rm_outliers_1"
 
-    create_eeg_segment_file("faw", "awake", hyperparams)
+    create_eeg_segment_file("faw", "awake", hyperparams, run_name)
