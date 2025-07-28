@@ -3,7 +3,7 @@ from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Utils.config_handler import update_config
 
 
-def print_metrics(overlaps_, min_episode_lengths_):
+def print_metrics(overlaps_, min_episode_lengths_, _run_name=None):
     loader = LoadData()
     evaluator = MetricsEvaluator(None, None, None, None, None)
 
@@ -18,12 +18,13 @@ def print_metrics(overlaps_, min_episode_lengths_):
             }
             curent_params = update_config("parameters_config.yaml", new_params)["current_params"]
             print(f"\n#######Testing Parameters: {curent_params}\n")
-            current_metrics = loader.load_metrics(curent_params, "svm")
+            current_metrics = loader.load_metrics(curent_params, "svm", _run_name)
             evaluator.print_result(current_metrics["summary"], True)
 
 
 if __name__ == "__main__":
-    overlaps = [0.25, 0.5, 0.75, 0.9]
+    overlaps = [0.0]
     min_episode_lengths = [20]
+    run_name = "rm_outliers_1"
 
     print_metrics(overlaps, min_episode_lengths)

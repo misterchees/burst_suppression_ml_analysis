@@ -14,7 +14,7 @@ from MachineLearning.IO.io_core import IOCore
 
 class MetaFoldAnalyzer:
     """Class that calculates from results and metadata analysis from single folds overall statistics and trends."""
-    def __init__(self, model_key: str, parameters: dict):
+    def __init__(self, model_key: str, parameters: dict, run_name: str = None):
         """
         Initializes the MetaFoldAnalyzer instance with model and paths to calculated results and metadata analysis
         of single folds.
@@ -28,9 +28,9 @@ class MetaFoldAnalyzer:
 
         io_basics = IOCore()
         # Set paths
-        self.ml_results_path = io_basics.return_all_parameter_fullpath(parameters, False, False, ["results", model_key])
+        self.ml_results_path = io_basics.return_all_parameter_fullpath(parameters, False, False, ["results", model_key], run_name)
         self.metadata_path = io_basics.return_all_parameter_fullpath(
-            parameters, False, False, ["metadata_analysis", model_key])
+            parameters, False, False, ["metadata_analysis", model_key], run_name)
 
         # Container for analysis data
         self.fold_errors_by_group = {}

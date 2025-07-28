@@ -6,10 +6,10 @@ from MachineLearning.Core.pipeline import Pipeline
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
 channel = 1
 model_key = "svm"
-model_params = {"C":  1, "kernel": "rbf"}
+model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 transform_method = "welch"
-run_name = "rm_outliers_0"
+run_name = "rm_outliers_1"
 
 all_run_params_dict = {
     "current_params": {
@@ -21,13 +21,13 @@ all_run_params_dict = {
         "fixed_window_size": 20,
         "overlap": 0.0
     },
-    "filtering_params" : {
+    "filtering_params": {
         filter_method: {"lowcut": 0.5, "highcut": 30.0, "order": 4}
     },
-    "transform_params" : {
+    "transform_params": {
         transform_method: {"channel": channel, "nperseg_seconds": 2, "fs": 128}
     },
-    "feature_params" : {
+    "feature_params": {
         "relative_bandpower": {"normalize_to": "bands"},
         "shannon_entropy": {"normalize": True},
         "spectral_skewness": {"normalize": True, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
@@ -37,14 +37,14 @@ all_run_params_dict = {
         "amplitude": {"channel": channel},
         "sample_entropy": {"channel": channel, "emb_dim": 2, "tolerance": 0.2},
         "permutation_entropy": {"channel": channel, "order": 3, "delay": 1, "normalize": True},
-        "fuzzy_entropy": {"channel": channel, "m": 2,"r": 0.2,"n": 2}
+        "fuzzy_entropy": {"channel": channel, "m": 2, "r": 0.2, "n": 2}
     },
     "classification_params": {
         "test_size": 0.15,
         "random_seed": 42,
         "remove_outliers": True,
         "outlier_run_name": "test_run_0",
-        model_key : model_params
+        model_key: model_params
     }
 }
 
@@ -84,6 +84,7 @@ def run():
     )
 
     pipeline.complete_run(steps_of_workflow)
+
 
 if __name__ == "__main__":
     run()

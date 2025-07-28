@@ -169,6 +169,7 @@ if __name__ == "__main__":
     # emop: Emergency operation (y or n)
     # preop_htn: Preoperative hypertension (y or n)
     # preop_dm: Preoperative diabetes (y or n)
+    # los_icu: Postoperative length of ICU stay in days
 
     _metadata_to_check = ["age", "sex", "asa", "emop", "preop_htn", "preop_dm", "height", "weight", "death_inhosp", "los_icu"]
     _new_params = {

@@ -74,10 +74,10 @@ feature_params:
     n: 2
 classification_params:
   test_size: 0.15
-  random_seed: 42
+  random_seed: 41
   remove_outliers: true
   outlier_run_name: test_run_0
   svm:
     C: 1
     kernel: rbf
-run_name: rm_outliers_0
+run_name: rm_outliers_1

@@ -152,3 +152,50 @@ class Plots:
         plt.grid(True)
         plt.tight_layout()
         plt.show()
+
+    @staticmethod
+    def plot_eeg_signal(eeg_signal: np.ndarray, fs: int, filtered: bool):
+        """
+        Plots a raw EEG signal with a time axis in seconds.
+
+        :param eeg_signal: 1D NumPy array with EEG samples
+        :param fs: Sampling frequency in Hz (default 128 Hz)
+        :param filtered: If True, the plotted EEG signal is filtered, else raw. Influences chart name.
+        """
+        # time in seconds
+        time = np.arange(len(eeg_signal)) / fs
+
+        plt.figure(figsize=(15, 5))
+        plt.plot(time, eeg_signal, linewidth=0.8)
+        plt.xlabel("Time [s]")
+        plt.ylabel("EEG Signal")
+        plt.title(f"EEG {"filtered" if filtered else "raw"} Signal")
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+    @staticmethod
+    def plot_two_channel_eeg(eeg_data: np.ndarray, fs: int, filtered: bool, channel_names=("Channel 1", "Channel 2")):
+        """
+        Plots a 2-channel EEG signal over time, with each channel in its own subplot.
+
+        :param eeg_data: 2D NumPy array of shape (n_samples, 2)
+        :param fs: Sampling frequency in Hz
+        :param channel_names: Tuple with names for each channel
+        """
+        if eeg_data.shape[1] != 2:
+            raise ValueError("Input EEG data must have exactly 2 channels (shape: [n_samples, 2])")
+
+        time = np.arange(eeg_data.shape[0]) / fs
+
+        fig, axes = plt.subplots(2, 1, figsize=(15, 6), sharex=True)
+        for i in range(2):
+            axes[i].plot(time, eeg_data[:, i], linewidth=0.8)
+            axes[i].set_ylabel(f"{channel_names[i]}")
+            axes[i].grid(True)
+
+        axes[1].set_xlabel("Time [s]")
+        plt.suptitle(f"2-Channel EEG Signal - {"filtered" if filtered else "raw"}", fontsize=14)
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.9)  # Room for title
+        plt.show()

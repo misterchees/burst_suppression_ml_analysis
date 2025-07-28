@@ -157,7 +157,7 @@ class MetricsEvaluator:
 
         return summary
 
-    def print_result(self, result:dict, summary:bool):
+    def print_result(self, result: dict, summary: bool):
         if summary:
             self._print_summary(result)
         else:

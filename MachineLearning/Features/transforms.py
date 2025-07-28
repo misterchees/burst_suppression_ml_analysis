@@ -96,7 +96,6 @@ class Transforms(MLObject):
         frequencies, power = welch(signal, fs=fs, nperseg=nperseg)
         return frequencies, power
 
-
     def transform_eeg_to_psd_welch(self, result_id: int, channel: int, nperseg_seconds: int):
         """
         Calculates a PSD for the whole length of a raw EEG from a patient specified by result ID.
