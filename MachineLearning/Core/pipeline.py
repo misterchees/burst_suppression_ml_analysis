@@ -63,7 +63,7 @@ class Pipeline:
         filt_params_dict = {filter_method: updated_params["filtering_params"][filter_method]}
         transform_params_dict = {transform_method: updated_params["transform_params"][transform_method]}
         model_params_dict = {self.model_key: self.model_params}
-        epoch_list = [self.class_0, self.class_1]
+        epoch_list = [self.class_0, self.class_1]  # Do not change this order. Index = label
 
         self.run_metadata_collector = RunMetadata(
             epoch_types=epoch_list,
