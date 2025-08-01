@@ -72,7 +72,7 @@ class MetadataAnalyzer:
         abs_counts = pd.crosstab(self.df[group_col], self.df["label"])
         rel_props = pd.crosstab(self.df[group_col], self.df["label"], normalize="index")
 
-        # Kombiniere beide mit mehrstufiger Spaltenüberschrift
+        # Combined header
         abs_counts.columns = pd.MultiIndex.from_product([["abs"], abs_counts.columns])
         rel_props.columns = pd.MultiIndex.from_product([["rel"], rel_props.columns])
 

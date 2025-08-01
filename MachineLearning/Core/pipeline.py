@@ -538,15 +538,33 @@ class Pipeline:
         print("Analysis complete.")
 
     def _analyze_meta_analyses(self, model_key: str, metadata_col, print_analysis=True, save_analysis=True, plots=True):
+        """
+        Analyzes the metadata results from multi-fold analysis and generates
+        aggregated errors, balances, and plots. Optionally, the results can be
+        printed or saved for further examination.
+
+        :param model_key: The key identifier for the model being analyzed.
+        :type model_key: str
+        :param metadata_col: Column from metadata used for aggregation or plotting.
+        :type metadata_col: Any
+        :param print_analysis: Flag indicating whether to print analysis results, defaults to True.
+        :type print_analysis: bool, optional
+        :param save_analysis: Flag indicating whether to save the analysis results, defaults to True.
+        :type save_analysis: bool, optional
+        :param plots: Flag indicating whether to generate and save plots, defaults to True.
+        :type plots: bool, optional
+        :return: None
+        """
 
         from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
 
         print("Analyzing single fold analysis results")
 
-        # Carry out analysis
+        # Initialize analyzer
         parameters = self.get_current_hyperparams()
         fold_analyzer = MetaFoldAnalyzer(model_key, parameters)
         fold_analyzer.load_all_folds(metadata_col)
+        # Carry out analysis
         agg_err_by_group = fold_analyzer.aggregate_error_by_group()
         agg_label_err_by_group = fold_analyzer.aggregate_error_by_group(True)
         acc_vs_class_dist = fold_analyzer.analyze_class_imbalance_vs_metric("accuracy")

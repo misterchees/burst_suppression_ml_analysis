@@ -11,6 +11,33 @@ saver = SaveResult()
 
 
 def select_and_calculate_outliers(new_params, model_key, metadata_to_check, outlier_run_name, map_dict, save_result=True):
+    """
+    Selects and calculates metadata for outlier data points by running statistical
+    testing and performing detailed metadata analysis on selected outliers. The
+    process includes filtering outliers, handling metadata, converting data types
+    if needed, analyzing metadata attributes, and saving results if specified.
+
+    :param new_params: Configuration parameters that specify the conditions and
+        settings for outlier selection.
+    :param model_key: Identifier for the model being analyzed, used to associate
+        outlier analysis results with a specific model.
+    :param metadata_to_check: List of metadata attributes/features to include in
+        the outlier analysis process.
+    :param outlier_run_name: Name for the current outlier analysis run. If None,
+        the last run (saved in config) will be used.
+    :param map_dict: Dictionary for mapping categorical metadata attributes to numerical
+        equivalents for computation and analysis purposes.
+    :param save_result: Whether to save the analysis output (default is True).
+        If set to True, the analysis results will be saved to predefined paths.
+
+    :return: A tuple with the following elements:
+        - Metadata DataFrame containing information about the identified outliers.
+        - Analysis DataFrame displaying a detailed breakdown of the metadata analysis
+          for the identified outliers.
+        - Statistics DataFrame with the results from statistical tests applied to the
+          filtered and analyzed metadata.
+
+    """
     numeric_cols = ["age", "asa", "height", "weight", "los_icu"]
 
     outlier_df = select_multiple_outliers(new_params, model_key, print_outliers=False,
@@ -46,6 +73,7 @@ def analyze_outlier_metadata(result_ids, metadata_df, metadata_to_check, map_dic
     """
     Analyze metadata distribution for selected outlier ResultIDs vs. overall distribution.
 
+    :param map_dict: Dictionary with mapping of categorical values to numeric values.
     :param result_ids: List of ResultIDs that are considered outliers.
     :param metadata_df: Full metadata DataFrame including all ResultIDs.
     :param metadata_to_check: List of columns to analyze.
@@ -157,6 +185,7 @@ def run_statistical_tests(outlier_df: pd.DataFrame, full_df: pd.DataFrame) -> pd
 
 
 def convert_categorical_to_number(categorical_to_number_dict: dict, df_to_convert: pd.DataFrame) -> pd.DataFrame:
+    """Convert categorical columns in a DataFrame to numerical values based on a provided mapping."""
     for col, mapping in categorical_to_number_dict.items():
         if col in df_to_convert.columns:
             df_to_convert[col] = df_to_convert[col].map(mapping)

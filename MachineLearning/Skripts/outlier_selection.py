@@ -3,6 +3,7 @@ from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
 
 
 def select_multiple_outliers(_new_params, _model_key, print_outliers=True, outlier_run_name=None):
+    """Selects multiple outlier groups based on the given configuration, analyzing models and parameters"""
     all_params = update_config("parameters_config.yaml", _new_params)
     fold_analyzer = MetaFoldAnalyzer(_model_key, all_params["current_params"])
     outlier_df = fold_analyzer.select_outlier_groups(

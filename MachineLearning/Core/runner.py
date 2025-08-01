@@ -42,15 +42,15 @@ all_run_params_dict = {
     "classification_params": {
         "test_size": 0.15,
         "random_seed": 42,
-        "remove_outliers": True,
+        "remove_outliers": False,
         "outlier_run_name": "test_run_0",
         model_key: model_params
     }
 }
 
 # Use None for variable to skip step; Use "all_features" if all features should be used in step
-features = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
-features_to_combine = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
+features = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
+features_to_combine = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
 
 # Set dict to None if no extraction AND no combination shall be conduced
 features_dict = {
