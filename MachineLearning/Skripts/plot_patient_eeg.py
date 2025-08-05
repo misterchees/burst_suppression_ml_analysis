@@ -11,7 +11,7 @@ _both_channels = True
 
 
 def plot_EEG(patient_id: int, filtered: bool, channel: int, both_channels: bool = False):
-    fs, all_channel_eeg = loader.return_eeg_tuple(patient_id, filtered)
+    fs, all_channel_eeg = loader.load_eeg_data(patient_id, filtered)
     if both_channels:
         plotter.plot_two_channel_eeg(all_channel_eeg, fs, filtered)
     else:

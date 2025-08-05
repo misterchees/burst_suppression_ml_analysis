@@ -11,36 +11,10 @@ loader = LoadData()
 def get_epoch_distribution_for_run(hyperparameters: dict, model_key: str, run_name: str, save_result=True):
 
     # Get splits
-    splits_folderpath = loader.return_all_parameter_fullpath(
-        hyperparameters, False, False, ["test_and_train_data", "splits"], run_name
-    )
-    split_fullpaths, _ = PathUtils.list_files_in_folder(splits_folderpath, ".csv", fullpaths=True)
-
-    # Filter out all files that are not splits
-    relevant_splits = [
-        path for path in split_fullpaths
-        if os.path.basename(path).endswith(("train_split.csv", "test_split.csv"))
-    ]
-    # Validation for split folder
-    if not relevant_splits:
-        raise FileNotFoundError(f"No valid splits found in folder {splits_folderpath} for run_name='{run_name}'")
-
-    # --- Get label mapping ---
-    metadata_folderpath = loader.return_all_parameter_fullpath(
-        hyperparameters, False, False, ["run_metadata", model_key]
-    )
-    metadata_fullpaths, _ = PathUtils.list_files_in_folder(metadata_folderpath, ".json", fullpaths=True)
-
-    # Search for run metadata
-    matching_metadata_path = next(
-        (path for path in metadata_fullpaths if os.path.basename(path) == f"{run_name}.json"),
-        None
-    )
-    if not matching_metadata_path:
-        raise FileNotFoundError(f"No matching file for run_name='{run_name}' found in folder='{metadata_folderpath}'.")
+    relevant_splits = loader.return_split_fullpaths(hyperparameters, run_name)
 
     # Get label mapping
-    metadata = PathUtils.load_json(matching_metadata_path)
+    metadata = loader.load_run_data(hyperparameters, run_name, model_key)
     epoch_type_list = metadata.get("epoch_type", [])
     label_mapping = {i: label_name for i, label_name in enumerate(epoch_type_list)}
 

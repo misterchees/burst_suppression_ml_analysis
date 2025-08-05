@@ -161,8 +161,8 @@ class LoadData(IOCore):
 
         return pd.DataFrame(result)
 
-    def return_grouped_epochs(self, parameters: dict, epoch_type: str, num_epochs: int = None
-                              ) -> dict[int, list[tuple[int, int]]]:
+    def load_grouped_epochs(self, parameters: dict, epoch_type: str, num_epochs: int = None
+                            ) -> dict[int, list[tuple[int, int]]]:
         """
         Returns EEG snippets (Epochs) based on given parameters.
         :param parameters: Parameters for episodes containing primary parameters for chosen faw eopchs.
@@ -184,7 +184,7 @@ class LoadData(IOCore):
         grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
         return grouped_epoch_times
 
-    def return_eeg_tuple(self, result_id: int, filtered=True) -> Tuple[int, np.ndarray]:
+    def load_eeg_data(self, result_id: int, filtered=True) -> Tuple[int, np.ndarray]:
         """
         Assembles a path to the EEG File of interest, specified by the patient ID and
         returns fs and raw EEG as a Tuple
@@ -194,12 +194,12 @@ class LoadData(IOCore):
         :return: a tuple (fs, eeg). fs -> sampling frequency; eeg -> an EEG samples array with two channels
         """
         if filtered:
-            fs, eeg = self.return_filtered_eeg_tuple(result_id)
+            fs, eeg = self._load_filtered_eeg_data(result_id)
         else:
-            fs, eeg = self.return_raw_eeg_tuple(result_id)
+            fs, eeg = self._load_raw_eeg_data(result_id)
         return fs, eeg
 
-    def return_raw_eeg_tuple(self, result_id: int) -> Tuple[int, np.ndarray]:
+    def _load_raw_eeg_data(self, result_id: int) -> Tuple[int, np.ndarray]:
         """
         Assembles a path to the raw EEG .mat file of interest, specified by the patient ID and
         returns fs and raw EEG as a Tuple
@@ -225,7 +225,7 @@ class LoadData(IOCore):
 
         return fs, raw_eeg
 
-    def return_filtered_eeg_tuple(self, result_id: int) -> Tuple[int, np.ndarray]:
+    def _load_filtered_eeg_data(self, result_id: int) -> Tuple[int, np.ndarray]:
         """
         Loads a filtered EEG from a CSV file with a comment line containing the sampling rate (fs).
         :param result_id: The patient ID
@@ -251,7 +251,7 @@ class LoadData(IOCore):
 
         return fs, raw_eeg
 
-    def read_eeg_epochs_from_csv(self, result_id: int, epochs: list, channel: int) -> tuple[int, dict]:
+    def load_eeg_epochs_from_csv(self, result_id: int, epochs: list, channel: int) -> tuple[int, dict]:
         """
         Reads only selected EEG segments (epochs) for a given channel from a CSV file with
         a header comment and sampling rate.
@@ -435,3 +435,38 @@ class LoadData(IOCore):
         print(f"Outlier groups found: {outlier_list}")
 
         return outlier_list
+
+    def load_run_data(self, hyperparameters: dict, run_name: str, model_key: str):
+        """Loads the run data from a run specified by name, hyperparameters, and model_key."""
+        metadata_path = self.return_run_metadata_fullpath(hyperparameters, run_name, model_key)
+        metadata = PathUtils.load_json(metadata_path)
+        return metadata
+
+    def load_splits(self, hyperparamers: dict, run_name: str, combined=True) -> dict|pd.DataFrame:
+        """
+        Loads dataset splits from specified file paths into a dictionary of DataFrames or a combined DataFrame.
+
+        :param hyperparamers: Configuration dictionary specifying parameters
+                              required to determine dataset split file paths.
+        :type hyperparamers: dict
+        :param run_name: Name of the run used to access associated split file paths.
+        :type run_name: str
+        :param combined: Flag to determine whether all splits should be combined
+                         into a single DataFrame. Defaults to True.
+        :type combined: bool
+        :returns: A single combined DataFrame if 'combined' is True. Otherwise, a dictionary
+                  of DataFrames indexed by the file name (stem) of each split.
+        :rtype: dict | pd.DataFrame
+        """
+        splits_list = self.return_split_fullpaths(hyperparamers, run_name)
+
+        df_dict = {}
+        for split_path in splits_list:
+            df_dict[split_path.stem] = pd.read_csv(split_path)
+
+        if combined:
+            df_combined = pd.concat(df_dict.values(), axis=0)
+            return df_combined
+        else:
+            return df_dict
+

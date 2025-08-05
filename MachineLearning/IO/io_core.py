@@ -192,6 +192,69 @@ class IOCore:
             raise ValueError(f"train_or_test must be either 'train' or 'test'")
         return PathUtils.return_anypath(full_folder_path, f"{fold_idx}_{total_folds}_{train_or_test}_split.csv")
 
+    def return_split_fullpaths(self, hyperparameters: dict, run_name: str) -> list:
+        """
+        Returns a list of file paths for relevant split CSV files, such as train and test
+        splits, located in the specified splits folder for a given run name.
+
+        :param hyperparameters: A dictionary containing various hyperparameters, which
+                                will be used to construct the full path to the splits folder.
+        :type hyperparameters: dict
+        :param run_name: The name of the current run to identify the folder containing
+                         the relevant split files.
+        :type run_name: str
+        :return: A list of file paths pointing to the train and test split CSV files.
+        :rtype: list
+        :raises FileNotFoundError: If no valid split files are found in the specified
+                                   split folder.
+        """
+        # Get splits
+        splits_folderpath = self.return_all_parameter_fullpath(
+            hyperparameters, False, False, ["test_and_train_data", "splits"], run_name
+        )
+        split_fullpaths, _ = PathUtils.list_files_in_folder(splits_folderpath, ".csv", fullpaths=True)
+
+        # Filter out all files that are not splits
+        relevant_splits = [
+            path for path in split_fullpaths
+            if os.path.basename(path).endswith(("train_split.csv", "test_split.csv"))
+        ]
+        # Validation for split folder
+        if not relevant_splits:
+            raise FileNotFoundError(f"No valid splits found in folder {splits_folderpath} for run_name='{run_name}'")
+
+        return relevant_splits
+
+    def return_run_metadata_fullpath(self, hyperparameters: dict, run_name: str, model_key: str) -> str:
+        """
+        Returns the full path to the metadata file of a specific run based on the provided
+        hyperparameters, run name, and model key.
+
+        :param hyperparameters: A dictionary containing the hyperparameters of the run.
+        :param run_name: The name of the specific run for which metadata is being retrieved.
+        :param model_key: The key identifying the model.
+        :return: The full file path to the metadata for the specified run.
+        :rtype: str
+        :raises FileNotFoundError: If no metadata file matching the given run name is found.
+        """
+        # Get all paths
+        metadata_folderpath = self.return_all_parameter_fullpath(
+            hyperparameters, False, False, ["run_metadata", model_key]
+        )
+        metadata_fullpaths, _ = PathUtils.list_files_in_folder(metadata_folderpath, ".json", fullpaths=True)
+
+        # Search for a specific run metadata path
+        matching_metadata_path = next(
+            (path for path in metadata_fullpaths if os.path.basename(path) == f"{run_name}.json"),
+            None
+        )
+        # Error if not found
+        if not matching_metadata_path:
+            raise FileNotFoundError(
+                f"No matching file for run_name='{run_name}' found in folder='{metadata_folderpath}'.")
+
+        return matching_metadata_path
+
     def return_all_result_ids(self, initial_data_key: str) -> list:
         """
         Returns a list of all result IDs found in a directory specified by initial_data_key.

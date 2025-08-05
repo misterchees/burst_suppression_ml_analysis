@@ -31,8 +31,8 @@ class Comparison:
         loader = LoadData()
         transforms = Transforms(tuple("faw"), {})
         # Load EEGs from same Patient ID to compare
-        fs_raw, raw_eegs = loader.return_eeg_tuple(result_id, False)
-        fs_filt, filtered_eegs = loader.return_eeg_tuple(result_id, True)
+        fs_raw, raw_eegs = loader.load_eeg_data(result_id, False)
+        fs_filt, filtered_eegs = loader.load_eeg_data(result_id, True)
 
         # Extract EEG of given channel
         raw_eeg = raw_eegs[:, channel - 1]

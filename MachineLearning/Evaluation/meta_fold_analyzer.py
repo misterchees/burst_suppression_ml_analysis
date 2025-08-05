@@ -182,7 +182,7 @@ class MetaFoldAnalyzer:
                 raise ValueError("error_rate_threshold must be a float or 'iqr'.")
             threshold = error_rate_threshold
 
-        # --- filter -----------------------------------------------------------
+        # filter by given thresholds
         mask = (df["error_rate"] >= threshold) & (df["incorrect_predictions"] >= min_errors)
         outliers = df.loc[mask].copy()
         outliers["error_threshold"] = threshold  # helpful context in result

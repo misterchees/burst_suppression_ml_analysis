@@ -77,7 +77,7 @@ class FeatureUtils:
         output_list = []
 
         # Return Epoch times based on current parameters and grouped by result ID
-        episode_times_df = data_loader.return_grouped_epochs(parameters, epoch_type, num_an)
+        episode_times_df = data_loader.load_grouped_epochs(parameters, epoch_type, num_an)
         if epoch_type != 'normal_an':
             print(f"Retrieving Epochs for {epoch_type} for Parameters: {parameters}")
         else:
@@ -88,7 +88,7 @@ class FeatureUtils:
 
         for result_id, epoch_list in episode_times_df.items():
             # get times, segments and fs from grouped times list
-            fs, eeg_segment_dict = data_loader.read_eeg_epochs_from_csv(result_id, epoch_list, channel)
+            fs, eeg_segment_dict = data_loader.load_eeg_epochs_from_csv(result_id, epoch_list, channel)
 
             # Assemble tuple start, end, result, fs, eeg epoch -> Add it to list
             for times, eeg_segment in eeg_segment_dict.items():

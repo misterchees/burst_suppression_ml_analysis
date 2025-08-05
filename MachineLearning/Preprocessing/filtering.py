@@ -59,7 +59,7 @@ class Filtering:
 
         # Extract information from .mat file
         print(f"Filtering of EEG from Patient ID: {result_id} in progress")
-        fs, raw_eeg = loader.return_eeg_tuple(result_id=result_id, filtered=False)
+        fs, raw_eeg = loader.load_eeg_data(result_id=result_id, filtered=False)
 
         # Design Butterworth bandpass filter
         b, a = FilterUtils.design_butterworth(fs, lowcut=lowcut, highcut=highcut, order=order)

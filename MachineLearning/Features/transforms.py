@@ -109,7 +109,7 @@ class Transforms(MLObject):
         result_saver = SaveResult()
 
         # get eeg data for episodes in Patients record (defined by result_id)
-        fs, raw_eeg = data_loader.return_eeg_tuple(result_id)
+        fs, raw_eeg = data_loader.load_eeg_data(result_id)
 
         # validate channel
         if channel not in [1, 2]:

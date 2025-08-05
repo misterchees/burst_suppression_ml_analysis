@@ -78,8 +78,8 @@ class SplitManager:
 
         # Optional: Remove all Patient IDs specified in ignore_ids
         if ignore_ids:
-            class_1_df = SplitUtils.remove_entries(class_1_df, ignore_ids, "ResultID")
-            class_0_df = SplitUtils.remove_entries(class_0_df, ignore_ids, "ResultID")
+            class_1_df = SplitUtils.remove_entries_by_col(class_1_df, ignore_ids, "ResultID")
+            class_0_df = SplitUtils.remove_entries_by_col(class_0_df, ignore_ids, "ResultID")
 
         # Step 2: Find the best split on patient level to reach the test/train ratio on sample level
         train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
