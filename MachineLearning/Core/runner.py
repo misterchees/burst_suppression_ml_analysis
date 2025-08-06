@@ -43,6 +43,7 @@ all_run_params_dict = {
         "test_size": 0.15,
         "random_seed": 42,
         "remove_outliers": False,
+        "remove_outlier_epochs": True,
         "outlier_run_name": "test_run_0",
         model_key: model_params
     }

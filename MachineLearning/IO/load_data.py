@@ -421,10 +421,10 @@ class LoadData(IOCore):
                 parameters, model_key, "Summary_outliers_by_groups.csv", outlier_run_name
             )
         except FileNotFoundError:
-            print("File 'Summary_outliers_by_groups' not found. Trying to create from previous results...")
+            print("File 'Summary_outliers_by_groups.csv' not found. Trying to create from previous results...")
             try:
                 from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
-                fold_analyzer = MetaFoldAnalyzer(model_key, parameters)
+                fold_analyzer = MetaFoldAnalyzer(model_key, parameters, outlier_run_name)
                 outliers_df = fold_analyzer.select_outlier_groups(save_res=True)
             except FileNotFoundError:
                 print("No previous results found to create 'Summary_outliers_by_groups.csv'. "
@@ -435,6 +435,29 @@ class LoadData(IOCore):
         print(f"Outlier groups found: {outlier_list}")
 
         return outlier_list
+
+    def load_problematic_epochs(self, parameters: dict, model_key: str, outlier_run_name: str | None) -> pd.DataFrame | None:
+
+        print("Loading outlier epochs...")
+        try:
+            outliers_df = self.load_metadata_file(
+                parameters, model_key, "Summary_outlier_epochs.csv", outlier_run_name
+            )
+        except FileNotFoundError:
+            print("File 'Summary_outlier_epochs.csv' not found. Trying to create from previous results...")
+            try:
+                from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
+                fold_analyzer = MetaFoldAnalyzer(model_key, parameters, outlier_run_name)
+                outliers_df = fold_analyzer.select_outlier_epochs(save_res=True)
+            except FileNotFoundError:
+                print("No previous results found to create 'Summary_outlier_epochs.csv'. "
+                      "No problematic epochs can be loaded.")
+                return None
+
+        outlier_list = outliers_df.values.tolist()
+        print(f"Outlier groups found: {outlier_list}")
+
+        return outliers_df
 
     def load_run_data(self, hyperparameters: dict, run_name: str, model_key: str):
         """Loads the run data from a run specified by name, hyperparameters, and model_key."""
@@ -458,11 +481,24 @@ class LoadData(IOCore):
                   of DataFrames indexed by the file name (stem) of each split.
         :rtype: dict | pd.DataFrame
         """
-        splits_list = self.return_split_fullpaths(hyperparamers, run_name)
+        splits_list = self.return_related_fullpaths(hyperparamers, run_name, ["test_and_train_data", "splits"])
 
         df_dict = {}
         for split_path in splits_list:
             df_dict[split_path.stem] = pd.read_csv(split_path)
+
+        if combined:
+            df_combined = pd.concat(df_dict.values(), axis=0)
+            return df_combined
+        else:
+            return df_dict
+
+    def load_results(self, hyperparamers: dict, run_name: str, model_key: str, combined=True) -> dict|pd.DataFrame:
+        results_list = self.return_related_fullpaths(hyperparamers, run_name, ["results", model_key])
+
+        df_dict = {}
+        for result_path in results_list:
+            df_dict[result_path.stem] = pd.read_csv(result_path)
 
         if combined:
             df_combined = pd.concat(df_dict.values(), axis=0)

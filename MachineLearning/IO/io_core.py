@@ -192,36 +192,45 @@ class IOCore:
             raise ValueError(f"train_or_test must be either 'train' or 'test'")
         return PathUtils.return_anypath(full_folder_path, f"{fold_idx}_{total_folds}_{train_or_test}_split.csv")
 
-    def return_split_fullpaths(self, hyperparameters: dict, run_name: str) -> list:
+    def return_related_fullpaths(self, hyperparameters: dict, run_name: str, folder_parts: list) -> list:
         """
-        Returns a list of file paths for relevant split CSV files, such as train and test
-        splits, located in the specified splits folder for a given run name.
+        Returns a list of file paths for related CSV files, such as train and test
+        splits, located in the specified folder for a given run name.
 
         :param hyperparameters: A dictionary containing various hyperparameters, which
-                                will be used to construct the full path to the splits folder.
+                                will be used to construct the full path to the folder.
         :type hyperparameters: dict
         :param run_name: The name of the current run to identify the folder containing
-                         the relevant split files.
+                         the relevant files.
         :type run_name: str
-        :return: A list of file paths pointing to the train and test split CSV files.
+        :param folder_parts: A list of keys that define the path to the folder.
+        :type folder_parts: list
+        :return: A list of file paths.
         :rtype: list
-        :raises FileNotFoundError: If no valid split files are found in the specified
-                                   split folder.
+        :raises FileNotFoundError: If no valid files are found in the specified folder.
         """
-        # Get splits
-        splits_folderpath = self.return_all_parameter_fullpath(
-            hyperparameters, False, False, ["test_and_train_data", "splits"], run_name
+        # Get folder of related files
+        files_folderpath = self.return_all_parameter_fullpath(
+            hyperparameters, False, False, folder_parts, run_name
         )
-        split_fullpaths, _ = PathUtils.list_files_in_folder(splits_folderpath, ".csv", fullpaths=True)
+        fullpaths_list, _ = PathUtils.list_files_in_folder(files_folderpath, ".csv", fullpaths=True)
 
-        # Filter out all files that are not splits
-        relevant_splits = [
-            path for path in split_fullpaths
-            if os.path.basename(path).endswith(("train_split.csv", "test_split.csv"))
-        ]
+        # Filter out all files that are not relevant based on folder they are in
+        if folder_parts[-1] == "splits":
+            relevant_splits = [
+                path for path in fullpaths_list
+                if os.path.basename(path).endswith(("train_split.csv", "test_split.csv"))
+            ]
+        elif folder_parts[0] == "results":
+            relevant_splits = [
+                path for path in fullpaths_list
+                if os.path.basename(path).endswith("full_and_pred.csv")
+            ]
+        else:
+            raise ValueError(f"Unexpected folder to retrieve related files from: {files_folderpath}")
         # Validation for split folder
         if not relevant_splits:
-            raise FileNotFoundError(f"No valid splits found in folder {splits_folderpath} for run_name='{run_name}'")
+            raise FileNotFoundError(f"No valid files found in folder {files_folderpath} for run_name='{run_name}'")
 
         return relevant_splits
 
@@ -255,29 +264,29 @@ class IOCore:
 
         return matching_metadata_path
 
-    def return_all_result_ids(self, initial_data_key: str) -> list:
+    def return_all_patient_ids(self, initial_data_key: str) -> list:
         """
-        Returns a list of all result IDs found in a directory specified by initial_data_key.
+        Returns a list of all patient IDs found in a directory specified by initial_data_key.
         :param initial_data_key: Key of the folder in initial data, that determines the path to the directory.
-        :return: List of all result IDs in directory.
+        :return: List of all patient IDs in directory.
         """
 
-        result_ids = []
+        patient_ids = []
         directory = self.return_folder_path(["initial_data", initial_data_key])
 
         for file in os.listdir(directory):
             try:
                 # Try to get Patient ID from filename
-                result_id = int(file.split(".")[0])
+                patient_id = int(file.split(".")[0])
                 # Add filename to list
-                result_ids.append(result_id)
+                patient_ids.append(patient_id)
             except TypeError as ex:
                 warnings.warn(f"File: {file} has not the right format. It should be <integer>.<file extension>\n"
                               f"Error message: {ex}")
             except Exception as ex:
                 warnings.warn(f"Something went wrong while file: {file} was parsed. Error {ex}")
 
-        return result_ids
+        return patient_ids
 
     def clear_psd_folder(self, parameters: dict, epoch_type: str):
         """

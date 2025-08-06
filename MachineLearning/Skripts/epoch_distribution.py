@@ -11,7 +11,7 @@ loader = LoadData()
 def get_epoch_distribution_for_run(hyperparameters: dict, model_key: str, run_name: str, save_result=True):
 
     # Get splits
-    relevant_splits = loader.return_split_fullpaths(hyperparameters, run_name)
+    relevant_splits = loader.return_related_fullpaths(hyperparameters, run_name, ["test_and_train_data", "splits"])
 
     # Get label mapping
     metadata = loader.load_run_data(hyperparameters, run_name, model_key)

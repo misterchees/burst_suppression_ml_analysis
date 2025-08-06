@@ -22,9 +22,11 @@ class MetaFoldAnalyzer:
         :param model_key: The key of the model to analyze.
         :param parameters: A dictionary containing the parameters of the epochs from which the results were
                            calculated.
+        :param run_name: The name of the run from which the results and metadata analysis will be calculated.
         """
         self.model_name = model_key
         self.parameters = parameters
+        self.run_name = run_name
 
         io_basics = IOCore()
         # Set paths
@@ -40,7 +42,17 @@ class MetaFoldAnalyzer:
 
     def load_all_folds(self, group_col: str, label: int = 1):
         """
-        Load all relevant data (error_by_group, class_dist, metrics) from directories.
+        Searches and loads various fold-related data including errors by group, errors of specific
+        labels by group, class distributions by group, and fold metrics. The data is stored into
+        appropriate instance-level attributes if the corresponding files are found.
+
+        :param group_col: Group column indicating the attribute used for grouping data in error
+            and distribution analysis.
+        :type group_col: str
+        :param label: Specific label value for which the error by group analysis is performed.
+            Defaults to 1.
+        :type label: int
+        :return: None
         """
         # Search for all folds with labels and errors
         fold_files = glob.glob(os.path.join(self.ml_results_path, "*full_and_pred.csv"))
@@ -145,7 +157,7 @@ class MetaFoldAnalyzer:
     import pandas as pd
 
     def select_outlier_groups(self, df: pd.DataFrame = None, min_errors: int = 5, error_rate_threshold: float|str = "iqr",
-                              iqr_multiplier: float = 1.5, save_res: bool = False, outlier_run_name : str = None) -> pd.DataFrame:
+                              iqr_multiplier: float = 1.5, save_res: bool = False) -> pd.DataFrame:
         """
         Detects groups (e.g. patients) with unusually high classification errors,
         based on a given threshold of "error_rate" and an additional minimum
@@ -161,7 +173,6 @@ class MetaFoldAnalyzer:
         :param iqr_multiplier: k in the Tukey rule (default 1.5 ⇒ “mild” outliers).
         :param error_rate_threshold: Threshold for the IQR method. If "iqr", the IQR is used.
         :param save_res: If True, the result is saved to a CSV file.
-        :param outlier_run_name: Name of the run from which the outliers are calculated.
         :returns: Sub‐DataFrame with the outlier groups. An extra column
                   ``error_threshold`` is added for reference.
         """
@@ -169,7 +180,7 @@ class MetaFoldAnalyzer:
             from MachineLearning.IO.load_data import LoadData
             loader = LoadData()
             df = loader.load_metadata_file(
-                self.parameters, self.model_name, "Summary_analysis_agg_label_error_by_groups.csv", outlier_run_name
+                self.parameters, self.model_name, "Summary_analysis_agg_label_error_by_groups.csv", self.run_name
             )
 
         df = df.copy()  # Copy to prevent unwanted effects
@@ -192,9 +203,41 @@ class MetaFoldAnalyzer:
             saver = SaveResult()
             saver.save_metadata_analysis(
                 outliers, self.model_name, self.parameters, "dataframe",
-                "Summary", "outliers_by_groups", outlier_run_name)
+                "Summary", "outliers_by_groups", self.run_name)
 
         return outliers
+
+    def select_outlier_epochs(self, label: int = 1, save_res: bool = False) -> pd.DataFrame:
+        """
+        Identifies and retrieves epochs from a dataset that have been misclassified based
+        on the given label. Optionally saves the results if specified.
+
+        :param label: The target label to filter misclassified epochs, default is 1.
+        :type label: int
+        :param save_res: Indicates whether to save the results to an external location,
+            default is False.
+        :type save_res: bool
+        :return: A dataframe containing the misclassified epochs.
+        :rtype: pd.DataFrame
+        """
+        from MachineLearning.IO.load_data import LoadData
+        loader = LoadData()
+        results_df = loader.load_results(self.parameters, self.run_name, self.model_name)
+
+        # Get wrongly classified epochs with given label
+        misclassified_df = results_df[
+            (results_df["label"] == label) & (results_df["prediction"] != results_df["label"])
+            ][["Start", "End", "ResultID"]]
+        misclassified_df = misclassified_df.sort_values(by=["ResultID", "Start"]).reset_index(drop=True)
+
+        if save_res:
+            from MachineLearning.IO.save_result import SaveResult
+            saver = SaveResult()
+            saver.save_metadata_analysis(
+                misclassified_df, self.model_name, self.parameters, "dataframe",
+                "Summary", f"outlier_epochs_for_label_{label}", self.run_name)
+
+        return misclassified_df
 
     @staticmethod
     def _compute_iqr_threshold(df: pd.DataFrame, iqr_multiplier: float):

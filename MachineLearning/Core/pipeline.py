@@ -57,7 +57,7 @@ class Pipeline:
 
         # Get ResultIDs specified by the folder of initial_data_key
         loader = LoadData()
-        self.result_ids = loader.return_all_result_ids(init_data_key)
+        self.result_ids = loader.return_all_patient_ids(init_data_key)
 
         # Set run metadata class, collecting initial data
         filt_params_dict = {filter_method: updated_params["filtering_params"][filter_method]}
@@ -397,7 +397,8 @@ class Pipeline:
         test_size = self.classification_params["test_size"]
         random_seed = self.classification_params["random_seed"]
         remove_outliers = self.classification_params["remove_outliers"]
-        outlier_run_name = self.classification_params["outlier_run_name"] if remove_outliers else None
+        remove_outlier_epochs = self.classification_params["remove_outlier_epochs"]
+        outlier_run_name = self.classification_params["outlier_run_name"] if (remove_outliers or remove_outlier_epochs) else None
 
 
         iterations = int(1 // test_size) * 2  # Double the number of minimal necessary iterations
@@ -419,7 +420,7 @@ class Pipeline:
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
         """
         loader = LoadData()
-        self.result_ids = loader.return_all_result_ids(initial_data_key)
+        self.result_ids = loader.return_all_patient_ids(initial_data_key)
 
     @staticmethod
     def get_current_hyperparams() -> dict:
