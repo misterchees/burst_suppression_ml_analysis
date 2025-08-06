@@ -74,10 +74,11 @@ feature_params:
     n: 2
 classification_params:
   test_size: 0.15
-  random_seed: 41
+  random_seed: 42
   remove_outliers: true
-  outlier_run_name: test_run_0
+  remove_outlier_epochs: false
+  outlier_run_name: baseline_run_rm_ids_4
   svm:
     C: 1
     kernel: rbf
-run_name: rm_outliers_1
+run_name: baseline_run_rm_ids_5

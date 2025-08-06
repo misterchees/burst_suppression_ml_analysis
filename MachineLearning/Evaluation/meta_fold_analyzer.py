@@ -154,8 +154,6 @@ class MetaFoldAnalyzer:
 
         return fig
 
-    import pandas as pd
-
     def select_outlier_groups(self, df: pd.DataFrame = None, min_errors: int = 5, error_rate_threshold: float|str = "iqr",
                               iqr_multiplier: float = 1.5, save_res: bool = False) -> pd.DataFrame:
         """
@@ -205,6 +203,9 @@ class MetaFoldAnalyzer:
                 outliers, self.model_name, self.parameters, "dataframe",
                 "Summary", "outliers_by_groups", self.run_name)
 
+        # Add to global outliers
+        self._save_to_global_outliers(outliers, "patient_id")
+
         return outliers
 
     def select_outlier_epochs(self, label: int = 1, save_res: bool = False) -> pd.DataFrame:
@@ -228,6 +229,7 @@ class MetaFoldAnalyzer:
         misclassified_df = results_df[
             (results_df["label"] == label) & (results_df["prediction"] != results_df["label"])
             ][["Start", "End", "ResultID"]]
+        misclassified_df = pd.DataFrame(misclassified_df)  # Explicit cast, because IDE thinks it's a Series
         misclassified_df = misclassified_df.sort_values(by=["ResultID", "Start"]).reset_index(drop=True)
 
         if save_res:
@@ -236,6 +238,9 @@ class MetaFoldAnalyzer:
             saver.save_metadata_analysis(
                 misclassified_df, self.model_name, self.parameters, "dataframe",
                 "Summary", f"outlier_epochs_for_label_{label}", self.run_name)
+
+        # Add to global outliers
+        self._save_to_global_outliers(misclassified_df, "epoch")
 
         return misclassified_df
 
@@ -262,3 +267,9 @@ class MetaFoldAnalyzer:
         iqr = q3 - q1
         threshold = min(q3 + iqr_multiplier * iqr, 1.0)  # Maximum can't be higher than 100%
         return threshold
+
+    def _save_to_global_outliers(self, outlier_df: pd.DataFrame, outlier_type: str):
+        """Wrapper for saving function save_global_outliers."""
+        from MachineLearning.IO.save_result import SaveResult
+        saver = SaveResult()
+        saver.save_global_outliers(self.parameters, outlier_df, outlier_type)

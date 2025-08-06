@@ -209,6 +209,7 @@ class IOCore:
         :rtype: list
         :raises FileNotFoundError: If no valid files are found in the specified folder.
         """
+        from pathlib import Path
         # Get folder of related files
         files_folderpath = self.return_all_parameter_fullpath(
             hyperparameters, False, False, folder_parts, run_name
@@ -217,22 +218,25 @@ class IOCore:
 
         # Filter out all files that are not relevant based on folder they are in
         if folder_parts[-1] == "splits":
-            relevant_splits = [
+            relevant_paths = [
                 path for path in fullpaths_list
                 if os.path.basename(path).endswith(("train_split.csv", "test_split.csv"))
             ]
         elif folder_parts[0] == "results":
-            relevant_splits = [
+            relevant_paths = [
                 path for path in fullpaths_list
                 if os.path.basename(path).endswith("full_and_pred.csv")
             ]
         else:
             raise ValueError(f"Unexpected folder to retrieve related files from: {files_folderpath}")
         # Validation for split folder
-        if not relevant_splits:
+        if not relevant_paths:
             raise FileNotFoundError(f"No valid files found in folder {files_folderpath} for run_name='{run_name}'")
 
-        return relevant_splits
+        # Convert Strings to Path Objects
+        relevant_paths = [Path(p) for p in relevant_paths]
+
+        return relevant_paths
 
     def return_run_metadata_fullpath(self, hyperparameters: dict, run_name: str, model_key: str) -> str:
         """

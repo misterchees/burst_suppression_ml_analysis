@@ -17,7 +17,7 @@ class Pipeline:
 
     def __init__(self, init_data_key: str, epoch_classes: dict, update_dict: dict, filter_method: str, model_key: str,
                  transform_method: str, features_dict: dict = None, metadata_to_analyze: list = None,
-                 run_name: str = None):
+                 run_name: str = None, force_overwrite: bool = False, global_outliers: bool = True):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
@@ -30,6 +30,8 @@ class Pipeline:
         :param features_dict: Dictionary containing a list of features to extract and another to combine.
         :param metadata_to_analyze: List of metadata to analyze for error patterns in the classification.
         :param run_name: Name of the run. If None, a timestamp will be used instead.
+        :param force_overwrite: If True, the pipeline will be run even if the results already exist.
+        :param global_outliers: If True, global outliers found in all runs will be removed.
         """
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
@@ -45,6 +47,7 @@ class Pipeline:
         self.model_params = self.classification_params[self.model_key]
         self.hyperparams = updated_params["current_params"]
         self.metadata_to_analyze = metadata_to_analyze
+        self.global_outliers = global_outliers
 
         # Section to determine which operations can be skipped
         # Set params related to feature extraction and combination
@@ -73,7 +76,8 @@ class Pipeline:
             filtering_params=filt_params_dict,
             transform_params=transform_params_dict,
             classification_params=self.classification_params,
-            run_name=run_name
+            run_name=run_name,
+            force_overwrite=force_overwrite
         )
 
         # Set variables to use later
@@ -236,14 +240,15 @@ class Pipeline:
                 if not self.already_calculated("extract_features", epoch_type):
                     feature_epochs.append(epoch_type)
 
+            # No parameters, since the pipeline already updated them and classes retrieve them from global config
             if not transform_epochs:
                 self.transformer = None
             else:
-                self.transformer = Transforms(tuple(transform_epochs), self.transform_method, parameters)
+                self.transformer = Transforms(tuple(transform_epochs), self.transform_method, None)
             if not feature_epochs:
                 self.feature_extractor = None
             else:
-                self.feature_extractor = EEGFeatureExtractor(tuple(feature_epochs), parameters)
+                self.feature_extractor = EEGFeatureExtractor(tuple(feature_epochs), None)
 
     def _check_features(self) -> bool | None:
         """
@@ -271,8 +276,17 @@ class Pipeline:
                     raise ValueError(f"'{key}' is no valid feature key. Valid keys are: {feature_keys}")
             return False
 
-    def _create_splits(self, test_size: float, random_state: int, split_paths=True, folds=True, iterations: int = None,
-                       remove_outlier_ids: bool = False, outlier_run_name: str = None,):
+    def _create_splits(
+            self,
+            test_size: float,
+            random_state: int,
+            split_paths=True,
+            folds=True,
+            iterations: int = None,
+            remove_outlier_ids: bool = False,
+            remove_epochs: bool = False,
+            outlier_run_name: str = None
+    ):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
         ratios of faw and awake class in both test and train.
@@ -283,6 +297,7 @@ class Pipeline:
         :param folds: If True, the splits will be as many non-overlapping folds as possible for cross-validation.
         :param iterations: Number of iterations for searching folds. Will be ignored if param "folds" is False.
         :param remove_outlier_ids: List of patient IDs to ignore when creating the splits.
+        :param remove_epochs: If True, the splits will be created without the specified epochs.
         :param outlier_run_name: Name of the run to load the problematic IDs from.
         :return: If split_paths is True, returns the split paths: (<train set path>, <test set path>).
          Depending on folds, if it is true, a list of tuples will be returned, else a single tuple will be returned.
@@ -295,13 +310,20 @@ class Pipeline:
 
         if remove_outlier_ids:
             loader = LoadData()
-            problematic_ids = loader.load_problematic_ids(parameters, self.model_key, outlier_run_name)
+            problematic_ids = loader.load_problematic_ids(parameters, self.model_key, outlier_run_name, self.global_outliers)
         else:
             problematic_ids = None
 
+        if remove_epochs:
+            loader = LoadData()
+            problematic_epochs = loader.load_problematic_epochs(parameters, self.model_key, outlier_run_name, self.global_outliers)
+        else:
+            problematic_epochs = None
+
         # create single split or folds
         if folds:
-            split_manager.create_custom_splits_by_test_size(min_iterations=iterations, ignore_ids=problematic_ids)
+            split_manager.create_custom_splits_by_test_size(
+                min_iterations=iterations, ignore_ids=problematic_ids, ignore_epochs=problematic_epochs)
             return_splits = split_manager.return_k_fold_split_paths
         else:
             split_manager.create_single_split(ignore_ids=problematic_ids)
@@ -401,9 +423,10 @@ class Pipeline:
         outlier_run_name = self.classification_params["outlier_run_name"] if (remove_outliers or remove_outlier_epochs) else None
 
 
-        iterations = int(1 // test_size) * 2  # Double the number of minimal necessary iterations
-        self.split_paths = self._create_splits(test_size, random_seed, folds=folds, iterations=iterations,
-                                          remove_outlier_ids=remove_outliers, outlier_run_name=outlier_run_name)
+        iterations = int(1 // test_size) * 2  # Double the number of minimal necessary iterations because I can :D
+        self.split_paths = self._create_splits(
+            test_size=test_size, random_state=random_seed, folds=folds, iterations=iterations,
+            remove_outlier_ids=remove_outliers, remove_epochs=remove_outlier_epochs, outlier_run_name=outlier_run_name)
 
         if not folds:
             train_path, test_path = self.split_paths

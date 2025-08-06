@@ -376,3 +376,38 @@ class SaveResult(IOCore):
         folderpath = self.return_all_parameter_fullpath(parameters, False, True, ["run_metadata", model_key])
         fullpath = PathUtils.return_anypath(folderpath, filename)
         PathUtils.save_data_as_json(run_metadata, fullpath)
+
+    def save_global_outliers(self, parameters, outliers_df: pd.DataFrame, outlier_type: str):
+        """
+        Saves the global outliers data into a CSV file. The file is saved in a specific path determined
+        by the parameters and the type of outliers. Depending on the outlier type, the corresponding
+        filename will be constructed. If the file already exists, the new rows will be appended to the
+        existing ones without duplication.
+
+        :param parameters: Configuration parameters used to determine the file path and other settings
+            for saving the outlier data
+        :type parameters: dict
+        :param outliers_df: A DataFrame containing the outliers data that needs to be saved
+        :type outliers_df: pandas.DataFrame
+        :param outlier_type: Type of outliers being saved. It must be either "epoch" or "patient_id".
+            This parameter determines the filename for the saved data.
+        :type outlier_type: str
+        :return: None
+        """
+        # Create the folder path
+        folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["global_outliers"])
+
+        # Build fullpath depending on outlier type
+        if outlier_type == "epoch":
+            filename = "global_epoch_outliers.csv"
+        elif outlier_type == "patient_id":
+            filename = "global_patient_outliers.csv"
+        else:
+            raise ValueError("Invalid outlier type. Expected 'epoch' or 'patient_id'.")
+
+        fullpath = PathUtils.return_anypath(folder_path, filename)
+        # Save outliers or append to an already existing file
+        new_rows, new_rows_number = PathUtils.append_unique_rows_to_csv(outliers_df, fullpath)
+
+        print(f"Saved outliers to {fullpath} with {new_rows_number} new rows")
+

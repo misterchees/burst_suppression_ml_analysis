@@ -34,7 +34,8 @@ class RunMetadata:
             filtering_params: dict,
             transform_params: dict,
             classification_params: dict,
-            run_name: Optional[str] = None
+            run_name: Optional[str] = None,
+            force_overwrite: bool = False
     ):
         """
         :param epoch_types: List of exactly 2 epoch types to classify. Valid options are "normal_an", "awake", "faw"
@@ -63,9 +64,10 @@ class RunMetadata:
                                                     filtering_params, transform_params, classification_params)
 
         # Cancel run, if there is already one existent
-        path_of_exact_same_run = self._find_run_with_same_parameters()
-        if path_of_exact_same_run:
-            raise ValueError(f"A run with the same parameters already exists at {path_of_exact_same_run}.")
+        if not force_overwrite:
+            path_of_exact_same_run = self._find_run_with_same_parameters()
+            if path_of_exact_same_run:
+                raise ValueError(f"A run with the same parameters already exists at {path_of_exact_same_run}.")
 
         # Params that are collected in and after the pipeline run
         self.final_patient_ids = set()

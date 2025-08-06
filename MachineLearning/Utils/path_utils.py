@@ -291,3 +291,35 @@ class PathUtils:
         else:
             return obj
 
+    import pandas as pd
+    from pathlib import Path
+
+    @staticmethod
+    def append_unique_rows_to_csv(df: pd.DataFrame, csv_path: str | Path) -> tuple[pd.DataFrame, int]:
+        """
+        Appends a DataFrame to a CSV file, ensuring no duplicate rows are written.
+        If the CSV does not exist, it will be created.
+
+        Assumes that all rows in the DataFrame and CSV have the same structure (i.e., same columns).
+
+        :param df: DataFrame to append.
+        :param csv_path: Path to the target CSV file.
+        :return: A tuple containing the DataFrame with the new rows and the number of new rows added.
+        """
+        csv_path = Path(csv_path)
+
+        if csv_path.exists():
+            # Load path if exists
+            existing_df = pd.read_csv(csv_path)
+            # Append new rows that are not duplicates
+            combined_df = pd.concat([existing_df, df], ignore_index=True).drop_duplicates()
+            # Track new rows
+            new_rows_df = pd.concat([combined_df, existing_df]).drop_duplicates(keep=False)
+        else:
+            combined_df = df.drop_duplicates(ignore_index=True)
+            new_rows_df = combined_df.copy()
+
+        # Overwrite the old file with updated df
+        combined_df.to_csv(csv_path, index=False)
+
+        return new_rows_df, len(new_rows_df)

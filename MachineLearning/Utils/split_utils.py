@@ -7,7 +7,7 @@ class SplitUtils:
     """Helper class for splitting data into train and test sets."""
 
     @staticmethod
-    def find_patient_split_by_epoch_balance(awake_df, faw_df, test_size: float,
+    def find_patient_split_by_epoch_balance(class_1_df, class_0_df, test_size: float,
                                             tolerance=0.05, max_iter=500, random_state=42,
                                             exclude_ids: Optional[Set[Any]] = None):
         """
@@ -15,8 +15,8 @@ class SplitUtils:
         the ratio given by test_size as good as possible. Will throw an exception if the size of splittable samples
         is smaller than the target test sample size.
 
-        :param awake_df: DataFrame containing awake data.
-        :param faw_df: DataFrame containing fake awake data.
+        :param class_1_df: DataFrame containing data from class 1.
+        :param class_0_df: DataFrame containing data from class 0.
         :param test_size: Float between 0 and 1. Determines the ratio of the split.
         :param tolerance: Float between 0 and 1. How much the calculated split can diverge from given ratio.
         :param max_iter: Maximum number of iterations to find the best split.
@@ -27,7 +27,7 @@ class SplitUtils:
         """
 
         # All resultIDs in union of awake and faw (i.e. present in at least one of the dataframes)
-        all_ids = pd.Index(awake_df['ResultID'].unique()).union(faw_df['ResultID'].unique())
+        all_ids = pd.Index(class_1_df['ResultID'].unique()).union(class_0_df['ResultID'].unique())
 
         # Will remove IDs from Set in which the search for the best test split happens
         if exclude_ids is not None:
@@ -37,7 +37,7 @@ class SplitUtils:
 
         # Mapping of resultID → Number of epochs
         id_episode_counts = {
-            rid: len(awake_df[awake_df['ResultID'] == rid]) + len(faw_df[faw_df['ResultID'] == rid])
+            rid: len(class_1_df[class_1_df['ResultID'] == rid]) + len(class_0_df[class_0_df['ResultID'] == rid])
             for rid in all_ids
         }
 
@@ -236,7 +236,22 @@ class SplitUtils:
         return test_df, train_df
 
     @staticmethod
-    def create_full_df(class_1_df: pd.DataFrame, class_0_df: pd.DataFrame, ignore_ids: list = None) -> pd.DataFrame:
+    def create_full_df(class_1_df: pd.DataFrame, class_0_df: pd.DataFrame,
+                       ignore_ids: list = None, ignore_epochs: pd.DataFrame = None) -> tuple:
+        """
+        Creates a concatenated dataframe from two input dataframes with specified labels, optionally
+        filtering rows based on a list of IDs and/or a dataframe of epochs. The method ensures rows
+        from `class_1_df` are labeled with 1, and rows from `class_0_df` are labeled with 0. Both
+        dataframes are combined, preserving their relative data while resetting the index and
+        storing the original index for tracking.
+
+        :param class_1_df: The dataframe containing class 1 data.
+        :param class_0_df: The dataframe containing class 0 data.
+        :param ignore_ids: A list of IDs to be excluded from the final dataframe, if specified.
+        :param ignore_epochs: A dataframe of epochs to be excluded from the final dataframe, if specified.
+        :return: The following tuple: (combined dataframe, class 1 dataframe, class 0 dataframe).
+        """
+
         # Add labels
         class_1_df = class_1_df.copy()
         class_1_df["label"] = 1
@@ -248,12 +263,16 @@ class SplitUtils:
             class_1_df = SplitUtils.remove_entries_by_col(class_1_df, ignore_ids, "ResultID")
             class_0_df = SplitUtils.remove_entries_by_col(class_0_df, ignore_ids, "ResultID")
 
+        if ignore_epochs is not None:
+            class_1_df = SplitUtils.remove_epochs(class_1_df, ignore_epochs)
+            class_0_df = SplitUtils.remove_epochs(class_0_df, ignore_epochs)
+
         full_df = pd.concat([class_1_df.copy(), class_0_df.copy()], ignore_index=True)
 
         # Save the original full_df index to easily retrieve this information later
         full_df = full_df.reset_index().rename(columns={"index": "orig_index"})
 
-        return full_df
+        return full_df, class_1_df, class_0_df
 
     @staticmethod
     def remove_entries_by_col(df: pd.DataFrame, result_ids_to_remove: list, col_name: str = "ResultID") -> pd.DataFrame:
@@ -266,6 +285,31 @@ class SplitUtils:
         :return: Filtered DataFrame without the specified entries.
         """
         return df[~df[col_name].isin(result_ids_to_remove)].copy()
+
+    @staticmethod
+    def remove_epochs(df: pd.DataFrame, misclassified_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Removes rows from `df` that match any (Start, End, ResultID) combination in `misclassified_df`.
+
+        :param df: The original DataFrame (e.g. train or test set).
+        :param misclassified_df: DataFrame with columns "Start", "End", "ResultID" indicating epochs to remove.
+        :return: Filtered DataFrame with specified epochs removed.
+        """
+        # Merge key columns for filtering
+        merge_keys = ["Start", "End", "ResultID"]
+
+        # Add an indicator column(col name is "_merge") to mark matches
+        merged = df.merge(
+            misclassified_df[merge_keys].drop_duplicates(),
+            on=merge_keys,
+            how="left",
+            indicator=True
+        )
+
+        # Keep only rows that did not match i.e. values that are left_only and not in misclassified_df
+        filtered_df = merged[merged["_merge"] == "left_only"].drop(columns=["_merge"])
+
+        return filtered_df
 
     @staticmethod
     def return_X_y(full_df: pd.DataFrame) -> tuple:

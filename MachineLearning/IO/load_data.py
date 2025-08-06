@@ -397,7 +397,8 @@ class LoadData(IOCore):
             raise ValueError(f"Unsupported file extension: {extension}")
 
 
-    def load_problematic_ids(self, parameters: dict, model_key: str, outlier_run_name: str | None) -> list | None:
+    def load_problematic_ids(self, parameters: dict, model_key: str, outlier_run_name: str | None,
+                             global_outliers: bool) -> list | None:
         """
         Loads the IDs of outlier groups related to a specific model, from a metadata file.
         If the specified file does not exist, attempts to create it from previous analysis results.
@@ -408,6 +409,8 @@ class LoadData(IOCore):
         :type model_key: str
         :param outlier_run_name: The name of the outlier run to load IDs for. If None, loads IDs for the current run_name.
         :type outlier_run_name: str | None
+        :param global_outliers: Flag indicating whether to include outliers from all runs.
+        :type global_outliers: bool
         :return: A list of outlier groups extracted from the metadata file.
         :rtype: list
 
@@ -431,12 +434,33 @@ class LoadData(IOCore):
                       "No problematic IDs can be loaded.")
                 return None
 
+        # Ensure that global outliers include outliers from given run by saving them before loading global outliers
+        if global_outliers:
+            outliers_df = self._update_and_get_global_outliers(parameters, outliers_df, "patient_id")
+
         outlier_list = outliers_df["group"].values.tolist()
-        print(f"Outlier groups found: {outlier_list}")
+        print(f"Outlier groups that will be removed from analysis: {outlier_list}")
 
         return outlier_list
 
-    def load_problematic_epochs(self, parameters: dict, model_key: str, outlier_run_name: str | None) -> pd.DataFrame | None:
+    def load_problematic_epochs(self, parameters: dict, model_key: str, outlier_run_name: str | None,
+                                global_outliers: bool) -> pd.DataFrame | None:
+        """
+        Loads problematic epochs based on metadata or by analyzing previous results. If global outliers are
+        requested, they will include the identified outliers from the current run before global outliers are loaded.
+        The function returns the outlier epochs in the form of a DataFrame or None if no problematic epochs are found.
+
+        :param parameters: Configuration parameters used in the operation.
+        :type parameters: dict
+        :param model_key: Unique identifier for the model being used.
+        :type model_key: str
+        :param outlier_run_name: Optional identifier for the run to load outlier metadata for.
+        :type outlier_run_name: str | None
+        :param global_outliers: Flag indicating whether to include global outliers in the analysis.
+        :type global_outliers: bool
+        :return: A DataFrame containing the problematic outlier epochs or None if no problematic epochs are found.
+        :rtype: pd.DataFrame | None
+        """
 
         print("Loading outlier epochs...")
         try:
@@ -454,8 +478,12 @@ class LoadData(IOCore):
                       "No problematic epochs can be loaded.")
                 return None
 
+        # Ensure that global outliers include outliers from given run by saving them before loading global outliers
+        if global_outliers:
+            outliers_df = self._update_and_get_global_outliers(parameters, outliers_df, "epoch")
+
         outlier_list = outliers_df.values.tolist()
-        print(f"Outlier groups found: {outlier_list}")
+        print(f"Outlier epochs that will be removed from analysis: {outlier_list}")
 
         return outliers_df
 
@@ -506,3 +534,54 @@ class LoadData(IOCore):
         else:
             return df_dict
 
+    def load_global_outliers(self, parameters, outlier_type) -> pd.DataFrame:
+        """
+        Loads a dataframe of global outliers based on the specified outlier type and parameters.
+        The method determines the target file name based on the `outlier_type` and retrieves
+        the file location using the provided parameters. It reads and returns the data from
+        the corresponding CSV file.
+
+        :param parameters:
+            List of parameters used to determine the folder path for outliers files.
+        :param outlier_type:
+            Specifies the type of outliers to fetch, either "epoch" or "patient_id".
+        :return:
+            Pandas DataFrame containing the global outliers data.
+        :rtype: pd.DataFrame
+        :raises ValueError:
+            If the provided outlier_type is not "epoch" or "patient_id".
+        """
+        folder_path = self.return_all_parameter_fullpath(parameters, False, False, ["global_outliers"])
+
+        # Build fullpath depending on outlier type
+        if outlier_type == "epoch":
+            filename = "global_epoch_outliers.csv"
+        elif outlier_type == "patient_id":
+            filename = "global_patient_outliers.csv"
+        else:
+            raise ValueError("Invalid outlier type. Expected 'epoch' or 'patient_id'.")
+
+        fullpath = PathUtils.return_anypath(folder_path, filename)
+        # Load and return outlier df
+        outliers_df = pd.read_csv(fullpath)
+        return outliers_df
+
+    def _update_and_get_global_outliers(self, parameters, outliers_df: pd.DataFrame, outlier_type: str):
+        """
+        Updates the global outliers with new outliers and retrieves the updated global outliers.
+        This function saves the new outliers to the global outliers using an external saver instance
+        and then fetches the updated global outliers dataset.
+
+        :param parameters: The parameters required for saving and loading global outliers.
+        :type parameters: Any
+        :param outliers_df: A pandas DataFrame containing the new outliers to be added to the global outliers.
+        :param outlier_type: A string representing the specific type of outlier
+            valid options are: "patient_id", "epoch".
+        :return: A pandas DataFrame containing the updated global outliers after addition of the new outliers.
+        :rtype: pd.DataFrame
+        """
+        from MachineLearning.IO.save_result import SaveResult
+        saver = SaveResult()
+        saver.save_global_outliers(parameters, outliers_df, outlier_type)  # Add given outliers to global
+        global_outliers_df = self.load_global_outliers(parameters, outlier_type)  # Get updated global outliers
+        return global_outliers_df

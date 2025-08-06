@@ -83,8 +83,8 @@ class SplitManager:
 
         # Step 2: Find the best split on patient level to reach the test/train ratio on sample level
         train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
-            awake_df=self.class_1_df,
-            faw_df=self.class_0_df,
+            class_1_df=self.class_1_df,
+            class_0_df=self.class_0_df,
             test_size=self.test_size,
             tolerance=0.05,
             random_state=self.random_state
@@ -136,7 +136,7 @@ class SplitManager:
         kf = KFold(n_splits=n_splits, shuffle=True, random_state=self.random_state)
 
         # Create full dataset
-        full_df = SplitUtils.create_full_df(self.class_1_df, self.class_0_df)
+        full_df,_,_ = SplitUtils.create_full_df(self.class_1_df, self.class_0_df)
 
         splits = []
 
@@ -165,7 +165,13 @@ class SplitManager:
 
         return X, y, splits
 
-    def create_custom_splits_by_test_size(self, save=True, min_iterations: int = None, ignore_ids: list = None):
+    def create_custom_splits_by_test_size(
+            self,
+            save: bool = True,
+            min_iterations: int = None,
+            ignore_ids: list = None,
+            ignore_epochs: pd.DataFrame = None
+    ):
         splits = []
 
         # Set iterations to maximum possible number of non overlapping splits (default)
@@ -178,7 +184,8 @@ class SplitManager:
         print(f"Creating folded non overlapping Splits. "
               f"Ratio: ({(1 - self.test_size) * 100:.1f}/{self.test_size * 100:.1f})")
 
-        full_df = SplitUtils.create_full_df(self.class_1_df, self.class_0_df, ignore_ids)
+        full_df, self.class_1_df, self.class_0_df = SplitUtils.create_full_df(
+            self.class_1_df, self.class_0_df, ignore_ids, ignore_epochs)
 
         used_test_ids = set()
         split_counter = 0
@@ -188,8 +195,8 @@ class SplitManager:
             # Should only fail due to too small of a sample for current iteration
             try:
                 train_ids, test_ids = SplitUtils.find_patient_split_by_epoch_balance(
-                    awake_df=self.class_1_df,
-                    faw_df=self.class_0_df,
+                    class_1_df=self.class_1_df,
+                    class_0_df=self.class_0_df,
                     test_size=self.test_size,
                     tolerance=0.05,
                     random_state=self.random_state,
