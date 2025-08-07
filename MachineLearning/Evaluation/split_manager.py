@@ -1,8 +1,7 @@
 """Contains the SplitManager class."""
-import numpy as np
 import pandas as pd
 
-from MachineLearning.IO.io_core import IOCore, PathUtils
+from MachineLearning.IO.load_data import LoadData, PathUtils
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.split_utils import SplitUtils
 
@@ -12,7 +11,7 @@ class SplitManager:
     Handles stratified, subject-wise splitting of EEG feature datasets
     into train and test sets, ensuring no ResultID overlap.
     """
-    io_core = IOCore()
+    loader = LoadData()
 
     def __init__(self, parameters: dict, class_0: str, class_1: str, test_size: float = 0.2, random_state: int = 42):
         """
@@ -25,10 +24,6 @@ class SplitManager:
         :param random_state: Random state for splitting data into train and test sets (for reproducibility).
         """
         self.parameters = parameters
-        self.class_1_path = self.io_core.return_file_fullpath(parameters, True, False, class_1,
-                                                              ["test_and_train_data", "feature_sets"])
-        self.class_0_path = self.io_core.return_file_fullpath(parameters, True, False, class_0,
-                                                              ["test_and_train_data", "feature_sets"])
         self.test_size = test_size
         self.random_state = random_state
         self.class_0 = class_0
@@ -42,10 +37,7 @@ class SplitManager:
 
     def load_and_validate(self):
         """Loads both csv Files, each of them containing data of one class."""
-        print(f"Loading {self.class_1} data from {self.class_1_path}\n "
-              f"Loading {self.class_0} data from {self.class_0_path}")
-        class_1_df = pd.read_csv(self.class_1_path)
-        class_0_df = pd.read_csv(self.class_0_path)
+        class_1_df, class_0_df = self.loader.load_combined_features_df(self.parameters, self.class_1, self.class_0)
 
         if list(class_1_df.columns) != list(class_0_df.columns):
             raise ValueError("Feature CSVs do not have the same columns.")
@@ -246,8 +238,8 @@ class SplitManager:
 
     def return_split_paths(self):
         """Returns a tuple of paths to the train-test-split. Tuple -> (train_path, test_path)"""
-        train_fullpath = self.io_core.return_single_split_folder_fullpath(self.parameters, "train")
-        test_fullpath = self.io_core.return_single_split_folder_fullpath(self.parameters, "test")
+        train_fullpath = self.loader.return_single_split_folder_fullpath(self.parameters, "train")
+        test_fullpath = self.loader.return_single_split_folder_fullpath(self.parameters, "test")
         return train_fullpath, test_fullpath
 
     def return_k_fold_split_paths(self) -> list:
@@ -261,7 +253,7 @@ class SplitManager:
 
         # alias functions
         exists = PathUtils.filepath_exists
-        get_fullpath = self.io_core.return_folded_split_folder_fullpath
+        get_fullpath = self.loader.return_folded_split_folder_fullpath
 
         for fold in range(self.k_folds):
             fold+=1  # folds start at 1 and not 0

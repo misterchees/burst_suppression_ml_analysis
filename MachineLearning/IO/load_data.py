@@ -534,6 +534,35 @@ class LoadData(IOCore):
         else:
             return df_dict
 
+    def load_combined_features_df(self, parameters, class_1, class_0):
+        """
+        Load combined features dataframes for the specified classes.
+
+        This method loads data from specified file paths for two given classes and
+        returns their corresponding dataframes. It uses the provided parameters to
+        determine file paths for the data of `class_1` and `class_0`. The paths are
+        generated dynamically based on the parameters and predefined folder hierarchy.
+
+        :param parameters: A dictionary-like object containing configuration parameters.
+        :param class_1: The name or identifier of the first class whose data will be loaded.
+            Valid options are: 'normal_an', 'faw' and 'awake'
+        :param class_0: The name or identifier of the second class whose data will be loaded.
+            Valic options are: 'normal_an', 'faw' and 'awake'
+        :return: A tuple of pandas DataFrames corresponding to the data of `class_1` and `class_0`.
+
+        :rtype: Tuple[pd.DataFrame, pd.DataFrame]
+        """
+        class_1_path = self.return_file_fullpath(parameters, True, False, class_1,
+                                                              ["test_and_train_data", "feature_sets"])
+        class_0_path = self.return_file_fullpath(parameters, True, False, class_0,
+                                                              ["test_and_train_data", "feature_sets"])
+        print(f"Loading {class_1} data from {class_1_path}\n "
+              f"Loading {class_0} data from {class_0_path}")
+        class_1_df = pd.read_csv(class_1_path).copy()
+        class_0_df = pd.read_csv(class_0_path).copy()
+
+        return class_1_df, class_0_df
+
     def load_global_outliers(self, parameters, outlier_type) -> pd.DataFrame:
         """
         Loads a dataframe of global outliers based on the specified outlier type and parameters.
