@@ -29,7 +29,7 @@ class Comparison:
         farthest limits of both EEGs.
         """
         loader = LoadData()
-        transforms = Transforms(tuple("faw"), {})
+        transforms = Transforms(tuple("faw"), {}, {})
         # Load EEGs from same Patient ID to compare
         fs_raw, raw_eegs = loader.load_eeg_data(result_id, False)
         fs_filt, filtered_eegs = loader.load_eeg_data(result_id, True)
@@ -39,8 +39,9 @@ class Comparison:
         filtered_eeg = filtered_eegs[:, channel - 1]
 
         # Create PSD for both
-        raw_freq, raw_power = transforms.calculate_psd_welch(raw_eeg, fs_raw)
-        filt_freq, filt_power = transforms.calculate_psd_welch(filtered_eeg, fs_filt)
+        nperseg_seconds = 2
+        raw_freq, raw_power = transforms.calculate_psd_welch(raw_eeg, fs_raw, nperseg_seconds)
+        filt_freq, filt_power = transforms.calculate_psd_welch(filtered_eeg, fs_filt, nperseg_seconds)
 
         if same_plot:
             # Create one plot and write second plot into it with different color and label

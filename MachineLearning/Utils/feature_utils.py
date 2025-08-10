@@ -70,6 +70,7 @@ class FeatureUtils:
         :param parameters: Defines the directory from where the episodes will be retrieved.
         :param channel: EEG-Channel (options: 1, 2)
         :param num_an: Number of epochs for normal anesthesia to return. Only relevant if epoch_type = 'normal_an'
+        :param allowed_ids: List of patient IDs to return. If None, all IDs are returned.
         :return: List of Tuples. Every Tuple is structured -> (start(s), end(s), result_id, fs, eeg epochs (samples))
         """
 

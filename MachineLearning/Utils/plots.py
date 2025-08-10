@@ -182,6 +182,7 @@ class Plots:
         :param eeg_data: 2D NumPy array of shape (n_samples, 2)
         :param fs: Sampling frequency in Hz
         :param channel_names: Tuple with names for each channel
+        :param filtered: If True, the plotted EEG signal is assumed to be filtered, else raw. Influences chart name.
         """
         if eeg_data.shape[1] != 2:
             raise ValueError("Input EEG data must have exactly 2 channels (shape: [n_samples, 2])")

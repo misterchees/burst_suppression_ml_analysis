@@ -23,8 +23,8 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
     class_0_df["label"] = 0
     # Label outliers if present, else normal labeling of given classes
     if outliers is not None:
-        outlier_df = _return_outliers(outliers, loader, hyperparameters, outlier_run, model_name)
-        class_1_outlier_df, class_1_non_outlier_df = _split_by_outliers(class_1_df, outlier_df)
+        outlier_df = return_outliers(outliers, loader, hyperparameters, outlier_run, model_name)
+        class_1_outlier_df, class_1_non_outlier_df = split_by_outliers(class_1_df, outlier_df)
         class_1_non_outlier_df["label"] = 1
         class_1_outlier_df["label"] = 2
         all_epochs_df = pd.concat([class_0_df, class_1_non_outlier_df, class_1_outlier_df], ignore_index=True)
@@ -40,10 +40,10 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
     print(f"PCA Results:\n {pca_result} \n")
 
     # 2D-Plot
-    analyzer.plot_components_2d(labels=labels)
+    analyzer.plot_components_2d(labels=labels, marker_size=5, alpha=0.4, separate_plots=True)
 
     # 3D-Plot
-    analyzer.plot_components_3d(labels=labels)
+    analyzer.plot_components_3d(labels=labels, marker_size=5, alpha=0.4, separate_plots=True)
 
     # Scree Plot
     analyzer.plot_scree()
@@ -53,7 +53,27 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
     print(f"Top Features:\n {top_features}")
 
 
-def _return_outliers(outliers, loader, hyperparameters, outlier_run, model_name) -> pd.DataFrame:
+def return_outliers(outliers: str, loader: LoadData, hyperparameters: dict,
+                    outlier_run: str, model_name: str) -> pd.DataFrame:
+    """
+    This function extracts outlier data based on the specified type (either 'global' or 'local').
+    For global outliers, it retrieves data using the provided loader. For local outliers, it identifies
+    misclassified epochs from the results and arranges them in a structured DataFrame.
+
+    :param outliers: Specifies the type of outliers to retrieve. Must be either 'global' or 'local'.
+    :type outliers: str
+    :param loader: Instance of a loader class responsible for loading outlier or result data.
+    :type loader: LoadData
+    :param hyperparameters: Configuration details required for processing the data.
+    :type hyperparameters: dict
+    :param outlier_run: Identifier for the specific run from which local outliers are to be fetched.
+    :type outlier_run: str
+    :param model_name: Name of the model used for generating or predicting data.
+    :type model_name: str
+    :return: A DataFrame containing the requested outlier data.
+    :rtype: pandas.DataFrame
+    :raises ValueError: If the 'outliers' parameter is neither 'global' nor 'local'.
+    """
     if outliers == "global":
         outliers_df = loader.load_global_outliers(hyperparameters, "epoch")
     elif outliers == "local":
@@ -72,25 +92,25 @@ def _return_outliers(outliers, loader, hyperparameters, outlier_run, model_name)
     return outliers_df
 
 
-def _split_by_outliers(awake_df: pd.DataFrame, outlier_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def split_by_outliers(df_to_split: pd.DataFrame, outlier_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Splits the awake_df into two DataFrames based on whether rows appear in outlier_df.
+    Splits the given DataFrame into two DataFrames based on whether rows appear in outlier_df.
 
-    :param awake_df: DataFrame containing all awake epochs with Start, End, ResultID.
+    :param df_to_split: DataFrame to split with Start, End, ResultID.
     :param outlier_df: DataFrame containing identified outlier epochs with Start, End, ResultID.
     :returns: A tuple of two DataFrames:
-              - matched_outlier_df: rows in awake_df that also appear in outlier_df
-              - not_matched_outlier_df: remaining rows in awake_df
+              - matched_outlier_df: rows in df_to_split that also appear in outlier_df
+              - not_matched_outlier_df: remaining rows in df_to_split
     """
     # Create a unique key for each row to make comparison easier
-    awake_keys = awake_df[['Start', 'End', 'ResultID']].astype(str).agg('_'.join, axis=1)
+    df_to_split_keys = df_to_split[['Start', 'End', 'ResultID']].astype(str).agg('_'.join, axis=1)
     outlier_keys = outlier_df[['Start', 'End', 'ResultID']].astype(str).agg('_'.join, axis=1)
 
     # Mask for match
-    is_outlier = awake_keys.isin(set(outlier_keys))
+    is_outlier = df_to_split_keys.isin(set(outlier_keys))
 
-    matched_outlier_df = awake_df[is_outlier].reset_index(drop=True)
-    not_matched_outlier_df = awake_df[~is_outlier].reset_index(drop=True)
+    matched_outlier_df = df_to_split[is_outlier].reset_index(drop=True)
+    not_matched_outlier_df = df_to_split[~is_outlier].reset_index(drop=True)
 
     return matched_outlier_df, not_matched_outlier_df
 

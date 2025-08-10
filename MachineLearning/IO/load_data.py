@@ -534,7 +534,7 @@ class LoadData(IOCore):
         else:
             return df_dict
 
-    def load_combined_features_df(self, parameters, class_1, class_0):
+    def load_combined_features_df(self, parameters: dict, class_1: str, class_0: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Load combined features dataframes for the specified classes.
 
@@ -543,7 +543,7 @@ class LoadData(IOCore):
         determine file paths for the data of `class_1` and `class_0`. The paths are
         generated dynamically based on the parameters and predefined folder hierarchy.
 
-        :param parameters: A dictionary-like object containing configuration parameters.
+        :param parameters: A dict containing configuration parameters.
         :param class_1: The name or identifier of the first class whose data will be loaded.
             Valid options are: 'normal_an', 'faw' and 'awake'
         :param class_0: The name or identifier of the second class whose data will be loaded.
