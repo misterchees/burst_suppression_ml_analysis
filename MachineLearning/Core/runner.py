@@ -82,7 +82,7 @@ def run():
         features_dict=features_dict,
         metadata_to_analyze=metadata_to_analyze,
         run_name=run_name,
-        force_overwrite=True,
+        force_overwrite=False,
         global_outliers=True
     )
 
