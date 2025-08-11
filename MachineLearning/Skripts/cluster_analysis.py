@@ -40,10 +40,10 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
     print(f"PCA Results:\n {pca_result} \n")
 
     # 2D-Plot
-    analyzer.plot_components_2d(labels=labels, marker_size=5, alpha=0.4, separate_plots=True)
+    analyzer.plot_components_2d(labels=labels, marker_size=5, alpha=0.4, separate_plots=False)
 
     # 3D-Plot
-    analyzer.plot_components_3d(labels=labels, marker_size=5, alpha=0.4, separate_plots=True)
+    analyzer.plot_components_3d(labels=labels, marker_size=5, alpha=0.4, separate_plots=False)
 
     # Scree Plot
     analyzer.plot_scree()

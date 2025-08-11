@@ -35,7 +35,6 @@ def calculate_mean_psds(hyperparameters: dict, class_1: str, class_0: str, plot:
         plt.show()
 
 
-
 def average_psd_from_epochs(psd_folderpath: str, epochs_df: pd.DataFrame) -> pd.DataFrame:
     psd_values = []
     freq_axis = None
@@ -65,6 +64,7 @@ def average_psd_from_epochs(psd_folderpath: str, epochs_df: pd.DataFrame) -> pd.
     })
 
     return avg_psd_df
+
 
 if __name__ == "__main__":
     hyperparams = {

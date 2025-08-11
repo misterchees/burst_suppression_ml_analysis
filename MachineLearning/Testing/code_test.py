@@ -1,40 +1,18 @@
 """
 Here is the place to test any code.
 """
-from MachineLearning.Utils.config_handler import load_config
+from MachineLearning.Features.transforms import Transforms
+from MachineLearning.IO.save_result import SaveResult
 
-parameter_dict = load_config("parameters_config.yaml")["initial_params"]
-path_to_file = load_config("path_config.yaml")["base_dir"]["path_name"]
 
-"""
-from MachineLearning.Evaluation.split_manager import SplitManager
-from MachineLearning.Models.svm_classifier import SVMClassifier
-from MachineLearning.Models.ParamTuning.svm_grid_search import SVMGridSearch
+def transform():
+    saver = SaveResult()
 
-split_manager = SplitManager(parameter_dict, "faw", "awake", test_size=0.15)
-split_manager.load_and_validate()
-X, y, splits = split_manager.create_custom_splits_by_test_size()
-svm = SVMClassifier()
-svm_base_model = svm.get_base_model()
-metric_list = ["accuracy", "recall", "precision"]
-for metric in metric_list:
-    grid_search = SVMGridSearch(svm_base_model, X, y, splits, metric)
-    grid_search.run()
-    print(f"Results for grid search to optimize {metric}:")
-    print(f"Best estimator: {grid_search.best_estimator()}")
-    print(f"Best score: {grid_search.best_score()}")
-    print(f"Best params: {grid_search.best_params()}")
-"""
+    transformer = Transforms(("faw",), "welch", {})
+    transformer.update_current_epochs(1)
 
-filter_params = {
-    "butterworth":{
-        "lowcut": 0.5,
-        "highcut": 30.0,
-        "order": 4
-    }
-}
+    transformer.calculate_and_save_psd_for_epochs("faw", saver)
 
-(filter_method, filter_params), = filter_params.items()
 
-print(filter_method)
-print(filter_params)
+if __name__ == '__main__':
+    transform()

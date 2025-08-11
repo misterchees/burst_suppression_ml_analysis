@@ -9,7 +9,7 @@ model_key = "svm"
 model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 transform_method = "welch"
-run_name = "baseline_run_rm_ids_5"
+run_name = "faw_now_filtered_rm_patients_4"
 
 all_run_params_dict = {
     "current_params": {
@@ -44,7 +44,7 @@ all_run_params_dict = {
         "random_seed": 42,
         "remove_outliers": True,
         "remove_outlier_epochs": False,
-        "outlier_run_name": "baseline_run_rm_ids_4",
+        "outlier_run_name": "faw_now_filtered_rm_patients_3",
         model_key: model_params
     }
 }

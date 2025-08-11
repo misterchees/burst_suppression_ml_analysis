@@ -56,7 +56,7 @@ class Pipeline:
         self.all_features = self._check_features()  # Flag to determine which features to handle
 
         # Initialize Transform and EEG-Extractor
-        self._set_transforms_and_feature_extractor_instances(epoch_classes, self.hyperparams)
+        self._set_transforms_and_feature_extractor_instances(epoch_classes)
 
         # Get ResultIDs specified by the folder of initial_data_key
         loader = LoadData()
@@ -225,7 +225,7 @@ class Pipeline:
         else:
             feature_extractor.combine_features(False, self.features_to_combine)
 
-    def _set_transforms_and_feature_extractor_instances(self, epoch_classes: dict, parameters: dict):
+    def _set_transforms_and_feature_extractor_instances(self, epoch_classes: dict):
         if self.all_features is None:
             self.transforms = None
             self.feature_extractor = None
