@@ -14,6 +14,8 @@ current_params:
   refractory_time: 5
   fixed_window_size: 20
   overlap: 0.0
+normalizing_params:
+  zscore: zscore
 filtering_params:
   butterworth:
     lowcut: 0.5
@@ -75,9 +77,9 @@ feature_params:
 classification_params:
   test_size: 0.15
   random_seed: 42
-  remove_outliers: true
+  remove_outliers: false
   remove_outlier_epochs: false
-  outlier_run_name: faw_now_filtered_rm_patients_3
+  outlier_run_name: ''
   svm:
     C: 1
     kernel: rbf

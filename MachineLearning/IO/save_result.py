@@ -148,26 +148,28 @@ class SaveResult(IOCore):
 
         result_df.to_csv(fullpath, index=False)
 
-    def save_filtered_eeg(self, filtered_eeg: np.ndarray, fs: int, result_id: int):
+    def save_eeg_track(self, eeg_track: np.ndarray, fs: int, result_id: int, folder_keys: list[str]):
         """
         Saves a filtered EEG as a <result_id>.csv. Assuming the EEG has only 2 channels, these
-        will be the columns of the csv-file, and a third column for the fs (sampling frequency)
-        :param filtered_eeg: An array of filtered EEG (assuming 2 columns i.e. channels)
+        will be the columns of the csv-file, and the first row contains the fs (sampling frequency)
+        :param eeg_track: An EEG track as array (assuming 2 columns = channels)
         :param fs: The sampling frequency of the EEG
         :param result_id: The patient ID. Will be part of the saved file -> <result_id>.csv
+        :param folder_keys: The keys to the folder in which the file should be saved.
+        
         """
         channels = self.data_names["eeg_files"]["eeg_channels"]
-        df = pd.DataFrame(filtered_eeg, columns=channels)
-        filtered_eeg_subdir = self.return_folder_path(["filtered_data"])
-        os.makedirs(os.path.dirname(filtered_eeg_subdir), exist_ok=True)
-        fullpath = PathUtils.return_anypath(filtered_eeg_subdir, f"{result_id}.csv")
+        df = pd.DataFrame(eeg_track, columns=channels)
+        eeg_subdir = self.return_folder_path(folder_keys)
+        os.makedirs(os.path.dirname(eeg_subdir), exist_ok=True)
+        fullpath = PathUtils.return_anypath(eeg_subdir, f"{result_id}.csv")
 
-        # Write fs as header line, then the rounded data
+        # Write fs as the header line, then the rounded data
         with open(fullpath, "w", newline='') as f:
             f.write(f"# fs = {fs}\n")
             df.to_csv(f, index=False, float_format="%.4f")
 
-        print(f"Successfully saved filtered EEG to {fullpath}")
+        print(f"Successfully saved EEG to {fullpath}")
 
     def save_combined_features(self, parameters: dict, merged_df: pd.DataFrame, epoch_type: str):
         """

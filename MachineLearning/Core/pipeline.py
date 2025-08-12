@@ -13,11 +13,12 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 
 
 class Pipeline:
-    result_ids = []
+    patient_ids = []
 
     def __init__(self, init_data_key: str, epoch_classes: dict, update_dict: dict, filter_method: str, model_key: str,
-                 transform_method: str, features_dict: dict = None, metadata_to_analyze: list = None,
-                 run_name: str = None, force_overwrite: bool = False, global_outliers: bool = True):
+                 normalize_method: str, transform_method: str, features_dict: dict = None, metadata_to_analyze: list = None,
+                 run_name: str = None, force_overwrite: bool = False, global_outliers: bool = True,
+                 force_transform: bool = False, force_extract: bool = False):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
@@ -26,6 +27,7 @@ class Pipeline:
         :param update_dict: A dict with all relevant parameters to update them globally i.e. in the params config.
         :param filter_method: Name of filter-method to use.
         :param model_key: Name of model to use.
+        :param normalize_method: Name of normalize-method to use.
         :param transform_method: Name of transform-method to use.
         :param features_dict: Dictionary containing a list of features to extract and another to combine.
         :param metadata_to_analyze: List of metadata to analyze for error patterns in the classification.
@@ -41,6 +43,7 @@ class Pipeline:
 
         # Set instance values
         self.filter_method = filter_method
+        self.normalize_method = normalize_method
         self.transform_method = transform_method
         self.model_key = model_key
         self.classification_params = updated_params["classification_params"]
@@ -48,6 +51,8 @@ class Pipeline:
         self.hyperparams = updated_params["current_params"]
         self.metadata_to_analyze = metadata_to_analyze
         self.global_outliers = global_outliers
+        self.force_transform = force_transform
+        self.force_extract = force_extract
 
         # Section to determine which operations can be skipped
         # Set params related to feature extraction and combination
@@ -60,7 +65,7 @@ class Pipeline:
 
         # Get ResultIDs specified by the folder of initial_data_key
         loader = LoadData()
-        self.result_ids = loader.return_all_patient_ids(init_data_key)
+        self.patient_ids = loader.return_all_patient_ids(init_data_key)
 
         # Set run metadata class, collecting initial data
         filt_params_dict = {filter_method: updated_params["filtering_params"][filter_method]}
@@ -71,9 +76,10 @@ class Pipeline:
         self.run_metadata_collector = RunMetadata(
             epoch_types=epoch_list,
             model_params=model_params_dict,
-            initial_patient_ids=self.result_ids,
+            initial_patient_ids=self.patient_ids,
             hyperparameters=self.get_current_hyperparams(),
             filtering_params=filt_params_dict,
+            normalize_method=self.normalize_method,
             transform_params=transform_params_dict,
             classification_params=self.classification_params,
             run_name=run_name,
@@ -94,6 +100,7 @@ class Pipeline:
         # Reference dict with all implemented steps. ORDER is important (order preservation in dict since Python 3.7)
         func_dict = {
             "filter": self.raw_eeg_filtering,
+            "normalize": self.filtered_eeg_normalizing,
             "transform": self.transform_eeg_to_psd,
             "extract": self.feature_extraction,
             "combine": self.combine_features,
@@ -173,7 +180,12 @@ class Pipeline:
         from MachineLearning.Preprocessing.filtering import Filtering
 
         filtering = Filtering(self.filter_method)
-        filtering.filter_multiple_eeg(eeg_list=self.result_ids)
+        filtering.filter_multiple_eeg(eeg_list=self.patient_ids)
+
+    def filtered_eeg_normalizing(self):
+        from MachineLearning.Preprocessing.normalizing import Normalizing
+        normalizer = Normalizing(self.normalize_method)
+        normalizer.normalize_multiple_eeg(eeg_list=self.patient_ids)
 
     def transform_eeg_to_psd(self):
         """Wrapper for transform function implemented in Transforms class"""
@@ -184,10 +196,10 @@ class Pipeline:
 
     def feature_extraction(self):
         """
-        Extracts defined features from all EEGs in the current result_ids subset. Depending on the features
+        Extracts defined features from all EEGs in the current patient_ids subset. Depending on the features
         given to this pipeline instance, it will extract features.
         """
-        if self.all_features is None or self.feature_extractor is None:
+        if self.feature_extractor is None:
             print("Skipping feature extraction")
             return
 
@@ -249,6 +261,12 @@ class Pipeline:
                 self.feature_extractor = None
             else:
                 self.feature_extractor = EEGFeatureExtractor(tuple(feature_epochs), None)
+
+        # Ignore everything and initialize for all epochs if force operation is activated
+        if self.force_transform:
+            self.transformer = Transforms(tuple(epoch_classes.values()), self.transform_method, None)
+        if self.force_extract:
+            self.feature_extractor = EEGFeatureExtractor(tuple(epoch_classes.values()), None)
 
     def _check_features(self) -> bool | None:
         """
@@ -437,13 +455,13 @@ class Pipeline:
             y_pred, y_test, y_proba = self._collect_classification_results(self.split_paths, **self.model_params)
             self.metrics = self._evaluate_metrics(y_test, y_pred, y_proba, folds)
 
-    def set_result_ids(self, initial_data_key: str):
+    def set_patient_ids(self, initial_data_key: str):
         """
         Sets subset of Patient IDs, i.e. subdirectory of initial data
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
         """
         loader = LoadData()
-        self.result_ids = loader.return_all_patient_ids(initial_data_key)
+        self.patient_ids = loader.return_all_patient_ids(initial_data_key)
 
     @staticmethod
     def get_current_hyperparams() -> dict:

@@ -66,5 +66,5 @@ class Filtering:
 
         # Apply filter to each channel
         filtered_eeg = signal.filtfilt(b, a, raw_eeg, axis=0)
-        saver.save_filtered_eeg(filtered_eeg, fs, result_id)
+        saver.save_eeg_track(filtered_eeg, fs, result_id, ["filtered_data"])
         print(f"Patient ID: {result_id} succesfully filtered and saved in filtered subdirectory")

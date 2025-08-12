@@ -89,7 +89,9 @@ class FeatureUtils:
 
         for result_id, epoch_list in episode_times_df.items():
             # get times, segments and fs from grouped times list
-            fs, eeg_segment_dict = data_loader.load_eeg_epochs_from_csv(result_id, epoch_list, channel)
+            fs, eeg_segment_dict = data_loader.load_eeg_epochs_from_csv(
+                result_id, epoch_list, channel, ["normalized_data"]
+            )
 
             # Assemble tuple start, end, result, fs, eeg epoch -> Add it to list
             for times, eeg_segment in eeg_segment_dict.items():

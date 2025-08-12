@@ -32,6 +32,7 @@ class RunMetadata:
             initial_patient_ids: Union[List[int], set],
             hyperparameters: dict,
             filtering_params: dict,
+            normalize_method: str,
             transform_params: dict,
             classification_params: dict,
             run_name: Optional[str] = None,
@@ -43,9 +44,11 @@ class RunMetadata:
         :param initial_patient_ids: List or set of patient IDs used in this run
         :param hyperparameters: Dictionary of hyperparameters used in this run
         :param filtering_params: Dictionary of filtering parameters used in this run.
+        :param normalize_method: Method used for normalization.
         :param transform_params: Dictionary of transform parameters used in this run.
         :param classification_params: Dictionary of classification parameters used in this run.
         :param run_name: Optional manual run name (e.g. timestamp or hash)
+        :param force_overwrite: If False, cancels run if there is already one with the same parameters.
         """
         for epoch_type in epoch_types:
             if epoch_type not in ["normal_an", "awake", "faw"]:
@@ -58,6 +61,7 @@ class RunMetadata:
         self.initial_patient_ids = sorted(list(initial_patient_ids))
         self.hyperparameters = hyperparameters
         self.filtering_params = filtering_params
+        self.normalize_method = normalize_method
         self.transform_params = transform_params
         self.classification_params = classification_params
         self.param_hash = self._calculate_dict_hash(epoch_types, model_params, initial_patient_ids, hyperparameters,
@@ -175,6 +179,7 @@ class RunMetadata:
             "final_patient_ids": sorted(self.final_patient_ids),
             self.hyperparameters_key: self.hyperparameters,
             self.filtering_params_key: self.filtering_params,
+            "normalize_method": self.normalize_method,
             self.transform_params_key: self.transform_params,
             self.feature_params_key: self.feature_params,
             "split_data": self.split_data,

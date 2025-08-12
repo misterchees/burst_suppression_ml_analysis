@@ -8,8 +8,9 @@ channel = 1
 model_key = "svm"
 model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
+normalize_method = "zscore"
 transform_method = "welch"
-run_name = "faw_now_filtered_rm_patients_4"
+run_name = "normalized_run_0"
 
 all_run_params_dict = {
     "current_params": {
@@ -23,6 +24,9 @@ all_run_params_dict = {
     },
     "filtering_params": {
         filter_method: {"lowcut": 0.5, "highcut": 30.0, "order": 4}
+    },
+    "normalizing_params": {
+        normalize_method: normalize_method
     },
     "transform_params": {
         transform_method: {"channel": channel, "nperseg_seconds": 2, "fs": 128}
@@ -42,16 +46,16 @@ all_run_params_dict = {
     "classification_params": {
         "test_size": 0.15,
         "random_seed": 42,
-        "remove_outliers": True,
+        "remove_outliers": False,
         "remove_outlier_epochs": False,
-        "outlier_run_name": "faw_now_filtered_rm_patients_3",
+        "outlier_run_name": "",
         model_key: model_params
     }
 }
 
 # Use None for variable to skip step; Use "all_features" if all features should be used in step
-features = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
-features_to_combine = ["mean", "variance", "bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
+features = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
+features_to_combine = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
 
 # Set dict to None if no extraction AND no combination shall be conduced
 features_dict = {
@@ -65,7 +69,7 @@ metadata_to_analyze = ["ResultID"]
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
 # epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 
-steps_of_workflow = ["transform", "extract", "combine", "classify", "analyze"]
+steps_of_workflow = ["normalize", "transform", "extract", "combine", "classify", "analyze"]
 
 
 def run():
@@ -78,6 +82,7 @@ def run():
         update_dict=all_run_params_dict,
         filter_method=filter_method,
         model_key=model_key,
+        normalize_method=normalize_method,
         transform_method=transform_method,
         features_dict=features_dict,
         metadata_to_analyze=metadata_to_analyze,

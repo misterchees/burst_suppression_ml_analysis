@@ -1,15 +1,15 @@
 # A wise man once said, never change the key, always change the value
-base_dir: # basic directory for all data in this project
+base_dir: # Basic directory for all data in this project
     path_name: "D:\\Daten"
     subdirs:
-        faw: # subdirectory of subsets with episodes of fake awakeness (FAW)
+        faw: # Subdirectory of subsets with episodes of fake awakeness (FAW)
             path_name: "FAW_subsets"
-        initial_data: # subdirectory for all initial raw data only
+        initial_data: # Subdirectory for all initial raw data only
             path_name: "Initial_data"
             subdirs:
                 combined_raw_data: "vitaldb_csvprocessed_BIS_BIS_SR_MAC" # contains synchronized and combined additional data: bis, bis_sr and mac
                 raw_eeg_mat: "vitalDB_mat_EEG" # contains the raw EEGs
-        features: # subdirectory for features and related data (like PSDs for freq domain features)
+        features: # Subdirectory for features and related data (like PSDs for freq domain features)
             path_name: "Features"
             subdirs:
                 psds: "PSD" # PSDs for frequency domain features
@@ -23,16 +23,18 @@ base_dir: # basic directory for all data in this project
                 sample_entropy: "Sample_entropy" # Sample Entropy in time domain
                 permutation_entropy: "Permutation_entropy" # Permutation Entropy in time domain
                 fuzzy_entropy: "Fuzzy_entropy" # Fuzzy Entropy in time domain
-        plots: # subdirectory for plots
+        plots: # Subdirectory for plots
             path_name: "Plots"
-        filtered_data: # subdirectory for filtered data
+        filtered_data: # Subdirectory for filtered data
             path_name: "Filtered"
-        test_and_train_data: # subdirectory for test training sets
+        normalized_data: # Subdirectory for normalized (after filtering) data
+            path_name: "Normalized"
+        test_and_train_data: # Subdirectory for test training sets
             path_name: "Test_and_train"
             subdirs:
                 feature_sets: "Feature_sets" # Aggregated features
                 splits: "Splits" # Test and train sets derived from aggregated feature datapool
-        models:
+        models: # Subdirectory for used models
             path_name: "Models"
             subdirs:
                 svm: "SVM"
@@ -40,7 +42,7 @@ base_dir: # basic directory for all data in this project
                 k_nn: "KNN"
                 lda: "LDA"
                 xg_boost: "XGBoost"
-        results:
+        results: # Subdirectory for classification results and result metrics (precision, recall, etc.)
             path_name: "ML_Results"
             subdirs:
                 svm: "SVM"
@@ -48,7 +50,7 @@ base_dir: # basic directory for all data in this project
                 k_nn: "KNN"
                 lda: "LDA"
                 xg_boost: "XGBoost"
-        metadata_analysis:
+        metadata_analysis: # Subdirectory for analysis results of classification metadata
             path_name: "Metadata_analysis"
             subdirs:
                 svm: "SVM"
@@ -56,7 +58,7 @@ base_dir: # basic directory for all data in this project
                 k_nn: "KNN"
                 lda: "LDA"
                 xg_boost: "XGBoost"
-        run_metadata:
+        run_metadata: # Subdirectory for specific runs and metadata
             path_name: "Run_metadata"
             subdirs:
                 svm: "SVM"
@@ -64,7 +66,7 @@ base_dir: # basic directory for all data in this project
                 k_nn: "KNN"
                 lda: "LDA"
                 xg_boost: "XGBoost"
-        global_outliers:
+        global_outliers: # Subdirectory for outliers gathered over multiple runs
             path_name: "Global_outliers"
 
     files:

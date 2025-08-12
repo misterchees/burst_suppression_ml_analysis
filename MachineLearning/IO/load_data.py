@@ -251,20 +251,21 @@ class LoadData(IOCore):
 
         return fs, raw_eeg
 
-    def load_eeg_epochs_from_csv(self, result_id: int, epochs: list, channel: int) -> tuple[int, dict]:
+    def load_eeg_epochs_from_csv(self, result_id: int, epochs: list, channel: int, folder_keys: list[str]) -> tuple[int, dict]:
         """
         Reads only selected EEG segments (epochs) for a given channel from a CSV file with
         a header comment and sampling rate.
 
-        :param result_id: Patient ID to determine path to the filtered EEG CSV file.
+        :param result_id: Patient ID to determine path to the EEG CSV file.
         :param epochs: List of (start_time, end_time) tuples in seconds.
         :param channel: EEG channel to extract (1 or 2).
+        :param folder_keys: List of folder keys to determine the path to the EEG CSV file.
         :returns: Tuple of (sampling rate as int, dict of (start, end) -> EEG segment as ndarray)
         """
         # Step 0: Assemble Path to directory with .csv files
-        filtered_eeg_dir = self.return_folder_path(["filtered_data"])
+        eeg_dir = self.return_folder_path(folder_keys)
 
-        filepath = os.path.join(filtered_eeg_dir, f"{result_id}.csv")
+        filepath = os.path.join(eeg_dir, f"{result_id}.csv")
         if not os.path.isfile(filepath):
             raise FileNotFoundError(f"File not found: {filepath}")
 
