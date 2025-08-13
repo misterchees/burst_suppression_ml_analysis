@@ -10,7 +10,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "normalized_run_0"
+run_name = "normalized_run_rm_patient_ids_4"
 
 all_run_params_dict = {
     "current_params": {
@@ -46,9 +46,9 @@ all_run_params_dict = {
     "classification_params": {
         "test_size": 0.15,
         "random_seed": 42,
-        "remove_outliers": False,
+        "remove_outliers": True,
         "remove_outlier_epochs": False,
-        "outlier_run_name": "",
+        "outlier_run_name": "normalized_run_rm_patient_ids_3",
         model_key: model_params
     }
 }
@@ -69,7 +69,7 @@ metadata_to_analyze = ["ResultID"]
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
 # epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 
-steps_of_workflow = ["normalize", "transform", "extract", "combine", "classify", "analyze"]
+steps_of_workflow = ["transform", "extract", "combine", "classify", "analyze"]
 
 
 def run():
@@ -88,6 +88,8 @@ def run():
         metadata_to_analyze=metadata_to_analyze,
         run_name=run_name,
         force_overwrite=False,
+        force_transform=False,
+        force_extract=False,
         global_outliers=True
     )
 

@@ -150,7 +150,7 @@ class SaveResult(IOCore):
 
     def save_eeg_track(self, eeg_track: np.ndarray, fs: int, result_id: int, folder_keys: list[str]):
         """
-        Saves a filtered EEG as a <result_id>.csv. Assuming the EEG has only 2 channels, these
+        Saves an EEG as a <result_id>.csv. Assuming the EEG has only 2 channels, these
         will be the columns of the csv-file, and the first row contains the fs (sampling frequency)
         :param eeg_track: An EEG track as array (assuming 2 columns = channels)
         :param fs: The sampling frequency of the EEG
