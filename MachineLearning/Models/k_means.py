@@ -15,7 +15,8 @@ class KMeans:
             n_clusters=n_clusters,
             max_iter=max_iter,
             tol=tol,
-            random_state=random_state
+            random_state=random_state,
+            verbose=2
         )
         self.labels_ = None
         self.centroids = None

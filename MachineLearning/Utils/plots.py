@@ -200,3 +200,38 @@ class Plots:
         plt.tight_layout()
         plt.subplots_adjust(top=0.9)  # Room for title
         plt.show()
+
+    @staticmethod
+    def plot_kmeans_results(X, labels, centroids=None, title="K-Means Clustering"):
+        """
+        Visualizes K-Means clustering results in 2D.
+
+        :param X: Data array of shape (n_samples, 2). Must be 2D for plotting.
+        :param labels: Array of cluster labels (length n_samples).
+        :param centroids: Optional array of cluster centers of shape (n_clusters, 2).
+        :param title: Title for the plot.
+        :returns: None
+        """
+        if X.shape[1] != 2:
+            raise ValueError("This plotting function only works for 2D data.")
+
+        # Ensure numpy arrays
+        X = np.array(X)
+        labels = np.array(labels)
+
+        # Create scatter plot
+        plt.figure(figsize=(8, 6))
+        scatter = plt.scatter(X[:, 0], X[:, 1], c=labels, cmap="viridis", alpha=0.7, edgecolor="k")
+
+        # Plot centroids if provided
+        if centroids is not None:
+            centroids = np.array(centroids)
+            plt.scatter(centroids[:, 0], centroids[:, 1],
+                        marker="*", s=300, c="red", edgecolor="k", label="Centroids")
+
+        plt.title(title)
+        plt.xlabel("Feature 1")
+        plt.ylabel("Feature 2")
+        plt.legend()
+        plt.colorbar(scatter, label="Cluster")
+        plt.show()
