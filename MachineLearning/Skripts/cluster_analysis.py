@@ -6,35 +6,29 @@ import pandas as pd
 def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
                  outliers: str = None, outlier_run: str = None, model_name: str = None, save_results: bool = True):
     """
-    Performs PCA Analysis on labeled Data.
-    :param hyperparameters:
-    :param class_1:
-    :param class_0:
-    :param pca_components:
-    :param outliers:
-    :param outlier_run:
-    :param model_name:
-    :param save_results:
-    :return:
+    Performs PCA analysis on labeled feature datasets, including handling for outliers.
+    Generates visualizations such as 2D and 3D plots of the PCA components, scree plots,
+    and retrieves the top feature contributions to the first principal component.
+
+    :param hyperparameters: A dictionary containing hyperparameter settings used to
+        load and process data.
+    :param class_1: The name or identifier representing the first class of data to be
+        analyzed.
+    :param class_0: The name or identifier for the second class of data to be analyzed,
+        serving as a comparison group.
+    :param pca_components: Optional; Number of principal components to compute for the PCA
+        analysis. Defaults to 5.
+    :param outliers: Optional; String identifier specifying which outlier data should
+        be included in the analysis if any.
+    :param outlier_run: Optional; String identifier for a specific run or instance where the
+        outliers were identified. Relevant when outliers are included.
+    :param model_name: Optional; String specifying the name of a model, if applicable,
+        used in connection with outlier identification or processing.
+    :param save_results: Optional; Boolean indicating whether to save the visualizations
+        and processed outputs. Defaults to True.
+    :return: None
     """
-    # Load features and assign labels
-    loader = LoadData()
-    class_1_df, class_0_df = loader.load_combined_features_df(hyperparameters, class_1, class_0)
-
-    class_0_df["label"] = 0
-    # Label outliers if present, else normal labeling of given classes
-    if outliers is not None:
-        outlier_df = return_outliers(outliers, loader, hyperparameters, outlier_run, model_name)
-        class_1_outlier_df, class_1_non_outlier_df = split_by_outliers(class_1_df, outlier_df)
-        class_1_non_outlier_df["label"] = 1
-        class_1_outlier_df["label"] = 2
-        all_epochs_df = pd.concat([class_0_df, class_1_non_outlier_df, class_1_outlier_df], ignore_index=True)
-
-    else:
-        class_1_df["label"] = 1
-        all_epochs_df = pd.concat([class_0_df, class_1_df], ignore_index=True)
-
-    labels = all_epochs_df["label"] if "label" in all_epochs_df else None
+    all_epochs_df, labels = load_labeled_data(hyperparameters, class_1, class_0, outliers, outlier_run, model_name)
 
     analyzer = PCAAnalyzer(hyperparameters, n_components=pca_components)
     pca_result = analyzer.fit_transform(all_epochs_df)
@@ -54,6 +48,19 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
     # Feature contributions to PC1
     top_features = analyzer.get_feature_contributions(pc_index=0, top_n=10, save_results=save_results)
     print(f"Top Features:\n {top_features}")
+
+def pca_center_of_cluster_analysis(hyperparameters, class_1, class_0, confidence_intervall, cluster_label,
+                                   pca_components=5, outliers: str = None, outlier_run: str = None,
+                                   model_name: str = None, save_results: bool = True, dims=2):
+
+    all_epochs_df, labels = load_labeled_data(hyperparameters, class_1, class_0, outliers, outlier_run, model_name)
+
+    analyzer = PCAAnalyzer(hyperparameters, n_components=pca_components)
+    pca_result = analyzer.fit_transform(all_epochs_df)
+    print(f"PCA Results:\n {pca_result} \n")
+
+    # Region analysis and plot for 2D
+    analyzer.get_points_in_region(labels, cluster_label, dims, confidence_intervall, True, save_results)
 
 
 def return_outliers(outliers: str, loader: LoadData, hyperparameters: dict,
@@ -117,6 +124,50 @@ def split_by_outliers(df_to_split: pd.DataFrame, outlier_df: pd.DataFrame) -> tu
 
     return matched_outlier_df, not_matched_outlier_df
 
+def load_labeled_data(hyperparameters, class_1, class_0, outliers: str = None, outlier_run: str = None, model_name: str = None):
+    """
+    Loads labeled data by combining feature data from specified classes and assigning labels.
+    Supports normal labeling for provided classes and also handles special labeling for outliers
+    if specified. Outliers are assigned a distinct label to differentiate from regular data.
+
+    :param hyperparameters: Parameters used for configuring dataset loading.
+    :type hyperparameters: Any
+    :param class_1: The identifier for the first class to label in the dataset.
+    :type class_1: Any
+    :param class_0: The identifier for the second class to label in the dataset.
+    :type class_0: Any
+    :param outliers: Optional path or identifier to locate outlier data.
+    :type outliers: str, optional
+    :param outlier_run: Optional additional specification to process outlier labeling.
+    :type outlier_run: str, optional
+    :param model_name: Name of the model for which data is being prepared, if applicable.
+    :type model_name: str, optional
+    :return: A tuple with two elements:
+        - The combined labeled dataframe containing all epochs with labels assigned.
+        - The corresponding label series if labeling is applied, else None.
+    :rtype: tuple[pd.DataFrame, pd.Series or None]
+    """
+    # Load features and assign labels
+    loader = LoadData()
+    class_1_df, class_0_df = loader.load_combined_features_df(hyperparameters, class_1, class_0)
+
+    class_0_df["label"] = 0
+    # Label outliers if present, else normal labeling of given classes
+    if outliers is not None:
+        outlier_df = return_outliers(outliers, loader, hyperparameters, outlier_run, model_name)
+        class_1_outlier_df, class_1_non_outlier_df = split_by_outliers(class_1_df, outlier_df)
+        class_1_non_outlier_df["label"] = 1
+        class_1_outlier_df["label"] = 2
+        all_epochs_df = pd.concat([class_0_df, class_1_non_outlier_df, class_1_outlier_df], ignore_index=True)
+
+    else:
+        class_1_df["label"] = 1
+        all_epochs_df = pd.concat([class_0_df, class_1_df], ignore_index=True)
+
+    labels = all_epochs_df["label"] if "label" in all_epochs_df else None
+
+    return all_epochs_df, labels
+
 
 if __name__ == "__main__":
     hyperparams = {
@@ -132,4 +183,5 @@ if __name__ == "__main__":
     class1 = "awake"
     class0 = "faw"
 
-    pca_analysis(hyperparams, class1, class0, outliers="global")
+    pca_center_of_cluster_analysis(hyperparams, class1, class0, 0.25, 2, pca_components=5, outliers="global")
+    # pca_analysis(hyperparams, class1, class0, outliers="global")

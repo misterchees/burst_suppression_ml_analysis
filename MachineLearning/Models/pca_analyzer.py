@@ -20,6 +20,7 @@ class PCAAnalyzer:
         self.columns = None
         self.pca_result = None
         self.variance_ratio = None
+        self.df_to_analyze = None
 
     def fit_transform(self, df: pd.DataFrame):
         """
@@ -28,6 +29,7 @@ class PCAAnalyzer:
         :param df: Full feature DataFrame (with possible metadata columns).
         :returns: PCA-transformed numpy array.
         """
+        self.df_to_analyze = df.copy()
         df_clean = df.drop(columns=["Start", "End", "ResultID", "label"], errors="ignore")
         self.columns = df_clean.columns
 
@@ -144,69 +146,50 @@ class PCAAnalyzer:
                                         "pca", f"PCA_top_{top_n}", f"feature_contributions_PC_{pc_index}")
         return contributions
 
-    def get_points_in_region(self, labels, cluster_label, dims=2, confidence=0.95):
+    def get_points_in_region(self, labels, cluster_label, dims=2, confidence=0.95, plot=False, save_result=False):
         """
         Returns indices of points in a cluster that lie within the confidence region
-        (ellipse for dims=2, ellipsoid for dims=3) based on Mahalanobis distance.
-
-        :param labels: Array-like cluster labels for each point in PCA space.
-        :param cluster_label: The specific cluster to analyze.
-        :param dims: Number of PCA dimensions to consider (2 or 3).
-        :param confidence: Confidence level for the region (default=0.95).
-        :returns: Indices of points inside the region.
+        (ellipse for dims=2, ellipsoid for dims=3) based on robust Mahalanobis distance.
+        Uses Minimum Covariance Determinant (MCD) for robustness against outliers.
         """
         from scipy.stats import chi2
+        from sklearn.covariance import MinCovDet
         if self.pca_result is None:
             raise ValueError("PCA must be run first with fit_transform().")
 
         # Select the cluster points
         cluster_points = self.pca_result[np.array(labels) == cluster_label, :dims]
 
-        # Compute center of mass
-        center = cluster_points.mean(axis=0)
-
-        # Covariance and inverse
-        cov_matrix = np.cov(cluster_points, rowvar=False)
+        # Robust covariance and center estimation
+        mcd = MinCovDet().fit(cluster_points)
+        center = mcd.location_
+        cov_matrix = mcd.covariance_
         inv_cov_matrix = np.linalg.inv(cov_matrix)
 
         # Mahalanobis distances
         diffs = cluster_points - center
         dists_sq = np.sum(diffs @ inv_cov_matrix * diffs, axis=1)
 
-        # Chi-squared threshold for given dimensions and confidence
+        # Chi-squared threshold
         threshold = chi2.ppf(confidence, df=dims)
 
         # Indices of points inside the region
         cluster_indices = np.where(np.array(labels) == cluster_label)[0]
         inside_indices = cluster_indices[dists_sq <= threshold]
 
-        return inside_indices
+        inside_part_of_df = self.df_to_analyze.iloc[inside_indices]
+        if save_result:
+            saver = SaveResult()
+            confidence_dot_removed = str(confidence).replace(".", "")
+            saver.save_further_analysis(self.hyperparams, inside_part_of_df, "dataframe", "pca",
+                                        f"PCA_clusterlabel_{cluster_label}",
+                                        f"region_with_confidence_{confidence_dot_removed}_dims_{dims}")
 
-    def plot_cluster_with_ellipse(self, pca_data, labels, cluster_id, scale_factor=1.0, ax=None):
-        """
-        Plots cluster points and ellipse, returns indices inside ellipse.
-        """
-        if ax is None:
-            fig, ax = plt.subplots()
+        if plot:
+            fig, ax = Plots.plot_pca_with_regions(self.pca_result, labels, cluster_label, dims, confidence)
+            if save_result:
+                saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
+                                            f"PCA_clusterlabel_{cluster_label}",
+                                            f"region_with_confidence_{confidence_dot_removed}_dims_{dims}")
 
-        cluster_mask = labels == cluster_id
-        ax.scatter(pca_data[cluster_mask, 0], pca_data[cluster_mask, 1], label=f"Cluster {cluster_id}")
-
-        indices = self.get_points_in_ellipse(pca_data, cluster_mask, scale_factor)
-
-        # Draw ellipse
-        points = pca_data[cluster_mask]
-        mean = np.mean(points, axis=0)
-        cov = np.cov(points, rowvar=False)
-        eigvals, eigvecs = np.linalg.eigh(cov)
-
-        order = eigvals.argsort()[::-1]
-        eigvals, eigvecs = eigvals[order], eigvecs[:, order]
-        angle = np.degrees(np.arctan2(*eigvecs[:, 0][::-1]))
-        width, height = 2 * scale_factor * np.sqrt(eigvals)
-
-        ellipse = Ellipse(mean, width, height, angle=angle, edgecolor='red', facecolor='none', lw=2)
-        ax.add_patch(ellipse)
-
-        ax.legend()
-        return indices
+        return inside_part_of_df

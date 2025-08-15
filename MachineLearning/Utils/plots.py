@@ -376,3 +376,138 @@ class Plots:
         plt.tight_layout()
         plt.show()
         return fig, ax
+
+    @staticmethod
+    def plot_pca_with_regions(pca_result, labels, cluster_label: str|int = "all", dims=2, confidence=0.95,
+                              jitter=False, jitter_strength=0.01,
+                              alpha=0.6, marker_size=20, figsize=(8, 6)):
+        """
+        Plots the PCA-transformed data points along with regions of confidence for the clusters.
+
+        This method visualizes the results of Principal Component Analysis (PCA)
+        in 2D or 3D space. Depending on user input, it can highlight all clusters
+        or a specific cluster provided in the input. Additionally, confidence regions
+        are drawn around the clusters/points based on the supplied confidence level.
+        An optional jitter effect can be applied for better visualization
+        of overlapping points.
+
+        :param pca_result: 2D numpy array containing the PCA-transformed data points.
+        :param labels: List or array-like object containing the cluster labels for the
+            data points.
+        :param cluster_label: Optional str or int to specify a particular cluster for
+            plotting the confidence region. Defaults to "all", which plots all clusters.
+        :param dims: Number of dimensions for the plot (2 or 3). Defaults to 2.
+        :param confidence: Confidence level for the confidence regions. Defaults to 0.95.
+        :param jitter: Boolean flag to apply random jitter to data points. Defaults to False.
+        :param jitter_strength: Standard deviation of the jitter applied when `jitter` is True.
+            Defaults to 0.01.
+        :param alpha: Float value to set the transparency for data points in the plot.
+            Defaults to 0.6.
+        :param marker_size: Size of the data points in the plot. Defaults to 20.
+        :param figsize: Tuple indicating the dimensions of the figure in inches.
+            Defaults to (8, 6).
+
+        :return: A tuple containing the matplotlib figure and axis objects.
+        """
+        if pca_result is None:
+            raise ValueError("Run fit_transform() before plotting.")
+
+        X = pca_result[:, :dims]
+        if jitter:
+            X = X + np.random.normal(0, jitter_strength, X.shape)
+
+        if dims == 2:
+            fig, ax = plt.subplots(figsize=figsize)
+            Plots._scatter_points(ax, X, labels=labels, alpha=alpha, marker_size=marker_size, is_3d=False)
+            if cluster_label == "all":
+                for ul in np.unique(labels):
+                    cluster_points = X[np.array(labels) == ul]
+                    Plots._plot_confidence_region(ax, cluster_points, dims=2, confidence=confidence)
+            else:
+                cluster_points = X[np.array(labels) == cluster_label]
+                Plots._plot_confidence_region(ax, cluster_points, dims=2, confidence=confidence)
+            ax.set_xlabel("PC1")
+            ax.set_ylabel("PC2")
+            ax.legend()
+            ax.grid(True)
+
+        elif dims == 3:
+            fig = plt.figure(figsize=figsize)
+            ax = fig.add_subplot(111, projection='3d')
+            Plots._scatter_points(ax, X, labels=labels, alpha=alpha, marker_size=marker_size, is_3d=True)
+            if cluster_label == "all":
+                for ul in np.unique(labels):
+                    cluster_points = X[np.array(labels) == ul]
+                    Plots._plot_confidence_region(ax, cluster_points, dims=3, confidence=confidence)
+            else:
+                cluster_points = X[np.array(labels) == cluster_label]
+                Plots._plot_confidence_region(ax, cluster_points, dims=3, confidence=confidence)
+            ax.set_xlabel("PC1")
+            ax.set_ylabel("PC2")
+            ax.set_zlabel("PC3")
+            ax.legend()
+        else:
+            raise ValueError("dims must be either 2 or 3.")
+
+        plt.tight_layout()
+        plt.show()
+        return fig, ax
+
+    @staticmethod
+    def _scatter_points(ax, X, labels=None, alpha=0.6, marker_size=20, is_3d=False):
+        """Scatter points in 2D or 3D."""
+        if labels is not None:
+            unique_labels = np.unique(labels)
+            for ul in unique_labels:
+                mask = labels == ul
+                if is_3d:
+                    ax.scatter(X[mask, 0], X[mask, 1], X[mask, 2], alpha=alpha, s=marker_size, label=str(ul))
+                else:
+                    ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=str(ul))
+        else:
+            if is_3d:
+                ax.scatter(X[:, 0], X[:, 1], X[:, 2], alpha=alpha, s=marker_size)
+            else:
+                ax.scatter(X[:, 0], X[:, 1], alpha=alpha, s=marker_size)
+
+
+    @staticmethod
+    def _plot_confidence_region(ax, cluster_points, dims=2, confidence=0.95, color='red'):
+        """Plot 2D ellipse or 3D ellipsoid representing the robust confidence region."""
+        from scipy.stats import chi2
+        from sklearn.covariance import MinCovDet
+        from matplotlib.patches import Ellipse
+
+        # Robust covariance and center
+        mcd = MinCovDet().fit(cluster_points)
+        center = mcd.location_
+        cov_matrix = mcd.covariance_
+
+        # Chi-squared threshold
+        threshold = chi2.ppf(confidence, df=dims)
+
+        if dims == 2:
+            eigvals, eigvecs = np.linalg.eigh(cov_matrix)
+            order = eigvals.argsort()[::-1]
+            eigvals, eigvecs = eigvals[order], eigvecs[:, order]
+
+            width, height = 2 * np.sqrt(eigvals * threshold)
+            angle = np.degrees(np.arctan2(*eigvecs[:, 0][::-1]))
+
+            ellipse = Ellipse(xy=center, width=width, height=height,
+                              angle=angle, edgecolor=color, fc='None', lw=2)
+            ax.add_patch(ellipse)
+
+        elif dims == 3:
+            u = np.linspace(0.0, 2.0 * np.pi, 30)
+            v = np.linspace(0.0, np.pi, 30)
+            x = np.cos(u)[:, None] * np.sin(v)
+            y = np.sin(u)[:, None] * np.sin(v)
+            z = np.cos(v)[None, :]
+
+            sphere = np.stack((x, y, z), axis=-1)
+            L = np.linalg.cholesky(cov_matrix * threshold)
+            ellipsoid = sphere @ L.T + center
+
+            ax.plot_wireframe(ellipsoid[:, :, 0], ellipsoid[:, :, 1], ellipsoid[:, :, 2],
+                              color=color, alpha=0.3)
