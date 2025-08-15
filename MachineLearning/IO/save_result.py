@@ -379,7 +379,7 @@ class SaveResult(IOCore):
         fullpath = PathUtils.return_anypath(folderpath, filename)
         PathUtils.save_data_as_json(run_metadata, fullpath)
 
-    def save_global_outliers(self, parameters, outliers_df: pd.DataFrame, outlier_type: str):
+    def save_global_outliers(self, parameters: dict, outliers_df: pd.DataFrame, outlier_type: str):
         """
         Saves the global outliers data into a CSV file. The file is saved in a specific path determined
         by the parameters and the type of outliers. Depending on the outlier type, the corresponding
@@ -413,3 +413,24 @@ class SaveResult(IOCore):
 
         print(f"Saved outliers to {fullpath} with {new_rows_number} new rows")
 
+    def save_further_analysis(self, hyperparameters: dict, results, result_type: str, analysis_key: str,
+                              file_prefix: str, file_suffix: str):
+        """
+        Saves additional analysis data to the appropriate file and path based on the input parameters.
+
+        The method determines the full folder path for saving based on the provided hyperparameters
+        and appends appropriate subdirectories for further analysis. It then delegates the saving
+        process to another utility function, which handles the file saving depending on the filetype.
+
+        :param hyperparameters: Dictionary of parameters that define the configuration for saving
+        :param results: The analysis data to be saved, format depends on the implemented filetype
+        :param result_type: File type of the result. Valid options are "dataframe", "dict", and "plot".
+        :param analysis_key: A string key that determines the analysis that produced given results.
+            Valid options are "pca", "psd" and "k_means"
+        :param file_prefix: Prefix for the file name to be saved
+        :param file_suffix: Suffix for the file name to be saved
+        :return: None
+        """
+        folder_path = self.return_all_parameter_fullpath(hyperparameters, False, True, ["further_analysis", analysis_key])
+
+        PathUtils.save_file_depending_on_filetype(result_type, folder_path, file_prefix, file_suffix, results)

@@ -4,7 +4,7 @@ import pandas as pd
 
 
 def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
-                 outliers: str = None, outlier_run: str = None, model_name: str = None):
+                 outliers: str = None, outlier_run: str = None, model_name: str = None, save_results: bool = True):
     """
     Performs PCA Analysis on labeled Data.
     :param hyperparameters:
@@ -14,6 +14,7 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
     :param outliers:
     :param outlier_run:
     :param model_name:
+    :param save_results:
     :return:
     """
     # Load features and assign labels
@@ -35,21 +36,23 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
 
     labels = all_epochs_df["label"] if "label" in all_epochs_df else None
 
-    analyzer = PCAAnalyzer(n_components=pca_components)
+    analyzer = PCAAnalyzer(hyperparameters, n_components=pca_components)
     pca_result = analyzer.fit_transform(all_epochs_df)
     print(f"PCA Results:\n {pca_result} \n")
 
     # 2D-Plot
-    analyzer.plot_components_2d(labels=labels, marker_size=5, alpha=0.4, separate_plots=False)
+    analyzer.plot_components_2d(labels=labels, marker_size=5, alpha=0.4, separate_plots=True, save_plot=save_results)
+    analyzer.plot_components_2d(labels=labels, marker_size=5, alpha=0.4, separate_plots=False, save_plot=save_results)
 
     # 3D-Plot
-    analyzer.plot_components_3d(labels=labels, marker_size=5, alpha=0.4, separate_plots=False)
+    analyzer.plot_components_3d(labels=labels, marker_size=5, alpha=0.4, separate_plots=True, save_plot=save_results)
+    analyzer.plot_components_3d(labels=labels, marker_size=5, alpha=0.4, separate_plots=False, save_plot=save_results)
 
     # Scree Plot
-    analyzer.plot_scree()
+    analyzer.plot_scree(save_plot=save_results)
 
     # Feature contributions to PC1
-    top_features = analyzer.get_feature_contributions(pc_index=0, top_n=10)
+    top_features = analyzer.get_feature_contributions(pc_index=0, top_n=10, save_results=save_results)
     print(f"Top Features:\n {top_features}")
 
 

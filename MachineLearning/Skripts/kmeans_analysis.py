@@ -1,7 +1,6 @@
 from MachineLearning.Models.k_means import KMeans
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Skripts.cluster_analysis import return_outliers, split_by_outliers
-from MachineLearning.Models.pca_analyzer import PCAAnalyzer
 import pandas as pd
 
 
@@ -26,26 +25,25 @@ def analyze_data(hyperparameters: dict, n_cluster: int, _random_state: int = 42,
     else:
         raise ValueError(f"Invalid data subset specified: {_data_subset}.")
 
-    _run_analysis(df_to_analyze.drop(columns=["Start", "End", "ResultID"]).values, n_cluster, _random_state, plot)
+    _run_analysis(df_to_analyze.drop(columns=["Start", "End", "ResultID"]).values, n_cluster, _random_state, plot, hyperparameters, _data_subset)
 
 
 
 
 
-def _run_analysis(data, n_cluster: int, random_state: int, plot: str):
+def _run_analysis(data, n_cluster: int, _random_state: int, plot: str, hyperparameters:dict, _data_subset:str):
     data = pd.DataFrame(data)
 
-    model = KMeans(n_clusters=n_cluster, random_state=random_state)
+    model = KMeans(hyperparameters, n_clusters=n_cluster, random_state=_random_state)
     labels = model.fit_predict(data)
 
     if plot == "2D" or plot == "3D":
-        components = 2 if plot == "2D" else 3
-        analyzer = PCAAnalyzer(n_components=components)
-        # reduce data - result is stored internally of this class
-        analyzer.fit_transform(data)
-        # Plot based on given plot dimensionality
-        analyzer.plot_components_2d(labels=labels, marker_size=5, alpha=0.4, separate_plots=False) if plot == "2D" else (
-            analyzer.plot_components_3d(labels=labels, marker_size=5, alpha=0.4, separate_plots=False))
+        if plot == "2D":
+            model.plot_components_2d(data,labels=labels, marker_size=5, alpha=0.4, separate_plots=False, save_plot=True,
+                           title=f"Kmeans_2D_clusters_{n_cluster}_random_state_{_random_state}_for_{_data_subset}")
+        else:
+            model.plot_components_3d(data,labels=labels, marker_size=5, alpha=0.4, separate_plots=False, save_plot=True,
+                           title=f"Kmeans_3D_clusters_{n_cluster}_random_state_{_random_state}_for_{_data_subset}")
 
 
 if __name__ == "__main__":
@@ -58,9 +56,9 @@ if __name__ == "__main__":
         "fixed_window_size": 20,
         "overlap": 0.0
     }
-    random_states = [13, 54, 889, 5]
+    random_states = [42, 89, 111, 4]
     n_cluster_array = [2, 3, 4, 5]
-    data_subset_array = ["correct_awake"]
+    data_subset_array = ["correct_awake", "all"]
     for data_subset in data_subset_array:
         for n_clusters in n_cluster_array:
             for random_state in random_states:

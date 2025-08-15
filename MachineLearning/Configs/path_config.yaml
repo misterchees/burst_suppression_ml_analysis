@@ -66,6 +66,13 @@ base_dir: # Basic directory for all data in this project
                 k_nn: "KNN"
                 lda: "LDA"
                 xg_boost: "XGBoost"
+        further_analysis:
+            path_name: "Further_analysis"
+            subdirs:
+                psd: "PSD"
+                pca: "PCA"
+                k_means: "Kmeans"
+
         global_outliers: # Subdirectory for outliers gathered over multiple runs
             path_name: "Global_outliers"
 

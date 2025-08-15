@@ -52,26 +52,33 @@ class Plots:
         return fig, ax
 
     @staticmethod
-    def plot_psd(fig_and_ax, freqs, power, label, color="blue", title="Power Spectral Density", log_scale=False):
+    def plot_psd(fig_and_ax, freqs, power, label, color="blue", title="Power Spectral Density",
+                 log_scale=False, spread=None, alpha=0.3):
         """
-        Plots a Power Spectral Density (PSD).
-        :param fig_and_ax: A Tuple with the figure and axes objects. For plotting in subplot grids
-        :param freqs: (array-like) frequencies in Hz
-        :param power: (array-like) Power of frequencies in V²
-        :param label: (str) label of the plot
-        :param color: (str) color of the plot
-        :param title: title of the plot
-        :param log_scale: If True, then power axis will be logarithmic
-        :return: Figure and Axes of plot (if show=True)
+        Plots a PSD with optional uncertainty shading.
+        :param fig_and_ax: Tuple with (fig, ax) for subplot integration.
+        :param freqs: Frequencies in Hz.
+        :param power: Mean PSD values.
+        :param label: Label for the line.
+        :param color: Line color.
+        :param title: Plot title.
+        :param log_scale: If True, y-axis is logarithmic.
+        :param spread: Optional uncertainty array (same shape as power).
+        :param alpha: Transparency for shaded area.
         """
         if fig_and_ax is not None:
             fig, ax = fig_and_ax
         else:
             fig, ax = plt.subplots(figsize=(10, 5))
+
         if log_scale:
             ax.semilogy(freqs, power, label=label, color=color)
         else:
             ax.plot(freqs, power, label=label, color=color)
+
+        if spread is not None:
+            ax.fill_between(freqs, power - spread, power + spread, color=color, alpha=alpha)
+
         ax.set_xlabel("Frequenz [Hz]")
         ax.set_ylabel("Power [V²/Hz]" if not log_scale else "log(Power[V²/Hz])")
         ax.set_title(title)
@@ -235,3 +242,137 @@ class Plots:
         plt.legend()
         plt.colorbar(scatter, label="Cluster")
         plt.show()
+
+    @staticmethod
+    def plot_components_2d(pca_result, title: str, labels=None, figsize=(8, 6),
+                           jitter=False, jitter_strength=0.01, alpha=0.6,
+                           marker_size=20, separate_plots=False):
+        if pca_result is None:
+            raise ValueError("Given PCA result is None.")
+
+        X = pca_result[:, :2]  # First 2 PCs
+
+        if jitter:
+            noise = np.random.normal(0, jitter_strength, X.shape)
+            X = X + noise
+
+        figs_axes = []
+
+        if labels is not None:
+            labels = np.array(labels)
+            unique_labels = np.unique(labels)
+
+            if separate_plots:
+                for ul in unique_labels:
+                    mask = labels == ul
+                    fig, ax = plt.subplots(figsize=figsize)
+                    ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=str(ul))
+                    ax.set_xlabel("PC1")
+                    ax.set_ylabel("PC2")
+                    ax.set_title(f"{title} - Label {ul}")
+                    ax.legend()
+                    ax.grid(True)
+                    plt.tight_layout()
+                    plt.show()
+                    figs_axes.append((fig, ax))
+            else:
+                fig, ax = plt.subplots(figsize=figsize)
+                for ul in unique_labels:
+                    mask = labels == ul
+                    ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=str(ul))
+                ax.set_xlabel("PC1")
+                ax.set_ylabel("PC2")
+                ax.set_title(title)
+                ax.legend()
+                ax.grid(True)
+                plt.tight_layout()
+                plt.show()
+                figs_axes.append((fig, ax))
+        else:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.scatter(X[:, 0], X[:, 1], alpha=alpha, s=marker_size)
+            ax.set_xlabel("PC1")
+            ax.set_ylabel("PC2")
+            ax.set_title(title)
+            ax.grid(True)
+            plt.tight_layout()
+            plt.show()
+            figs_axes.append((fig, ax))
+
+        return figs_axes if separate_plots else figs_axes[0]
+
+    @staticmethod
+    def plot_components_3d(pca_result, title: str, labels=None, jitter=False,
+                           jitter_strength=0.01, alpha=0.6, marker_size=20,
+                           separate_plots=False):
+        if pca_result is None:
+            raise ValueError("Given PCA result is None.")
+
+        X = pca_result[:, :3]  # First 3 PCs
+
+        if jitter:
+            noise = np.random.normal(0, jitter_strength, X.shape)
+            X = X + noise
+
+        figs_axes = []
+
+        if labels is not None:
+            labels = np.array(labels)
+            unique_labels = np.unique(labels)
+
+            if separate_plots:
+                for ul in unique_labels:
+                    fig = plt.figure(figsize=(8, 6))
+                    ax = fig.add_subplot(111, projection='3d')
+                    idx = labels == ul
+                    ax.scatter(X[idx, 0], X[idx, 1], X[idx, 2], label=str(ul), alpha=alpha, s=marker_size)
+                    ax.set_xlabel("PC1")
+                    ax.set_ylabel("PC2")
+                    ax.set_zlabel("PC3")
+                    ax.set_title(f"{title} - Label {ul}")
+                    ax.legend()
+                    plt.tight_layout()
+                    plt.show()
+                    figs_axes.append((fig, ax))
+            else:
+                fig = plt.figure(figsize=(8, 6))
+                ax = fig.add_subplot(111, projection='3d')
+                for ul in unique_labels:
+                    idx = labels == ul
+                    ax.scatter(X[idx, 0], X[idx, 1], X[idx, 2], label=str(ul), alpha=alpha, s=marker_size)
+                ax.set_xlabel("PC1")
+                ax.set_ylabel("PC2")
+                ax.set_zlabel("PC3")
+                ax.set_title(title)
+                ax.legend()
+                plt.tight_layout()
+                plt.show()
+                figs_axes.append((fig, ax))
+        else:
+            fig = plt.figure(figsize=(8, 6))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(X[:, 0], X[:, 1], X[:, 2], alpha=alpha, s=marker_size)
+            ax.set_xlabel("PC1")
+            ax.set_ylabel("PC2")
+            ax.set_zlabel("PC3")
+            ax.set_title(title)
+            plt.tight_layout()
+            plt.show()
+            figs_axes.append((fig, ax))
+
+        return figs_axes if separate_plots else figs_axes[0]
+
+    @staticmethod
+    def plot_scree(variance_ratio, title="Scree_plot"):
+        if variance_ratio is None:
+            raise ValueError("Given Variance Ratio is None.")
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.plot(np.arange(1, len(variance_ratio) + 1), variance_ratio, marker='o')
+        ax.set_xlabel("Principal Component")
+        ax.set_ylabel("Explained Variance Ratio")
+        ax.set_title(title)
+        ax.grid(True)
+        plt.tight_layout()
+        plt.show()
+        return fig, ax

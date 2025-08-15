@@ -21,7 +21,7 @@ class PathUtils:
     def return_A_B_C_D_name(prefix, parameters: dict) -> str:
         """
         Calculates and returns a name variable defined by the class attributes,
-        refractory time, min_episode_length, mac_threshold and bis_threshold.
+        refractory time, min_episode_length, mac_threshold, and bis_threshold.
         Example: result_70_080_20_5
 
         :param prefix: Prefix of the subfolder name variable.
@@ -43,7 +43,7 @@ class PathUtils:
     def return_X_Y_name(parameters: dict) -> str:
         """
         Calculates and returns a name variable defined by the class attributes:
-        merged_episodes, fixed_window_size and overlap.
+        merged_episodes, fixed_window_size, and overlap.
         Example: Summary_Episode_20_000
 
         :param parameters: A dictionary with all mentioned parameters
@@ -176,6 +176,20 @@ class PathUtils:
 
     @staticmethod
     def save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data):
+        """
+        Saves a file in a specified format based on the provided file type. This function supports saving
+        dataframes, dictionaries, and plots. It generates the file name using the provided prefix and
+        suffix, and the file is saved in the specified folder.
+
+        :param file_type: Type of the file to be saved. Valid options are "dataframe", "dict", and "plot".
+        :param folder_path: Path of the folder where the file should be saved.
+        :param file_prefix: Prefix to be used in the generated file name.
+        :param file_suffix: Suffix to be used in the generated file name.
+        :param result_data: Data to be saved in the file. The format of this data must align with the
+            file type specified.
+        :return: None
+        :raises ValueError: If the provided file type is not supported.
+        """
         if file_type == "dataframe":
             file_name = f"{file_prefix}_{file_suffix}.csv"
             saving_func = PathUtils.save_file_as_csv

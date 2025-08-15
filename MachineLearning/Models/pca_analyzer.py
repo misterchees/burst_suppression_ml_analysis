@@ -1,15 +1,13 @@
-import matplotlib
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-
-matplotlib.use('TkAgg')
+from MachineLearning.Utils.plots import Plots
+from MachineLearning.IO.save_result import SaveResult
 
 
 class PCAAnalyzer:
-    def __init__(self, n_components=2):
+    def __init__(self, hyperparams:dict, n_components=2):
         """
         Initializes PCA analyzer.
 
@@ -18,6 +16,7 @@ class PCAAnalyzer:
         self.n_components = n_components
         self.pca = PCA(n_components=n_components)
         self.scaler = StandardScaler()
+        self.hyperparams = hyperparams
         self.columns = None
         self.pca_result = None
         self.variance_ratio = None
@@ -38,196 +37,176 @@ class PCAAnalyzer:
 
         return self.pca_result
 
-    def plot_components_2d(self, labels=None, figsize=(8, 6),
-                           jitter=False, jitter_strength=0.01,
-                           alpha=0.6, marker_size=20,
-                           separate_plots=False):
+    def plot_components_2d(self, labels=None, figsize=(8, 6), jitter=False, jitter_strength=0.01, alpha=0.6,
+                           marker_size=20, separate_plots=False, title="2D PCA Scatterplot", save_plot=False):
         """
-        Visualizes the first two principal components from PCA results in a 2D scatter plot.
-        Allows customization of the visualization and supports optional jittering of the points.
-        If labels are provided, points will be color-coded accordingly. Optionally, separate plots
-        can be created for each label.
-
-        :param labels: Optional. Array-like object containing labels for the data points.
-                       If provided, points will be color-coded based on these labels.
-        :param figsize: Tuple specifying the width and height of the plot in inches. Defaults to (8, 6).
-        :param jitter: Boolean flag indicating whether to add random noise (jitter) to the points. Default is False.
-        :param jitter_strength: Float specifying the standard deviation of the noise applied if jitter is True. Default is 0.01.
-        :param alpha: Float specifying the transparency level of the scatter plot points. Accepts values between 0 and 1.
-                      Defaults to 0.6.
-        :param marker_size: Integer specifying the size of the scatter plot markers. Defaults to 20.
-        :param separate_plots: Boolean flag indicating whether separate plots should be created for each label group.
-                               Defaults to False.
-        :return: None
+        Visualizes the first two principal components from PCA results in a 2D scatter plot. For more details
+        look into MachineLearning.Utils.plots.py
         """
         if self.pca_result is None:
             raise ValueError("Run fit_pca() first.")
 
-        X = self.pca_result[:, :2]  # Erste 2 PCs
-
-        if jitter:
-            noise = np.random.normal(0, jitter_strength, X.shape)
-            X = X + noise
-
-        if labels is not None:
-            labels = np.array(labels)
-            unique_labels = np.unique(labels)
-
+        figs_and_axes = Plots.plot_components_2d(
+            pca_result=self.pca_result,
+            title=title,
+            labels=labels,
+            figsize=figsize,
+            jitter=jitter,
+            jitter_strength=jitter_strength,
+            alpha=alpha,
+            marker_size=marker_size,
+            separate_plots=separate_plots
+        )
+        # Save figure after plotting it
+        if save_plot:
+            saver = SaveResult()
             if separate_plots:
-                for ul in unique_labels:
-                    mask = labels == ul
-                    plt.figure(figsize=figsize)
-                    plt.scatter(X[mask, 0], X[mask, 1],
-                                alpha=alpha, s=marker_size, label=str(ul))
-                    plt.xlabel("PC1")
-                    plt.ylabel("PC2")
-                    plt.title(f"PCA Projection - Label {ul}")
-                    plt.legend()
-                    plt.grid(True)
-                    plt.tight_layout()
-                    plt.show()
+                counter = 0
+                for fig_and_ax in figs_and_axes:
+                    fig, ax = fig_and_ax
+                    saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
+                                                title, f"part_{counter}")
+                    counter += 1
             else:
-                plt.figure(figsize=figsize)
-                for ul in unique_labels:
-                    mask = labels == ul
-                    plt.scatter(X[mask, 0], X[mask, 1],
-                                alpha=alpha, s=marker_size, label=str(ul))
-                plt.xlabel("PC1")
-                plt.ylabel("PC2")
-                plt.title("PCA Projection")
-                plt.legend()
-                plt.grid(True)
-                plt.tight_layout()
-                plt.show()
-        else:
-            plt.figure(figsize=figsize)
-            plt.scatter(X[:, 0], X[:, 1], alpha=alpha, s=marker_size)
-            plt.xlabel("PC1")
-            plt.ylabel("PC2")
-            plt.title("PCA Projection")
-            plt.grid(True)
-            plt.tight_layout()
-            plt.show()
+                fig, ax = figs_and_axes
+                saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
+                                            title, "all_labels")
 
-    def plot_components_3d(self, labels=None, jitter=False, jitter_strength=0.01,
-                           alpha=0.6, marker_size=20, separate_plots=False):
+
+
+    def plot_components_3d(self, labels=None, jitter=False, jitter_strength=0.01, alpha=0.6, marker_size=20,
+                           separate_plots=False, title="3D PCA Scatterplot", save_plot=False):
         """
-        Generates a 3D scatter plot using the results of a PCA (Principal Component
-        Analysis). It supports optional jittering of the points for better visibility,
-        the inclusion of labels for grouping data points by categories, and the
-        ability to create separate plots for each label group or consolidate all
-        groups into a single plot.
-
-        :param labels: Optional. An array-like object containing labels for the data
-            points. The labels are used to group data points by categories. If None,
-            no grouping is applied.
-        :type labels: Optional[Iterable]
-        :param jitter: Optional. A boolean that determines whether jitter should be
-            added to the points in the plot. Jittering can help distinguish overlapping
-            points. Defaults to False.
-        :type jitter: bool
-        :param jitter_strength: Optional. The standard deviation of the normal
-            distribution used to add jitter to the points. Only used if `jitter` is
-            set to True. Defaults to 0.01.
-        :type jitter_strength: float
-        :param alpha: Optional. The transparency level of the points in the plot.
-            Should be between 0 and 1. Defaults to 0.6.
-        :type alpha: float
-        :param marker_size: Optional. The size of the markers representing the points
-            in the plot. Defaults to 20.
-        :type marker_size: int
-        :param separate_plots: Optional. A boolean indicating whether separate plots
-            should be created for each category specified in the labels. If False,
-            all data is plotted in a single 3D scatter plot. Defaults to False.
-        :type separate_plots: bool
-        :return: None. The method displays the 3D scatter plot(s) but does not return
-            any value.
-        :rtype: None
+        Visualizes the first three principal components from PCA results in a 3D scatter plot. For more details
+        look into MachineLearning.Utils.plots.py
         """
         if self.pca_result is None:
             raise ValueError("Run fit_transform() first.")
 
-        X = self.pca_result[:, :3]  # erste 3 PCs
+        figs_and_axes = Plots.plot_components_3d(
+            labels=labels,
+            pca_result=self.pca_result,
+            jitter=jitter,
+            jitter_strength=jitter_strength,
+            alpha=alpha,
+            marker_size=marker_size,
+            separate_plots=separate_plots,
+            title=title
+        )
+        # Save figure after plotting it
+        if save_plot:
+            # Save figure after plotting it
+            if save_plot:
+                saver = SaveResult()
+                if separate_plots:
+                    counter = 0
+                    for fig_and_ax in figs_and_axes:
+                        fig, ax = fig_and_ax
+                        saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
+                                                    title, f"part_{counter}")
+                        counter += 1
+                else:
+                    fig, ax = figs_and_axes
+                    saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
+                                                title, "all_labels")
 
-        if jitter:
-            noise = np.random.normal(0, jitter_strength, X.shape)
-            X = X + noise
-
-        if labels is not None:
-            labels = np.array(labels)
-            unique_labels = np.unique(labels)
-
-            if separate_plots:
-                # For every label a single plot
-                for ul in unique_labels:
-                    fig = plt.figure(figsize=(8, 6))
-                    ax = fig.add_subplot(111, projection='3d')
-                    idx = labels == ul
-                    ax.scatter(X[idx, 0], X[idx, 1], X[idx, 2],
-                               label=str(ul), alpha=alpha, s=marker_size)
-                    ax.set_xlabel("PC1")
-                    ax.set_ylabel("PC2")
-                    ax.set_zlabel("PC3")
-                    ax.set_title(f"PCA 3D Plot - Label {ul}")
-                    ax.legend()
-                    plt.tight_layout()
-                    plt.show()
-            else:
-                # Everything in one plot
-                fig = plt.figure(figsize=(8, 6))
-                ax = fig.add_subplot(111, projection='3d')
-                for ul in unique_labels:
-                    idx = labels == ul
-                    ax.scatter(X[idx, 0], X[idx, 1], X[idx, 2],
-                               label=str(ul), alpha=alpha, s=marker_size)
-                ax.set_xlabel("PC1")
-                ax.set_ylabel("PC2")
-                ax.set_zlabel("PC3")
-                ax.set_title("PCA 3D Plot")
-                ax.legend()
-                plt.tight_layout()
-                plt.show()
-
-        else:
-            # If no labels given → Everything in one plot
-            fig = plt.figure(figsize=(8, 6))
-            ax = fig.add_subplot(111, projection='3d')
-            ax.scatter(X[:, 0], X[:, 1], X[:, 2], alpha=alpha, s=marker_size)
-            ax.set_xlabel("PC1")
-            ax.set_ylabel("PC2")
-            ax.set_zlabel("PC3")
-            ax.set_title("PCA 3D Plot")
-            plt.tight_layout()
-            plt.show()
-
-    def plot_scree(self):
+    def plot_scree(self, save_plot=False):
         """
         Plots the explained variance ratio per component (scree plot).
         """
         if self.variance_ratio is None:
             raise ValueError("Run fit_transform() first.")
 
-        plt.figure(figsize=(8, 4))
-        plt.plot(np.arange(1, len(self.variance_ratio)+1), self.variance_ratio, marker='o')
-        plt.xlabel("Principal Component")
-        plt.ylabel("Explained Variance Ratio")
-        plt.title("Scree Plot")
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
+        fig, ax = Plots.plot_scree(self.variance_ratio)
+        if save_plot:
+            saver = SaveResult()
+            saver.save_further_analysis(self.hyperparams, fig, "plot", "pca", "PCA_scree", "plot")
 
-    def get_feature_contributions(self, pc_index=0, top_n=10):
+    def get_feature_contributions(self, pc_index=0, top_n=10, save_results=False):
         """
         Returns the top contributing features for a given principal component.
 
         :param pc_index: Index of the component (0 = PC1, 1 = PC2, ...)
         :param top_n: Number of top features to return.
-        :returns: DataFrame with feature names and contribution weights.
+        :param save_results: If True, saves the results to the further_analysis folder.
+        :returns: Series with feature names and contribution weights.
         """
         if self.pca.components_ is None:
             raise ValueError("Run fit_transform() first.")
 
         component = self.pca.components_[pc_index]
         contributions = pd.Series(np.abs(component), index=self.columns)
-        return contributions.sort_values(ascending=False).head(top_n)
+        contributions.sort_values(ascending=False).head(top_n)
+        if save_results:
+            from MachineLearning.IO.save_result import SaveResult
+            saver = SaveResult()
+            saver.save_further_analysis(self.hyperparams, pd.DataFrame(contributions),"dataframe",
+                                        "pca", f"PCA_top_{top_n}", f"feature_contributions_PC_{pc_index}")
+        return contributions
 
+    def get_points_in_region(self, labels, cluster_label, dims=2, confidence=0.95):
+        """
+        Returns indices of points in a cluster that lie within the confidence region
+        (ellipse for dims=2, ellipsoid for dims=3) based on Mahalanobis distance.
+
+        :param labels: Array-like cluster labels for each point in PCA space.
+        :param cluster_label: The specific cluster to analyze.
+        :param dims: Number of PCA dimensions to consider (2 or 3).
+        :param confidence: Confidence level for the region (default=0.95).
+        :returns: Indices of points inside the region.
+        """
+        from scipy.stats import chi2
+        if self.pca_result is None:
+            raise ValueError("PCA must be run first with fit_transform().")
+
+        # Select the cluster points
+        cluster_points = self.pca_result[np.array(labels) == cluster_label, :dims]
+
+        # Compute center of mass
+        center = cluster_points.mean(axis=0)
+
+        # Covariance and inverse
+        cov_matrix = np.cov(cluster_points, rowvar=False)
+        inv_cov_matrix = np.linalg.inv(cov_matrix)
+
+        # Mahalanobis distances
+        diffs = cluster_points - center
+        dists_sq = np.sum(diffs @ inv_cov_matrix * diffs, axis=1)
+
+        # Chi-squared threshold for given dimensions and confidence
+        threshold = chi2.ppf(confidence, df=dims)
+
+        # Indices of points inside the region
+        cluster_indices = np.where(np.array(labels) == cluster_label)[0]
+        inside_indices = cluster_indices[dists_sq <= threshold]
+
+        return inside_indices
+
+    def plot_cluster_with_ellipse(self, pca_data, labels, cluster_id, scale_factor=1.0, ax=None):
+        """
+        Plots cluster points and ellipse, returns indices inside ellipse.
+        """
+        if ax is None:
+            fig, ax = plt.subplots()
+
+        cluster_mask = labels == cluster_id
+        ax.scatter(pca_data[cluster_mask, 0], pca_data[cluster_mask, 1], label=f"Cluster {cluster_id}")
+
+        indices = self.get_points_in_ellipse(pca_data, cluster_mask, scale_factor)
+
+        # Draw ellipse
+        points = pca_data[cluster_mask]
+        mean = np.mean(points, axis=0)
+        cov = np.cov(points, rowvar=False)
+        eigvals, eigvecs = np.linalg.eigh(cov)
+
+        order = eigvals.argsort()[::-1]
+        eigvals, eigvecs = eigvals[order], eigvecs[:, order]
+        angle = np.degrees(np.arctan2(*eigvecs[:, 0][::-1]))
+        width, height = 2 * scale_factor * np.sqrt(eigvals)
+
+        ellipse = Ellipse(mean, width, height, angle=angle, edgecolor='red', facecolor='none', lw=2)
+        ax.add_patch(ellipse)
+
+        ax.legend()
+        return indices
