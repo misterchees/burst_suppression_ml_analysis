@@ -34,6 +34,8 @@ class Pipeline:
         :param run_name: Name of the run. If None, a timestamp will be used instead.
         :param force_overwrite: If True, the pipeline will be run even if the results already exist.
         :param global_outliers: If True, global outliers found in all runs will be removed.
+        :param force_transform: If True, transforms will be calculated even if the results already exist.
+        :param force_extract: If True, the features will be extracted and combined even if the results already exist.
         """
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]

@@ -10,7 +10,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "normalized_run_rm_patient_ids_4"
+run_name = "norm_feat_after_comb_0"
 
 all_run_params_dict = {
     "current_params": {
@@ -33,20 +33,20 @@ all_run_params_dict = {
     },
     "feature_params": {
         "relative_bandpower": {"normalize_to": "bands"},
-        "shannon_entropy": {"normalize": True},
-        "spectral_skewness": {"normalize": True, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
-        "spectral_kurtosis": {"normalize": True, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
+        "shannon_entropy": {"normalize": False},
+        "spectral_skewness": {"normalize": False, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
+        "spectral_kurtosis": {"normalize": False, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
         "mean": {"channel": channel},
         "variance": {"channel": channel},
         "amplitude": {"channel": channel},
         "sample_entropy": {"channel": channel, "emb_dim": 2, "tolerance": 0.2},
-        "permutation_entropy": {"channel": channel, "order": 3, "delay": 1, "normalize": True},
+        "permutation_entropy": {"channel": channel, "order": 3, "delay": 1, "normalize": False},
         "fuzzy_entropy": {"channel": channel, "m": 2, "r": 0.2, "n": 2}
     },
     "classification_params": {
         "test_size": 0.15,
         "random_seed": 42,
-        "remove_outliers": True,
+        "remove_outliers": False,
         "remove_outlier_epochs": False,
         "outlier_run_name": "normalized_run_rm_patient_ids_3",
         model_key: model_params
@@ -89,7 +89,7 @@ def run():
         run_name=run_name,
         force_overwrite=False,
         force_transform=False,
-        force_extract=False,
+        force_extract=True,
         global_outliers=True
     )
 

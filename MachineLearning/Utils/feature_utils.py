@@ -1,11 +1,12 @@
 import pandas as pd
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
+from MachineLearning.Preprocessing.normalizing import Normalizing
 
 
 class FeatureUtils:
     @staticmethod
-    def combine_features(parameters: dict, epoch_type: str, all_features: bool, features: list):
+    def combine_features(parameters: dict, epoch_type: str, all_features: bool, features: list, normalize=True):
         """
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.
@@ -55,6 +56,11 @@ class FeatureUtils:
         # Drop NaN rows, if present
         merged_df = merged_df.dropna()
 
+        # z-score normalization
+        normalizer = Normalizing("zscore")
+        norm_func = normalizer.normalize_array
+        merged_df = FeatureUtils._normalize_features_in_df(merged_df, norm_func)
+
         # Step 3: Sort for consistency
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
 
@@ -101,6 +107,25 @@ class FeatureUtils:
                 print(f"Epoch for Patient ID {result_id}: Start time {start_time}, End time: {end_time}")
 
         return output_list
+
+    @staticmethod
+    def _normalize_features_in_df(df, normalizing_function):
+        """
+        Normalize all feature columns in a DataFrame column-wise using a given normalization function.
+        Keeps Start, End, ResultID unchanged.
+
+        :param df: pandas.DataFrame with columns ["Start", "End", "ResultID", feature1, feature2, ...]
+        :param normalizing_function: function that takes a numpy array and returns a normalized numpy array
+        :return: pandas.DataFrame with normalized features
+        """
+        meta_cols = ["Start", "End", "ResultID"]
+        feature_cols = [col for col in df.columns if col not in meta_cols]
+
+        df_norm = df.copy()
+        for col in feature_cols:
+            df_norm[col] = normalizing_function(df[col].values)
+
+        return df_norm
 
     @staticmethod
     def return_all_features_dict() -> dict:
