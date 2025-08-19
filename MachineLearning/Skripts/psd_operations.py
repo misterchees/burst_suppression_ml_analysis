@@ -38,11 +38,46 @@ def calculate_mean_psds(hyperparameters: dict, class_1: str, class_0: str, plot:
                                     "PSDs_correct_awake_average", f"uncertainty_metric_{metric_name}")
 
     if plot:
-        _plot_psd(av_class_0_df, av_class_1_outlier_df, av_class_1_non_outlier_df, hyperparameters, save=False,
-                  title_suffix=f"uncertainty_metric_{metric_name}")
+        _plot_3_psds(av_class_0_df, av_class_1_outlier_df, av_class_1_non_outlier_df, hyperparameters, save=False,
+                     title_suffix=f"uncertainty_metric_{metric_name}")
         if save_results:
-            _plot_psd(av_class_0_df, av_class_1_outlier_df, av_class_1_non_outlier_df, hyperparameters, save=True,
-                      title_suffix=f"uncertainty_metric_{metric_name}")
+            _plot_3_psds(av_class_0_df, av_class_1_outlier_df, av_class_1_non_outlier_df, hyperparameters, save=True,
+                         title_suffix=f"uncertainty_metric_{metric_name}")
+
+def calculate_center_of_mass_psds(hyperparameters: dict, confidence: float,
+                                  plot: bool = True, save_results: bool = True):
+    loader = LoadData()
+    confidence_str = str(confidence).replace(".", "")
+    faw_file_name = f"PCA_clusterlabel_0_region_with_confidence_{confidence_str}_dims_2.csv"
+    wrong_awake_file_name = f"PCA_clusterlabel_2_region_with_confidence_{confidence_str}_dims_2.csv"
+    faw_df = loader.load_further_results(hyperparameters, "pca", "dataframe",faw_file_name)
+    wrong_awake_df = loader.load_further_results(hyperparameters, "pca", "dataframe",wrong_awake_file_name)
+
+    psd_faw_folderpath = loader.return_file_fullpath(
+        hyperparameters, False, False, "faw", ["features", "psds"])
+
+    psd_awake_folderpath = loader.return_file_fullpath(
+        hyperparameters, False, False, "awake", ["features", "psds"])
+
+    spread_metric = "std"
+    av_faw_df = average_psd_from_epochs(psd_faw_folderpath, faw_df, spread_metric=spread_metric)
+    av_wrong_awake_df = average_psd_from_epochs(psd_awake_folderpath, wrong_awake_df, spread_metric=spread_metric)
+
+    metric_name = "standarderror" if spread_metric == "sem" else "standarddeviation"
+    if save_results:
+        saver = SaveResult()
+        saver.save_further_analysis(hyperparameters, av_faw_df, "dataframe", "psd",
+                                    "PSDs_faw_com_average", f"uncertainty_metric_{metric_name}")
+        saver.save_further_analysis(hyperparameters, av_wrong_awake_df, "dataframe", "psd",
+                                    "PSDs_wrong_awake_com_average", f"uncertainty_metric_{metric_name}")
+
+    if plot:
+        _plot_2_center_of_mass_psds(av_faw_df, av_wrong_awake_df, hyperparameters, save=False,
+                     title_suffix=f"uncertainty_metric_{metric_name}")
+        if save_results:
+            _plot_2_center_of_mass_psds(av_faw_df, av_wrong_awake_df, hyperparameters, save=True,
+                                        title_suffix=f"uncertainty_metric_{metric_name}")
+
 
 
 def average_psd_from_epochs(psd_folderpath: str, epochs_df: pd.DataFrame, spread_metric="std") -> pd.DataFrame:
@@ -91,8 +126,8 @@ def average_psd_from_epochs(psd_folderpath: str, epochs_df: pd.DataFrame, spread
     return avg_psd_df
 
 
-def _plot_psd(av_class_0_df: pd.DataFrame, av_class_1_outlier_df: pd.DataFrame, av_class_1_non_outlier_df: pd.DataFrame,
-              hyperparameters: dict, save: bool, title_suffix: str = ""):
+def _plot_3_psds(av_class_0_df: pd.DataFrame, av_class_1_outlier_df: pd.DataFrame, av_class_1_non_outlier_df: pd.DataFrame,
+                 hyperparameters: dict, save: bool, title_suffix: str = ""):
     fig, ax = Plots.plot_psd(None, av_class_0_df["Frequency_Hz"], av_class_0_df["PSD_V2_per_Hz_mean"],
                              "faw_average", log_scale=True, spread=av_class_0_df["PSD_V2_per_Hz_spread"])
     Plots.plot_psd((fig, ax), av_class_1_outlier_df["Frequency_Hz"], av_class_1_outlier_df["PSD_V2_per_Hz_mean"],
@@ -106,6 +141,21 @@ def _plot_psd(av_class_0_df: pd.DataFrame, av_class_1_outlier_df: pd.DataFrame, 
         saver.save_further_analysis(hyperparameters, fig, "plot", "psd", "PSDs",f"averages_comparison_{title_suffix}")
     else:
         plt.show()
+
+def _plot_2_center_of_mass_psds(av_class_0_df: pd.DataFrame, av_class_2_df: pd.DataFrame, hyperparameters: dict,
+                                save: bool, title_suffix: str = ""):
+    fig, ax = Plots.plot_psd(None, av_class_0_df["Frequency_Hz"], av_class_0_df["PSD_V2_per_Hz_mean"],
+                             "faw_com_average", log_scale=True, spread=av_class_0_df["PSD_V2_per_Hz_spread"])
+    fig, ax = Plots.plot_psd((fig, ax), av_class_2_df["Frequency_Hz"], av_class_2_df["PSD_V2_per_Hz_mean"],
+                   "wrong_awake_com_average", log_scale=True, color="red", spread=av_class_2_df["PSD_V2_per_Hz_spread"],
+                             title=f"PSD_center_of_mass_averages_comparison_{title_suffix}")
+
+    if save:
+        saver = SaveResult()
+        saver.save_further_analysis(hyperparameters, fig, "plot", "psd", "PSDs",f"com_averages_comparison_{title_suffix}")
+    else:
+        plt.show()
+
 
 if __name__ == "__main__":
     hyperparams = {
@@ -121,4 +171,5 @@ if __name__ == "__main__":
     class1 = "awake"
     class0 = "faw"
 
-    calculate_mean_psds(hyperparams, class1, class0, plot=True, save_results=True)
+    # calculate_mean_psds(hyperparams, class1, class0, plot=True, save_results=True)
+    calculate_center_of_mass_psds(hyperparams, 0.25, plot=True, save_results=True)

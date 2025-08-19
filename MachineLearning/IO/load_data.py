@@ -596,6 +596,18 @@ class LoadData(IOCore):
         outliers_df = pd.read_csv(fullpath)
         return outliers_df
 
+    def load_further_results(self, hyperparameters: dict, analysis_key: str, result_type: str, filename: str):
+        folder_path = self.return_all_parameter_fullpath(hyperparameters, False, True,
+                                                         ["further_analysis", analysis_key])
+
+        if result_type == "dataframe":
+            PathUtils.return_anypath(folder_path, filename)
+            return pd.read_csv(PathUtils.return_anypath(folder_path, filename))
+        elif result_type == "json":
+            return PathUtils.load_json(PathUtils.return_anypath(folder_path, filename))
+        else:
+            raise ValueError(f"Invalid result type. Expected 'dataframe' or 'json', got {result_type}")
+
     def _update_and_get_global_outliers(self, parameters, outliers_df: pd.DataFrame, outlier_type: str):
         """
         Updates the global outliers with new outliers and retrieves the updated global outliers.
