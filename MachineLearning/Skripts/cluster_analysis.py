@@ -183,5 +183,5 @@ if __name__ == "__main__":
     class1 = "awake"
     class0 = "faw"
 
-    pca_center_of_cluster_analysis(hyperparams, class1, class0, 0.25, 2, pca_components=5, outliers="global")
+    pca_center_of_cluster_analysis(hyperparams, class1, class0, 0.95, 1, pca_components=5, outliers="global")
     # pca_analysis(hyperparams, class1, class0, outliers="global")
