@@ -10,7 +10,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm_feat_after_comb_0"
+run_name = "norm_feat_over_vector_0"
 
 all_run_params_dict = {
     "current_params": {
@@ -87,10 +87,10 @@ def run():
         features_dict=features_dict,
         metadata_to_analyze=metadata_to_analyze,
         run_name=run_name,
-        force_overwrite=False,
+        force_overwrite=True,
         force_transform=False,
         force_extract=True,
-        global_outliers=True
+        global_outliers=False
     )
 
     pipeline.complete_run(steps_of_workflow)

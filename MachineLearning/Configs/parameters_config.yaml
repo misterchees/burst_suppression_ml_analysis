@@ -43,14 +43,14 @@ feature_params:
       - 30
     normalize_to: bands
   shannon_entropy:
-    normalize: true
+    normalize: false
   spectral_skewness:
-    normalize: true
+    normalize: false
     n_method: clip
     lower_bound: 0
     upper_bound: 1
   spectral_kurtosis:
-    normalize: true
+    normalize: false
     n_method: clip
     lower_bound: 0
     upper_bound: 1
@@ -68,7 +68,7 @@ feature_params:
     channel: 1
     order: 3
     delay: 1
-    normalize: true
+    normalize: false
   fuzzy_entropy:
     channel: 1
     m: 2
@@ -77,10 +77,10 @@ feature_params:
 classification_params:
   test_size: 0.15
   random_seed: 42
-  remove_outliers: true
+  remove_outliers: false
   remove_outlier_epochs: false
   outlier_run_name: normalized_run_rm_patient_ids_3
   svm:
     C: 1
     kernel: rbf
-run_name: normalized_run_rm_patient_ids_4
+run_name: norm_feat_over_vector_0

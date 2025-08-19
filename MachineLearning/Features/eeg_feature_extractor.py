@@ -123,8 +123,8 @@ class EEGFeatureExtractor(MLObject):
             result[band_name] = relative_power
         return result
 
-    @register_feature_extractor("shannon_entropy", default_params={"normalize": True})
-    def extract_shannon_entropy(self, normalize=True):
+    @register_feature_extractor("shannon_entropy", default_params={"normalize": False})
+    def extract_shannon_entropy(self, normalize=False):
         """
         Iterates over all PSD CSVs in the Feature PSD folder, calculates Shannon entropy,
         and saves the results as CSV in a Shannon_entropy output folder of the current parameter combination.
@@ -139,7 +139,7 @@ class EEGFeatureExtractor(MLObject):
         self.extract_feature_from_PSDs(feature_key, normalize=normalize)
 
     @register_feature_calculator("shannon_entropy")
-    def calculate_shannon_entropy(self, psd_df: pd.DataFrame, normalize=True) -> float:
+    def calculate_shannon_entropy(self, psd_df: pd.DataFrame, normalize=False) -> float:
         """
         Calculates the Shannon entropy of a PSD.
 
@@ -171,9 +171,9 @@ class EEGFeatureExtractor(MLObject):
 
         return entropy
 
-    @register_feature_extractor("spectral_skewness", default_params={"normalize": True, "n_method": "clip",
+    @register_feature_extractor("spectral_skewness", default_params={"normalize": False, "n_method": "clip",
                                                                      "lower_bound": 0, "upper_bound": 1})
-    def extraxt_spectral_skewness(self, normalize=True, n_method="clip", lower_bound=0, upper_bound=1):
+    def extraxt_spectral_skewness(self, normalize=False, n_method="clip", lower_bound=0, upper_bound=1):
         """
         Iterates over all PSD CSVs in the Feature PSD folder, calculates spectral Skewness,
         and saves the results as CSV in a Spectral_skewness output folder of the current parameter combination.
@@ -192,7 +192,7 @@ class EEGFeatureExtractor(MLObject):
                                        lower_bound=lower_bound, upper_bound=upper_bound)
 
     @register_feature_calculator("spectral_skewness")
-    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize=True, n_method="clip",
+    def calculate_spectral_skewness(self, psd_df: pd.DataFrame, normalize=False, n_method="clip",
                                     lower_bound=0, upper_bound=1) -> float:
         """
         Calculates spectral skewness from a power spectral density (PSD).
@@ -230,14 +230,14 @@ class EEGFeatureExtractor(MLObject):
                 skewness = MathUtils.scaled_tanh(skewness, out_min=lower_bound, out_max=upper_bound)
             elif n_method == "clip":
                 skewness = np.clip(skewness, lower_bound, upper_bound)
-        else:
-            raise ValueError(f"Normalization method '{n_method}' not supported")
+            else:
+                raise ValueError(f"Normalization method '{n_method}' not supported")
 
         return skewness
 
-    @register_feature_extractor("spectral_kurtosis", default_params={"normalize": True, "n_method": "clip",
+    @register_feature_extractor("spectral_kurtosis", default_params={"normalize": False, "n_method": "clip",
                                                                      "lower_bound": 0, "upper_bound": 1})
-    def extraxt_spectral_kurtosis(self, normalize=True, n_method="clip", lower_bound=0, upper_bound=1):
+    def extraxt_spectral_kurtosis(self, normalize=False, n_method="clip", lower_bound=0, upper_bound=1):
         """
         Iterates over all PSD CSVs in the Feature PSD folder, calculates spectral Kurtosis,
         and saves the results as CSV in a Spectral_kurtosis output folder of the current parameter combination.
@@ -257,7 +257,7 @@ class EEGFeatureExtractor(MLObject):
                                        lower_bound=lower_bound, upper_bound=upper_bound)
 
     @register_feature_calculator("spectral_kurtosis")
-    def calculate_spectral_kurtosis(self, psd_df: pd.DataFrame, normalize=True, n_method="clip",
+    def calculate_spectral_kurtosis(self, psd_df: pd.DataFrame, normalize=False, n_method="clip",
                                     lower_bound=0, upper_bound=1) -> float:
         """
         Calculates spectral kurtosis from a power spectral density (PSD).
@@ -294,8 +294,8 @@ class EEGFeatureExtractor(MLObject):
                 kurtosis = MathUtils.scaled_tanh(kurtosis, out_min=lower_bound, out_max=upper_bound)
             elif n_method == "clip":
                 kurtosis = np.clip(kurtosis, lower_bound, upper_bound)
-        else:
-            raise ValueError(f"Normalization method '{n_method}' not supported")
+            else:
+                raise ValueError(f"Normalization method '{n_method}' not supported")
 
         return kurtosis
 
@@ -414,8 +414,8 @@ class EEGFeatureExtractor(MLObject):
         return sampen(signal, emb_dim=emb_dim, tolerance=tolerance * np.std(signal))
 
     @register_feature_extractor("permutation_entropy", default_params={"channel": 1, "order": 3,
-                                                                       "delay": 1, "normalize": True})
-    def extract_permutation_entropy(self, channel=1, order: int = 3, delay: int = 1, normalize: bool = True):
+                                                                       "delay": 1, "normalize": False})
+    def extract_permutation_entropy(self, channel=1, order: int = 3, delay: int = 1, normalize: bool = False):
         """
         Calculates the permutation entropy of EEG signal for given channel of each episode from the subdirectory
         specified by current parameters.
@@ -436,7 +436,7 @@ class EEGFeatureExtractor(MLObject):
 
     @register_feature_calculator("permutation_entropy")
     def calculate_permutation_entropy(self, signal: np.ndarray, order: int = 3, delay: int = 1,
-                                      normalize: bool = True) -> float:
+                                      normalize: bool = False) -> float:
         """
         Computes the permutation entropy of the EEG signal.
 
