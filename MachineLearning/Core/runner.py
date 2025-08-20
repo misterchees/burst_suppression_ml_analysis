@@ -10,7 +10,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm_feat_over_vector_0"
+run_name = "norm_feat_over_vector_0_seed_42_sanity_check"
 
 all_run_params_dict = {
     "current_params": {
@@ -54,8 +54,8 @@ all_run_params_dict = {
 }
 
 # Use None for variable to skip step; Use "all_features" if all features should be used in step
-features = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
-features_to_combine = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
+features = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
+features_to_combine = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy"]
 
 # Set dict to None if no extraction AND no combination shall be conduced
 features_dict = {
@@ -66,8 +66,8 @@ features_dict = {
 # Metadata to analyze for errors
 metadata_to_analyze = ["ResultID"]
 
-epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
-# epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
+# epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
+epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 
 steps_of_workflow = ["transform", "extract", "combine", "classify", "analyze"]
 
@@ -87,8 +87,8 @@ def run():
         features_dict=features_dict,
         metadata_to_analyze=metadata_to_analyze,
         run_name=run_name,
-        force_overwrite=True,
-        force_transform=False,
+        force_overwrite=False,
+        force_transform=True,
         force_extract=True,
         global_outliers=False
     )

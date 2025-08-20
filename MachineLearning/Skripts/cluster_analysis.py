@@ -47,7 +47,9 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
 
     # Feature contributions to PC1
     top_features = analyzer.get_feature_contributions(pc_index=0, top_n=10, save_results=save_results)
-    print(f"Top Features:\n {top_features}")
+    print(f"Top Features PC1:\n {top_features}")
+    top_features2 = analyzer.get_feature_contributions(pc_index=1, top_n=10, save_results=save_results)
+    print(f"Top Features PC2:\n {top_features2}")
 
 def pca_center_of_cluster_analysis(hyperparameters, class_1, class_0, confidence_intervall, cluster_label,
                                    pca_components=5, outliers: str = None, outlier_run: str = None,
@@ -183,5 +185,5 @@ if __name__ == "__main__":
     class1 = "awake"
     class0 = "faw"
 
-    pca_center_of_cluster_analysis(hyperparams, class1, class0, 0.95, 1, pca_components=5, outliers="global")
-    # pca_analysis(hyperparams, class1, class0, outliers="global")
+    # pca_center_of_cluster_analysis(hyperparams, class1, class0, 0.95, 1, pca_components=5, outliers="global")
+    pca_analysis(hyperparams, class1, class0)

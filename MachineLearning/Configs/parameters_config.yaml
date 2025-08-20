@@ -83,4 +83,4 @@ classification_params:
   svm:
     C: 1
     kernel: rbf
-run_name: norm_feat_over_vector_0
+run_name: norm_feat_over_vector_0_seed_42_sanity_check

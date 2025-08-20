@@ -25,6 +25,6 @@ def print_metrics(overlaps_, min_episode_lengths_, _run_name=None):
 if __name__ == "__main__":
     overlaps = [0.0]
     min_episode_lengths = [20]
-    run_name = "baseline_run_rm_epochs_5"
+    run_name = "norm_feat_over_vector_0"
 
     print_metrics(overlaps, min_episode_lengths, run_name)
