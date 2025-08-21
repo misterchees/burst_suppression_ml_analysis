@@ -3,9 +3,10 @@ import pandas as pd
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 import matplotlib.pyplot as plt
+from MachineLearning.Models.svm_classifier import SVMClassifier
 
 def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_sizes, n_iterations=10,
-                            metrics=("accuracy", "f1", "precision", "recall"), sample_set="train"):
+                            metrics=("accuracy", "f1", "precision", "recall"), sample_set="train", use_implemented_svm=True):
     """
     Run repeated sampling experiments with columnwise Z-Score normalization.
 
@@ -18,6 +19,7 @@ def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_s
     :param metrics: Tuple of metrics to calculate ("accuracy", "f1", "precision", "recall")
     :param sample_set: Indicates from which set to sample for normalization parameters:
         "all" for all episodes, "train" for training set, or "test" for test set.
+    :param use_implemented_svm: If True, use the implemented SVM classifier. If False, use sklearn's SVC.
     :return: dict of results per sample size and metric
     """
     results = {m: {s: [] for s in sample_sizes} for m in metrics}
@@ -51,10 +53,15 @@ def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_s
             train_norm = (train_df[feature_cols] - means) / stds
             test_norm = (test_df[feature_cols] - means) / stds
 
-            # Train SVM
-            clf = SVC(kernel="rbf")
-            clf.fit(train_norm, train_df[label_col])
-            preds = clf.predict(test_norm)
+            if use_implemented_svm:
+                clf = SVMClassifier(C=1, kernel="rbf")
+                clf.train(train_norm, train_df[label_col])
+                preds = clf.predict(test_norm)
+            else:
+                # Train SVM
+                clf = SVC(kernel="rbf", C=1)
+                clf.fit(train_norm, train_df[label_col])
+                preds = clf.predict(test_norm)
 
             # Compute metrics
             if "accuracy" in metrics:
@@ -102,6 +109,6 @@ if __name__ == "__main__":
     feature_cols_ = ["Delta", "Theta", "Alpha", "Beta", "Spectral_skewness", "Spectral_kurtosis", "Shannon_entropy", "Permutation_entropy"]
     metrics_to_plot_ = ["accuracy", "f1", "precision", "recall"]
 
-    results_ = run_sampling_experiment(train_df_, test_df_,"label",
-                                       feature_cols_, sample_sizes=[100, 1000, 1500], n_iterations=100, sample_set="all")
+    results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[1000, 1500],
+                                       n_iterations=100, sample_set="train", use_implemented_svm=True)
     plot_results(results_, metrics_to_plot_)

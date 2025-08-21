@@ -82,5 +82,5 @@ classification_params:
   outlier_run_name: normalized_run_rm_patient_ids_3
   svm:
     C: 1
-    kernel: rbf
-run_name: norm_feat_over_vector_0_2025_08_21T01_17_51
+    kernel: linear
+run_name: norm_fov_linear_kernel_0
