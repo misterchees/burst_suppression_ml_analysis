@@ -56,10 +56,11 @@ class FeatureUtils:
         # Drop NaN rows, if present
         merged_df = merged_df.dropna()
 
-        # z-score normalization
-        normalizer = Normalizing("zscore")
-        norm_func = normalizer.normalize_array
-        merged_df = FeatureUtils._normalize_features_in_df(merged_df, norm_func)
+        if normalize:
+            # z-score normalization
+            normalizer = Normalizing("zscore")
+            norm_func = normalizer.normalize_array
+            merged_df = FeatureUtils._normalize_features_in_df(merged_df, norm_func)
 
         # Step 3: Sort for consistency
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)

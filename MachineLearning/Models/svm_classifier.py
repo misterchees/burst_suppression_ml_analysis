@@ -58,4 +58,4 @@ class SVMClassifier:
 
     @staticmethod
     def get_base_model():
-        return SVC()  # oder mit default self-params
+        return SVC()  # or using default self-params
