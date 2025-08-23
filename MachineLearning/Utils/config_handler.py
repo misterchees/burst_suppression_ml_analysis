@@ -64,3 +64,33 @@ def update_config(filename: str, updates: dict) -> dict:
         yaml.dump(updated_config, f, sort_keys=False, allow_unicode=True)
 
     return load_config(filename)
+
+
+def replace_bands_in_config(filename, updates):
+    """
+    Updates a YAML config file by merging updates recursively,
+    but replaces 'frequency_bands' dictionary completely.
+    """
+    config_dir = Path(__file__).parent.parent / "Configs"
+    config_path = config_dir / filename
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f) or {}
+
+    def recursive_update(d, u, parent_key=None):
+        for k, v in u.items():
+            if isinstance(v, dict) and isinstance(d.get(k), dict) and not (
+                    parent_key == "relative_bandpower" and k == "frequency_bands"):
+                # normal recursive merge
+                recursive_update(d[k], v, k)
+            else:
+                # overwrite completely if key is 'frequency_bands'
+                d[k] = v
+
+    recursive_update(config, updates)
+
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(config, f, sort_keys=False, allow_unicode=True)

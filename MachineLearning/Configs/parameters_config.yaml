@@ -82,5 +82,5 @@ classification_params:
   outlier_run_name: normalized_run_rm_patient_ids_3
   svm:
     C: 1
-    kernel: linear
-run_name: norm_fov_linear_kernel_0
+    kernel: rbf
+run_name: norm2_fov_only_feature_bandpower_delta

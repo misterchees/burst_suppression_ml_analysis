@@ -1,5 +1,7 @@
 import numpy as np
 from typing import Union
+
+import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, QuantileTransformer
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
@@ -94,6 +96,15 @@ class Normalizing:
 
         raise ValueError(f"Somehow you managed to use an unsupported normalization method '{self.method}' "
                          f"for array normalization. This should be dealt with in the initialization method ;)")
+
+    @staticmethod
+    def normalize_array2(df: pd.DataFrame, feature_cols: list):
+        # Compute mean & std per column (spaltenweise!)
+        means = df[feature_cols].mean()
+        stds = df[feature_cols].std(ddof=0)
+        norm_df = (df[feature_cols] - means) / stds
+
+        return norm_df
 
 
     @staticmethod

@@ -10,7 +10,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm_fov_linear_kernel_0"
+run_name = "norm2_fov_only_feature_bandpower_delta"
 
 all_run_params_dict = {
     "current_params": {
@@ -55,7 +55,10 @@ all_run_params_dict = {
 
 # Use None for variable to skip step; Use "all_features" if all features should be used in step
 features = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
-features_to_combine = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
+features_to_combine = ["bandpower"]
+band_dict = {'Delta': [0.5, 4], 'Theta': [4, 8], 'Alpha': [8, 13], 'Beta': [13, 30]}
+
+bands_to_remove = ["Beta", "Alpha", "Theta"]
 
 # Set dict to None if no extraction AND no combination shall be conduced
 features_dict = {
@@ -76,6 +79,14 @@ def run():
     """
     Function to execute any code
     """
+    from MachineLearning.Utils.config_handler import replace_bands_in_config
+    # Set which bands to keep from bandpower
+    band_dict_for_iteration = {band: f_range for band, f_range in band_dict.items() if band not in bands_to_remove}
+    replace_bands_in_config("parameters_config.yaml",
+                            {"feature_params":
+                       {"relative_bandpower":
+                            {"frequency_bands": band_dict_for_iteration}}})
+
     pipeline = Pipeline(
         init_data_key=INITIAL_DATA_SUBDIR_KEY,
         epoch_classes=epoch_classes,
@@ -87,13 +98,18 @@ def run():
         features_dict=features_dict,
         metadata_to_analyze=metadata_to_analyze,
         run_name=run_name,
-        force_overwrite=False,
+        force_overwrite=True,
         force_transform=False,
         force_extract=True,
         global_outliers=False
     )
 
     pipeline.complete_run(steps_of_workflow)
+    # Setting original bands back
+    replace_bands_in_config("parameters_config.yaml",
+                            {"feature_params":
+                       {"relative_bandpower":
+                            {"frequency_bands": band_dict}}})
 
 
 if __name__ == "__main__":

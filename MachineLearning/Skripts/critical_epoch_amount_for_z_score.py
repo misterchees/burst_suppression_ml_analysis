@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from MachineLearning.Models.svm_classifier import SVMClassifier
 
 def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_sizes, n_iterations=10,
-                            metrics=("accuracy", "f1", "precision", "recall"), sample_set="train", use_implemented_svm=True):
+                            metrics=("accuracy", "f1", "precision", "recall"), sample_set="train", use_implemented_svm=True,
+                            svm_c = 1.0, svm_kernel = "rbf"):
     """
     Run repeated sampling experiments with columnwise Z-Score normalization.
 
@@ -45,21 +46,17 @@ def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_s
             class1 = sampling_df[sampling_df[label_col] == 1].sample(half_s, replace=False, random_state=i)
             sample_df = pd.concat([class0, class1])
 
-            # Compute mean & std per column
-            means = sample_df[feature_cols].mean()
-            stds = sample_df[feature_cols].std(ddof=0)
-
-            # Normalize train & test
-            train_norm = (train_df[feature_cols] - means) / stds
-            test_norm = (test_df[feature_cols] - means) / stds
+            # Normalize train & test with calculated mean and std from sampled df
+            train_norm = _normalize_features_in_df(train_df, sample_df, _normalize_array, feature_cols)
+            test_norm = _normalize_features_in_df(test_df, sample_df, _normalize_array, feature_cols)
 
             if use_implemented_svm:
-                clf = SVMClassifier(C=1, kernel="rbf")
+                clf = SVMClassifier(C=svm_c, kernel=svm_kernel)
                 clf.train(train_norm, train_df[label_col])
                 preds = clf.predict(test_norm)
             else:
                 # Train SVM
-                clf = SVC(kernel="rbf", C=1)
+                clf = SVC(kernel=svm_kernel, C=svm_c)
                 clf.fit(train_norm, train_df[label_col])
                 preds = clf.predict(test_norm)
 
@@ -98,6 +95,58 @@ def plot_results(results, metrics_to_plot=None):
     plt.legend()
     plt.show()
 
+def run_classification_without_sampling(use_implemented_svm=False, label_col="label", metrics=("accuracy", "f1", "precision", "recall")):
+    train_df = pd.read_csv("D:\\Daten\\Test_and_train\\Splits\\Splits_70_080_20_5\\Summary_Episodes_20_000\\norm_feat_over_vector_0\\4_6_train_split.csv").copy()
+    train_labels = train_df[label_col].values
+    train_df = train_df.drop(columns=["Start", "End", "ResultID", label_col])
+    test_df = pd.read_csv("D:\\Daten\\Test_and_train\\Splits\\Splits_70_080_20_5\\Summary_Episodes_20_000\\norm_feat_over_vector_0\\4_6_test_split.csv").copy()
+    test_labels = test_df[label_col].values
+    test_df = test_df.drop(columns=["Start", "End", "ResultID", label_col])
+
+
+    if use_implemented_svm:
+        clf = SVMClassifier(C=1, kernel="rbf")
+        clf.train(train_df, train_labels)
+        preds = clf.predict(test_df)
+    else:
+        # Train SVM
+        clf = SVC(kernel="rbf", C=1)
+        clf.fit(train_df, train_labels)
+        preds = clf.predict(test_df)
+
+    # Compute metrics
+    if "accuracy" in metrics:
+        print(f"Acc: {accuracy_score(test_labels, preds)}\n")
+    if "f1" in metrics:
+        print(f"f1: {f1_score(test_labels, preds)}\n")
+    if "precision" in metrics:
+        print(f"precision: {precision_score(test_labels, preds)}\n")
+    if "recall" in metrics:
+        print(f"recall: {recall_score(test_labels, preds)}\n")
+
+
+def _normalize_array(values: np.ndarray, sample_for_vars: np.ndarray) -> np.ndarray:
+    """Normalizes an array of values based on the method given in the class and an optional feature type."""
+    to_normalize = np.asarray(values)
+
+    return (to_normalize - np.mean(sample_for_vars)) / np.std(sample_for_vars)
+
+
+def _normalize_features_in_df(df, sample_df, normalizing_function, feature_cols):
+    """
+    Normalize all feature columns in a DataFrame column-wise using a given normalization function.
+    Keeps Start, End, ResultID unchanged.
+
+    :param df: pandas.DataFrame with columns [feature1, feature2, ...]
+    :param normalizing_function: function that takes a numpy array and returns a normalized numpy array
+    :return: pandas.DataFrame with normalized features
+    """
+
+    df_norm = df.copy()
+    for col in feature_cols:
+        df_norm[col] = normalizing_function(df[col].values, sample_df[col].values)
+
+    return df_norm
 
 if __name__ == "__main__":
     split_folder = "D:\\Daten\\Other\\Splits_for_normalization_statistics\\"
@@ -109,6 +158,7 @@ if __name__ == "__main__":
     feature_cols_ = ["Delta", "Theta", "Alpha", "Beta", "Spectral_skewness", "Spectral_kurtosis", "Shannon_entropy", "Permutation_entropy"]
     metrics_to_plot_ = ["accuracy", "f1", "precision", "recall"]
 
-    results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[1000, 1500],
-                                       n_iterations=100, sample_set="train", use_implemented_svm=True)
+    results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 3, 4 ,5, 8, 10, 15, 30, 50],
+                                       n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
     plot_results(results_, metrics_to_plot_)
+    # run_classification_without_sampling()

@@ -15,6 +15,7 @@ class FeatureUtils:
         :param all_features: If True, combine all available features found in the features directory.
         :param epoch_type: Defines the epochs from which the features were calculated. Defines subfolder of features.
         :param features: Specific feature keys to include (used only if all_features=False).
+        :param normalize: If True, z-score normalize the features.
         """
         loader = LoadData()
         saver = SaveResult()
@@ -38,6 +39,14 @@ class FeatureUtils:
                 # loads feature
                 feature_path = loader.return_file_fullpath(parameters, True, False, epoch_type, ["features", feature])
                 df = pd.read_csv(feature_path)
+                # To make it possible to remove single bands from classification
+                if feature == "bandpower":
+                    from MachineLearning.Utils.config_handler import load_config
+                    default_bands = ["Delta", "Theta", "Alpha", "Beta"]
+                    band_dict = load_config("parameters_config.yaml")["feature_params"]["relative_bandpower"]["frequency_bands"]
+                    bands_to_remove = [band for band in default_bands if band not in band_dict.keys()]
+                    print(f"Removing bands for bandpower feature: {bands_to_remove}")
+                    df = df.drop(columns=bands_to_remove)
                 # Merge or initialize
                 if merged_df is None:
                     merged_df = df
@@ -59,8 +68,15 @@ class FeatureUtils:
         if normalize:
             # z-score normalization
             normalizer = Normalizing("zscore")
-            norm_func = normalizer.normalize_array
-            merged_df = FeatureUtils._normalize_features_in_df(merged_df, norm_func)
+            meta_cols = ["Start", "End", "ResultID"]
+            feature_cols = [col for col in merged_df.columns if col not in meta_cols]
+
+            merged_df_copy = merged_df.copy()
+            # for col in feature_cols:
+            #     merged_df_copy[col] = normalizer.normalize_array(merged_df_copy[col].values)
+            norm_df = normalizer.normalize_array2(merged_df_copy, feature_cols)
+            norm_df[meta_cols] = merged_df[meta_cols]
+            merged_df = norm_df.copy()
 
         # Step 3: Sort for consistency
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
