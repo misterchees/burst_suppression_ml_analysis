@@ -4,6 +4,8 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 import matplotlib.pyplot as plt
 from MachineLearning.Models.svm_classifier import SVMClassifier
+import matplotlib
+matplotlib.use('TkAgg')
 
 def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_sizes, n_iterations=10,
                             metrics=("accuracy", "f1", "precision", "recall"), sample_set="train", use_implemented_svm=True,
@@ -158,7 +160,7 @@ if __name__ == "__main__":
     feature_cols_ = ["Delta", "Theta", "Alpha", "Beta", "Spectral_skewness", "Spectral_kurtosis", "Shannon_entropy", "Permutation_entropy"]
     metrics_to_plot_ = ["accuracy", "f1", "precision", "recall"]
 
-    results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 3, 4 ,5, 8, 10, 15, 30, 50],
+    results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 3, 4 ,5, 8, 10, 12, 15, 20],
                                        n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
     plot_results(results_, metrics_to_plot_)
     # run_classification_without_sampling()
