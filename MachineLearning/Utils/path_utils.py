@@ -337,3 +337,11 @@ class PathUtils:
         combined_df.to_csv(csv_path, index=False)
 
         return new_rows_df, len(new_rows_df)
+
+    @staticmethod
+    def create_dir_path(path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+            print(f"Created directory: {path}")
+        else:
+            print(f"Directory already exists: {path}")

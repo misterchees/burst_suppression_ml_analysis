@@ -3,7 +3,7 @@ from MachineLearning.IO.load_data import PathUtils
 from MachineLearning.Utils.feature_utils import FeatureUtils
 
 
-def create_single_split(hyperparameters, class_0, class_1, folderpath, test_size=0.15, random_state=1):
+def create_single_split(hyperparameters, class_0, class_1, folderpath, test_size=0.15, random_state=61):
     # Combine without normalizing first
     features = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
     FeatureUtils.combine_features(hyperparameters, "faw", False,features, normalize=False)

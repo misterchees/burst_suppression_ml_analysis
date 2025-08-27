@@ -1,8 +1,6 @@
-
-import os
 import pandas as pd
 from collections import Counter
-from MachineLearning.IO.load_data import LoadData, PathUtils
+from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 
 loader = LoadData()
@@ -56,6 +54,34 @@ def get_epoch_distribution_for_run(hyperparameters: dict, model_key: str, run_na
 
     return result_df
 
+def get_initial_epoch_distribution(hyperparameters: dict, save_result=True):
+    faw_epochs = loader.load_faw_times_as_df(hyperparameters)
+    awake_epochs = loader.load_awake_times_as_df(hyperparameters)
+
+    faw_epoch_counts = Counter(faw_epochs["ResultID"])
+    awake_epoch_counts = Counter(awake_epochs["ResultID"])
+
+    rows = []
+    for patient_id in faw_epoch_counts.keys() | awake_epoch_counts.keys():
+        row = {"ResultID": patient_id, "faw_epochs": faw_epoch_counts.get(patient_id, 0),
+               "awake_epochs": awake_epoch_counts.get(patient_id, 0)}
+        rows.append(row)
+
+    result_df = pd.DataFrame(rows).sort_values(by="ResultID").reset_index(drop=True)
+
+    if save_result:
+        from MachineLearning.IO.save_result import PathUtils
+        params_path = PathUtils.return_A_B_C_D_X_Y_path("Dist", hyperparameters)
+        folderpath = "D:\\Daten\\Other\\Initial_epoch_distribution\\"
+        full_folderpath = PathUtils.return_anypath(folderpath,params_path)
+        PathUtils.create_dir_path(full_folderpath)
+        fullpath = PathUtils.return_anypath(full_folderpath,"epoch_dist.csv")
+
+        PathUtils.save_file_as_csv(result_df, fullpath)
+
+    return result_df
+
+
 
 if __name__ == "__main__":
     hyperparams = {
@@ -70,8 +96,13 @@ if __name__ == "__main__":
     _model_key = "svm"
     _run_name = "test_run_0"
 
-    epoch_dist_results = get_epoch_distribution_for_run(hyperparams, _model_key, _run_name)
+    # epoch_dist_results = get_epoch_distribution_for_run(hyperparams, _model_key, _run_name)
+    epoch_dist_results = get_initial_epoch_distribution(hyperparams, save_result=False)
     print(epoch_dist_results)
+    print("Sums of epochs per type:\n")
+    print(f"Faw_sum: {epoch_dist_results["faw_epochs"].sum()}\n")
+    print(f"Awake_sum: {epoch_dist_results["awake_epochs"].sum()}\n")
+
 
 
 
