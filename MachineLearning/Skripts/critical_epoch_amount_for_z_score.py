@@ -11,7 +11,9 @@ def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_s
                             metrics=("accuracy", "f1", "precision", "recall"), sample_set="train", use_implemented_svm=True,
                             svm_c = 1.0, svm_kernel = "rbf"):
     """
-    Run repeated sampling experiments with columnwise Z-Score normalization.
+    Run repeated sampling experiments with columnwise Z-Score normalization. The train set size stays always the same.
+    The sampling only provides the basis for calculation of the mean and variance of the z-score normalization
+    of the whole sample.
 
     :param train_df: Training DataFrame
     :param test_df: Test DataFrame
@@ -61,6 +63,55 @@ def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_s
                 clf = SVC(kernel=svm_kernel, C=svm_c)
                 clf.fit(train_norm, train_df[label_col])
                 preds = clf.predict(test_norm)
+
+            # Compute metrics
+            if "accuracy" in metrics:
+                results["accuracy"][s].append(accuracy_score(test_df[label_col], preds))
+                print(f"Acc: {accuracy_score(test_df[label_col], preds)} for sample size {s} and iteration {i} \n")
+            if "f1" in metrics:
+                results["f1"][s].append(f1_score(test_df[label_col], preds))
+            if "precision" in metrics:
+                results["precision"][s].append(precision_score(test_df[label_col], preds))
+            if "recall" in metrics:
+                results["recall"][s].append(recall_score(test_df[label_col], preds))
+
+    return results
+
+def run_sampling_experiment2(train_df, test_df, label_col, feature_cols, sample_sizes, n_iterations=10,
+                            metrics=("accuracy", "f1", "precision", "recall"),svm_c = 1.0, svm_kernel = "rbf"):
+    """
+    Sample train subset from train set to train classifier on it and classify always with the same test set.
+    :param train_df:
+    :param test_df:
+    :param label_col:
+    :param feature_cols:
+    :param sample_sizes:
+    :param n_iterations:
+    :param metrics:
+    :param svm_c:
+    :param svm_kernel:
+    :return:
+    """
+    results = {m: {s: [] for s in sample_sizes} for m in metrics}
+    sampling_df = train_df.copy()
+
+    for s in sample_sizes:
+        half_s = s // 2
+        for i in range(n_iterations):
+            # Stratified sampling: half from label 0, half from label 1
+            class0 = sampling_df[sampling_df[label_col] == 0].sample(half_s, replace=False, random_state=i)
+            class1 = sampling_df[sampling_df[label_col] == 1].sample(half_s, replace=False, random_state=i)
+            # Create new train set from sampled df
+            train_df_sample = pd.concat([class0, class1])
+
+            # Normalize train & test with calculated mean and std from sampled df
+            train_norm = _normalize_features_in_df(train_df_sample, train_df_sample, _normalize_array, feature_cols)
+            test_norm = _normalize_features_in_df(test_df, train_df_sample, _normalize_array, feature_cols)
+
+            # Train SVM
+            clf = SVC(kernel=svm_kernel, C=svm_c)
+            clf.fit(train_norm, train_df_sample[label_col])
+            preds = clf.predict(test_norm)
 
             # Compute metrics
             if "accuracy" in metrics:
@@ -160,7 +211,11 @@ if __name__ == "__main__":
     feature_cols_ = ["Delta", "Theta", "Alpha", "Beta", "Spectral_skewness", "Spectral_kurtosis", "Shannon_entropy", "Permutation_entropy"]
     metrics_to_plot_ = ["accuracy", "f1", "precision", "recall"]
 
-    results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 3, 4 ,5, 8, 10, 12, 15, 20],
-                                       n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
+    # results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 3, 4 ,5, 8, 10, 12, 15, 20],
+    #                                    n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
+    results_ = run_sampling_experiment2(train_df_, test_df_, "label", feature_cols_,
+                                       sample_sizes=[10, 50, 100, 150, 200, 250, 300, 350],
+                                       n_iterations=50, svm_c=1,
+                                       svm_kernel="rbf")
     plot_results(results_, metrics_to_plot_)
     # run_classification_without_sampling()
