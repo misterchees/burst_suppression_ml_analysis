@@ -124,13 +124,13 @@ class MetricsEvaluator:
         relative_matrices = [to_relative_factors(m) for m in matrices]
 
         mean_matrix = np.mean(relative_matrices, axis=0)
-        var_matrix = np.var(relative_matrices, axis=0)
+        std_matrix = np.std(relative_matrices, axis=0)
 
         template_df = results_list[0]["confusion_matrix"]
         mean_df = pd.DataFrame(mean_matrix, columns=template_df.columns, index=template_df.index)
-        var_df = pd.DataFrame(var_matrix, columns=template_df.columns, index=template_df.index)
+        std_df = pd.DataFrame(std_matrix, columns=template_df.columns, index=template_df.index)
 
-        return mean_df, var_df
+        return mean_df, std_df
 
     @staticmethod
     def _calculate_summary(results_list):
@@ -147,13 +147,13 @@ class MetricsEvaluator:
         for metric in metrics:
             values = [r[metric] for r in results_list if r[metric] is not None]
             if values:
-                summary[metric] = {"mean": np.mean(values), "variance": np.var(values)}
+                summary[metric] = {"mean": np.mean(values), "standard_deviation": np.std(values)}
             else:
-                summary[metric] = {"mean": None, "variance": None}
+                summary[metric] = {"mean": None, "standard_deviation": None}
 
         # Add confusion matrix summary
-        mean_cm, var_cm = MetricsEvaluator._calculate_confusion_matrix_summary(results_list)
-        summary["confusion_matrix"] = {"mean": mean_cm, "variance": var_cm}
+        mean_cm, std_cm = MetricsEvaluator._calculate_confusion_matrix_summary(results_list)
+        summary["confusion_matrix"] = {"mean": mean_cm, "standard_deviation": std_cm}
 
         return summary
 
@@ -183,15 +183,15 @@ class MetricsEvaluator:
         print("Summary Statistics:")
         for metric, stats in summary_dict.items():
             if metric == "confusion_matrix":
-                print("\nConfusion Matrix (mean % ± variance %):")
+                print("\nConfusion Matrix (mean % ± std %):")
                 combined_matrix = stats["mean"].copy()
                 for i in stats["mean"].index:
                     for j in stats["mean"].columns:
                         combined_matrix.loc[
-                            i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['variance'].loc[i, j]:.1f}%"
+                            i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['standard_deviation'].loc[i, j]:.1f}%"
                 print(combined_matrix)
             else:
-                print(f"{metric} - Mean: {stats['mean']:.4f}, Variance: {stats['variance']:.4f}")
+                print(f"{metric} - Mean: {stats['mean']:.4f}, Standard deviation: {stats['standard_deviation']:.4f}")
 
     @staticmethod
     def _print_single(result_dict: dict):

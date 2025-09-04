@@ -53,7 +53,7 @@ class Plots:
 
     @staticmethod
     def plot_psd(fig_and_ax, freqs, power, label, color="blue", title="Power Spectral Density",
-                 log_scale=False, spread=None, alpha=0.3):
+                 log_scale=False, spread=None, alpha=0.3, max_freq: float = None, min_power: float = None):
         """
         Plots a PSD with optional uncertainty shading.
         :param fig_and_ax: Tuple with (fig, ax) for subplot integration.
@@ -65,6 +65,8 @@ class Plots:
         :param log_scale: If True, y-axis is logarithmic.
         :param spread: Optional uncertainty array (same shape as power).
         :param alpha: Transparency for shaded area.
+        :param max_freq: The maximum frequency to plot (x-axis). If None, the maximum frequency in freqs is used.
+        :param min_power: The minimum power to plot (y-axis). If None, the minimum power in power is used.
         """
         if fig_and_ax is not None:
             fig, ax = fig_and_ax
@@ -83,7 +85,14 @@ class Plots:
         ax.set_ylabel("Power [V²/Hz]" if not log_scale else "log(Power[V²/Hz])")
         ax.set_title(title)
         ax.grid(True)
-        ax.set_xlim([min(freqs), max(freqs)])
+        if max_freq is not None:
+            ax.set_xlim([min(freqs), max_freq])
+        else:
+            ax.set_xlim([min(freqs), max(freqs)])
+        if min_power is not None:
+            ax.set_ylim([min_power, max(power)+max(power)])
+        else:
+            ax.set_ylim([min(power), max(power)+max(power)])
         ax.legend()
 
         return fig, ax

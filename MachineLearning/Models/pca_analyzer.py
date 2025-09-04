@@ -124,26 +124,37 @@ class PCAAnalyzer:
             saver = SaveResult()
             saver.save_further_analysis(self.hyperparams, fig, "plot", "pca", "PCA_scree", "plot")
 
-    def get_feature_contributions(self, pc_index=0, top_n=10, save_results=False):
+    def get_feature_contributions(self, pc_index=0, top_n=10, save_results=False, decimals=2):
         """
-        Returns the top contributing features for a given principal component.
+        Returns the top contributing features (in %) for a given principal component.
 
         :param pc_index: Index of the component (0 = PC1, 1 = PC2, ...)
         :param top_n: Number of top features to return.
         :param save_results: If True, saves the results to the further_analysis folder.
-        :returns: Series with feature names and contribution weights.
+        :param decimals: Number of decimal places for percentages (default=2).
+        :returns: Series with feature names and contribution percentages.
         """
         if self.pca.components_ is None:
             raise ValueError("Run fit_transform() first.")
 
         component = self.pca.components_[pc_index]
-        contributions = pd.Series(np.abs(component), index=self.columns)
-        contributions.sort_values(ascending=False).head(top_n)
+
+        # Get absolut values and calculate in percent
+        contributions = np.abs(component)
+        contributions = contributions / contributions.sum() * 100
+
+        # Convert to series
+        contributions = pd.Series(contributions, index=self.columns)
+
+        # Sort, round and selct top n
+        contributions = contributions.sort_values(ascending=False).round(decimals).head(top_n)
+
         if save_results:
             from MachineLearning.IO.save_result import SaveResult
             saver = SaveResult()
             saver.save_further_analysis(self.hyperparams, pd.DataFrame(contributions),"dataframe",
-                                        "pca", f"PCA_top_{top_n}", f"feature_contributions_PC_{pc_index}")
+                "pca",f"PCA_top_{top_n}",f"feature_contributions_PC_{pc_index}")
+
         return contributions
 
     def get_points_in_region(self, labels, cluster_label, dims=2, confidence=0.95, plot=False, save_result=False):

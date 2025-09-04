@@ -6,7 +6,7 @@ from MachineLearning.Preprocessing.normalizing import Normalizing
 
 class FeatureUtils:
     @staticmethod
-    def combine_features(parameters: dict, epoch_type: str, all_features: bool, features: list, normalize=True):
+    def combine_features(parameters: dict, epoch_type: str, all_features: bool, features: list, normalize=False):
         """
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.

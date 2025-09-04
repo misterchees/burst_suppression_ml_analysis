@@ -54,6 +54,10 @@ def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_s
             train_norm = _normalize_features_in_df(train_df, sample_df, _normalize_array, feature_cols)
             test_norm = _normalize_features_in_df(test_df, sample_df, _normalize_array, feature_cols)
 
+            # Drop label
+            train_norm.drop(columns=[label_col], inplace=True)
+            test_norm.drop(columns=[label_col], inplace=True)
+
             if use_implemented_svm:
                 clf = SVMClassifier(C=svm_c, kernel=svm_kernel)
                 clf.train(train_norm, train_df[label_col])
@@ -81,16 +85,14 @@ def run_sampling_experiment2(train_df, test_df, label_col, feature_cols, sample_
                             metrics=("accuracy", "f1", "precision", "recall"),svm_c = 1.0, svm_kernel = "rbf"):
     """
     Sample train subset from train set to train classifier on it and classify always with the same test set.
-    :param train_df:
-    :param test_df:
-    :param label_col:
-    :param feature_cols:
-    :param sample_sizes:
-    :param n_iterations:
-    :param metrics:
-    :param svm_c:
-    :param svm_kernel:
-    :return:
+    :param train_df: Training DataFrame
+    :param test_df: Test DataFrame
+    :param label_col: Name of label column
+    :param feature_cols: List of feature columns to use
+    :param sample_sizes: List of sample sizes (total per iteration, evenly split between classes)
+    :param n_iterations: Number of iterations per sample size
+    :param metrics: Tuple of metrics to calculate ("accuracy", "f1", "precision", "recall")
+    :return: dict of results per sample size and metric
     """
     results = {m: {s: [] for s in sample_sizes} for m in metrics}
     sampling_df = train_df.copy()
@@ -107,6 +109,10 @@ def run_sampling_experiment2(train_df, test_df, label_col, feature_cols, sample_
             # Normalize train & test with calculated mean and std from sampled df
             train_norm = _normalize_features_in_df(train_df_sample, train_df_sample, _normalize_array, feature_cols)
             test_norm = _normalize_features_in_df(test_df, train_df_sample, _normalize_array, feature_cols)
+
+            # Drop label
+            train_norm.drop(columns=[label_col], inplace=True)
+            test_norm.drop(columns=[label_col], inplace=True)
 
             # Train SVM
             clf = SVC(kernel=svm_kernel, C=svm_c)
@@ -211,11 +217,11 @@ if __name__ == "__main__":
     feature_cols_ = ["Delta", "Theta", "Alpha", "Beta", "Spectral_skewness", "Spectral_kurtosis", "Shannon_entropy", "Permutation_entropy"]
     metrics_to_plot_ = ["accuracy", "f1", "precision", "recall"]
 
-    # results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 3, 4 ,5, 8, 10, 12, 15, 20],
-    #                                    n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
-    results_ = run_sampling_experiment2(train_df_, test_df_, "label", feature_cols_,
-                                       sample_sizes=[10, 50, 100, 150, 200, 250, 300, 350],
-                                       n_iterations=50, svm_c=1,
-                                       svm_kernel="rbf")
+    results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 20, 100, 500, 1000],
+                                       n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
+    # results_ = run_sampling_experiment2(train_df_, test_df_, "label", feature_cols_,
+    #                                    sample_sizes=[10, 50, 100, 150, 200, 250, 300, 350, 500, 1000],
+    #                                    n_iterations=50, svm_c=1,
+    #                                    svm_kernel="rbf")
     plot_results(results_, metrics_to_plot_)
     # run_classification_without_sampling()

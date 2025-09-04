@@ -10,7 +10,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm2_fov_only_feature_bandpower_delta"
+run_name = "norm2_in_place_rm_outlier_6"
 
 all_run_params_dict = {
     "current_params": {
@@ -48,17 +48,17 @@ all_run_params_dict = {
         "random_seed": 42,
         "remove_outliers": False,
         "remove_outlier_epochs": False,
-        "outlier_run_name": "normalized_run_rm_patient_ids_3",
+        "outlier_run_name": "norm2_in_place_rm_outlier_5",
         model_key: model_params
     }
 }
 
 # Use None for variable to skip step; Use "all_features" if all features should be used in step
 features = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
-features_to_combine = ["bandpower"]
+features_to_combine = ["bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"]
 band_dict = {'Delta': [0.5, 4], 'Theta': [4, 8], 'Alpha': [8, 13], 'Beta': [13, 30]}
 
-bands_to_remove = ["Beta", "Alpha", "Theta"]
+bands_to_remove = []
 
 # Set dict to None if no extraction AND no combination shall be conduced
 features_dict = {

@@ -46,6 +46,34 @@ class SplitManager:
         self.class_0_df = class_0_df
         print("Loading successful")
 
+    def normalize_data(self):
+        """
+        Normalizes both class dataframes jointly (using statistics from the combined data),
+        then splits them back into their original classes.
+        """
+        from MachineLearning.Preprocessing.normalizing import Normalizing
+        print("Normalizing data before splitting...")
+        # Merge both into one big dataframe
+        combined_df = pd.concat([self.class_1_df, self.class_0_df], ignore_index=True)
+
+        # Init normalizer
+        normalizer = Normalizing("zscore")
+        meta_cols = ["Start", "End", "ResultID"]
+        feature_cols = [col for col in combined_df.columns if col not in meta_cols]
+
+        # Normalize on the whole combined dataset
+        normalized_combined_df = normalizer.normalize_array2(combined_df, feature_cols)
+        normalized_combined_df[meta_cols] = combined_df[meta_cols]
+
+        # Split back into class-specific dataframes
+        n_class_1 = len(self.class_1_df)
+        normalized_class_1_df = normalized_combined_df.iloc[:n_class_1].reset_index(drop=True)
+        normalized_class_0_df = normalized_combined_df.iloc[n_class_1:].reset_index(drop=True)
+
+        self.class_1_df = normalized_class_1_df
+        self.class_0_df = normalized_class_0_df
+        print("Normalization successful")
+
     def create_single_split(self, save=True, ignore_ids: list = None):
         """
          Creates splits in the following fashion:

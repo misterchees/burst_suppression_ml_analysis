@@ -18,8 +18,8 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
         serving as a comparison group.
     :param pca_components: Optional; Number of principal components to compute for the PCA
         analysis. Defaults to 5.
-    :param outliers: Optional; String identifier specifying which outlier data should
-        be included in the analysis if any.
+    :param outliers: Optional; String identifier specifying which outlier data should.
+        Must be either 'global' or 'local'.
     :param outlier_run: Optional; String identifier for a specific run or instance where the
         outliers were identified. Relevant when outliers are included.
     :param model_name: Optional; String specifying the name of a model, if applicable,
@@ -139,6 +139,7 @@ def load_labeled_data(hyperparameters, class_1, class_0, outliers: str = None, o
     :param class_0: The identifier for the second class to label in the dataset.
     :type class_0: Any
     :param outliers: Optional path or identifier to locate outlier data.
+        Must be either 'global' or 'local'.
     :type outliers: str, optional
     :param outlier_run: Optional additional specification to process outlier labeling.
     :type outlier_run: str, optional
@@ -186,4 +187,4 @@ if __name__ == "__main__":
     class0 = "faw"
 
     # pca_center_of_cluster_analysis(hyperparams, class1, class0, 0.95, 1, pca_components=5, outliers="global")
-    pca_analysis(hyperparams, class1, class0)
+    pca_analysis(hyperparams, class1, class0, outliers="global", outlier_run="norm2_in_place_rm_outlier_6", model_name="svm", save_results=True)

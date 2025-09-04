@@ -78,9 +78,9 @@ classification_params:
   test_size: 0.15
   random_seed: 42
   remove_outliers: false
-  remove_outlier_epochs: false
-  outlier_run_name: normalized_run_rm_patient_ids_3
+  remove_outlier_epochs: true
+  outlier_run_name: norm2_in_place_rm_outlier_5
   svm:
     C: 1
     kernel: rbf
-run_name: norm2_fov_only_feature_bandpower_delta
+run_name: norm2_in_place_rm_outlier_6

@@ -305,7 +305,8 @@ class Pipeline:
             iterations: int = None,
             remove_outlier_ids: bool = False,
             remove_epochs: bool = False,
-            outlier_run_name: str = None
+            outlier_run_name: str = None,
+            normalize_before_split: bool = True
     ):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent
@@ -327,6 +328,8 @@ class Pipeline:
         parameters = self.get_current_hyperparams()
         split_manager = SplitManager(parameters, self.class_0, self.class_1, test_size, random_state)
         split_manager.load_and_validate()
+        if normalize_before_split:
+            split_manager.normalize_data()
 
         if remove_outlier_ids:
             loader = LoadData()
