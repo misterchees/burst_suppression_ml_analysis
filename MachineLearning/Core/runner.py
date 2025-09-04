@@ -2,6 +2,7 @@
 This module is to execute all pipeline commands and therefore the main point to run the project.
 """
 from MachineLearning.Core.pipeline import Pipeline
+import itertools
 
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
 channel = 1
@@ -112,5 +113,60 @@ def run():
                             {"frequency_bands": band_dict}}})
 
 
+def generate_feature_combinations(base_features=("bandpower", "spectral_skewness", "spectral_kurtosis", "shannon_entropy", "permutation_entropy"),
+                                  all_bands=("Alpha", "Beta", "Theta", "Delta")):
+    """
+    Generate all possible feature and bandpower combinations with compact, sorted run names.
+
+    :param base_features: List of features (incl. "bandpower" if wanted).
+    :param all_bands: List of all available bands for bandpower.
+    :returns: List of (features_to_combine, bands_to_remove_, run_name_).
+    """
+    feature_short = {
+        "bandpower": "band",
+        "spectral_skewness": "skew",
+        "spectral_kurtosis": "kurt",
+        "shannon_entropy": "shan",
+        "permutation_entropy": "perm"
+    }
+
+    runs = []
+
+    # All subsets of features
+    for feature_subset_size in range(1, len(base_features) + 1):
+        for feature_subset in itertools.combinations(base_features, feature_subset_size):
+            feature_subset = list(feature_subset)
+
+            if "bandpower" in feature_subset:
+                for band_subset_size in range(1, len(all_bands) + 1):
+                    for band_subset in itertools.combinations(all_bands, band_subset_size):
+                        bands_to_remove_ = [b for b in all_bands if b not in band_subset]
+
+                        band_short = "".join(sorted([b[0].upper() for b in band_subset]))
+                        feature_names = []
+                        for f in feature_subset:
+                            if f == "bandpower":
+                                feature_names.append(f"band{band_short}")
+                            else:
+                                feature_names.append(feature_short[f])
+
+                        # Every run_name_ has the same order of abbreviations
+                        feature_names = sorted(feature_names)
+                        run_name_ = "Run_" + "_".join(feature_names)
+
+                        runs.append((feature_subset, bands_to_remove_, run_name_))
+            else:
+                feature_names = [feature_short[f] for f in feature_subset]
+                feature_names = sorted(feature_names)
+                run_name_ = "Run_" + "_".join(feature_names)
+                runs.append((feature_subset, [], run_name_))
+
+    return runs
+
+
 if __name__ == "__main__":
-    run()
+    run_combinations = generate_feature_combinations()
+    for run_combination in run_combinations:
+        features_to_combine, bands_to_remove, run_name = run_combination
+        features_dict["features_to_combine"] = features_to_combine
+        run()
