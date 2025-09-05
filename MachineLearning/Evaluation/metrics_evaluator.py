@@ -180,18 +180,35 @@ class MetricsEvaluator:
         :type summary_dict: dict
         :return: None
         """
-        print("Summary Statistics:")
-        for metric, stats in summary_dict.items():
-            if metric == "confusion_matrix":
-                print("\nConfusion Matrix (mean % ± std %):")
-                combined_matrix = stats["mean"].copy()
-                for i in stats["mean"].index:
-                    for j in stats["mean"].columns:
-                        combined_matrix.loc[
-                            i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['standard_deviation'].loc[i, j]:.1f}%"
-                print(combined_matrix)
-            else:
-                print(f"{metric} - Mean: {stats['mean']:.4f}, Standard deviation: {stats['standard_deviation']:.4f}")
+        try:
+            print("Summary Statistics:")
+            for metric, stats in summary_dict.items():
+                if metric == "confusion_matrix":
+                    print("\nConfusion Matrix (mean % ± std %):")
+                    combined_matrix = stats["mean"].copy()
+                    for i in stats["mean"].index:
+                        for j in stats["mean"].columns:
+                            combined_matrix.loc[
+                                i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['standard_deviation'].loc[i, j]:.1f}%"
+                    print(combined_matrix)
+                else:
+                    print(f"{metric} - Mean: {stats['mean']*100:.1f}%, Standard deviation: {stats['standard_deviation']*100:.1f}%")
+        except KeyError:
+            print(f"Following Error was encountered: {KeyError} \n Trying old Format with Variance instead of Std")
+            print("Summary Statistics:")
+            for metric, stats in summary_dict.items():
+                if metric == "confusion_matrix":
+                    print("\nConfusion Matrix (mean % ± var %):")
+                    combined_matrix = stats["mean"].copy()
+                    for i in stats["mean"].index:
+                        for j in stats["mean"].columns:
+                            combined_matrix.loc[
+                                i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['variance'].loc[i, j]:.1f}%"
+                    print(combined_matrix)
+                else:
+                    print(f"{metric} - Mean: {stats['mean']*100:.1f}%, Standard deviation: {stats['variance']*100:.1f}%")
+
+
 
     @staticmethod
     def _print_single(result_dict: dict):
