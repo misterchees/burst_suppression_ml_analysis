@@ -2,6 +2,7 @@
 This module is to execute all pipeline commands and therefore the main point to run the project.
 """
 from MachineLearning.Core.pipeline import Pipeline
+from MachineLearning.Utils.config_handler import replace_bands_in_config
 import itertools
 
 INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
@@ -80,7 +81,6 @@ def run():
     """
     Function to execute any code
     """
-    from MachineLearning.Utils.config_handler import replace_bands_in_config
     # Set which bands to keep from bandpower
     band_dict_for_iteration = {band: f_range for band, f_range in band_dict.items() if band not in bands_to_remove}
     replace_bands_in_config("parameters_config.yaml",
@@ -152,21 +152,22 @@ def generate_feature_combinations(base_features=("bandpower", "spectral_skewness
 
                         # Every run_name_ has the same order of abbreviations
                         feature_names = sorted(feature_names)
-                        run_name_ = "Run_" + "_".join(feature_names)
+                        run_name_ = "zscorenorm_" + "_".join(feature_names)
 
                         runs.append((feature_subset, bands_to_remove_, run_name_))
             else:
                 feature_names = [feature_short[f] for f in feature_subset]
                 feature_names = sorted(feature_names)
-                run_name_ = "Run_" + "_".join(feature_names)
+                run_name_ = "zscorenorm_" + "_".join(feature_names)
                 runs.append((feature_subset, [], run_name_))
 
     return runs
 
 
 if __name__ == "__main__":
-    run_combinations = generate_feature_combinations()
-    for run_combination in run_combinations:
-        features_to_combine, bands_to_remove, run_name = run_combination
-        features_dict["features_to_combine"] = features_to_combine
-        run()
+    run()
+    # run_combinations = generate_feature_combinations()
+    # for run_combination in run_combinations:
+    #     features_to_combine, bands_to_remove, run_name = run_combination
+    #     features_dict["features_to_combine"] = features_to_combine
+    #     run()

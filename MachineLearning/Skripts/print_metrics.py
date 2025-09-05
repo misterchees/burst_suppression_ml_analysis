@@ -105,8 +105,8 @@ def plot_cell_distributions_percent(results):
 
 
 if __name__ == "__main__":
-    run_name = "norm2_in_place_rm_outlier_6"
+    run_name = "norm2_in_place_2"
 
     all_metrics = print_metrics(run_name)
-    individual_results = all_metrics["individual_results"]
-    plot_cell_distributions_percent(individual_results)
+    # individual_results = all_metrics["individual_results"]
+    # plot_cell_distributions_percent(individual_results)
