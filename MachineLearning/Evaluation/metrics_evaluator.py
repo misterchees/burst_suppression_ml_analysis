@@ -206,7 +206,7 @@ class MetricsEvaluator:
                                 i, j] = f"{stats['mean'].loc[i, j]:.1f}% ± {stats['variance'].loc[i, j]:.1f}%"
                     print(combined_matrix)
                 else:
-                    print(f"{metric} - Mean: {stats['mean']*100:.1f}%, Standard deviation: {stats['variance']*100:.1f}%")
+                    print(f"{metric} - Mean: {stats['mean']*100:.1f}%, Variance: {stats['variance']*100:.1f}%")
 
 
 

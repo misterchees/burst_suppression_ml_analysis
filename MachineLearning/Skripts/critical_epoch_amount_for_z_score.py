@@ -217,11 +217,11 @@ if __name__ == "__main__":
     feature_cols_ = ["Delta", "Theta", "Alpha", "Beta", "Spectral_skewness", "Spectral_kurtosis", "Shannon_entropy", "Permutation_entropy"]
     metrics_to_plot_ = ["accuracy", "f1", "precision", "recall"]
 
-    results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 20, 100, 500, 1000],
-                                       n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
-    # results_ = run_sampling_experiment2(train_df_, test_df_, "label", feature_cols_,
-    #                                    sample_sizes=[10, 50, 100, 150, 200, 250, 300, 350, 500, 1000],
-    #                                    n_iterations=50, svm_c=1,
-    #                                    svm_kernel="rbf")
+    # results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 20, 100, 500, 750, 1000],
+    #                                    n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
+    results_ = run_sampling_experiment2(train_df_, test_df_, "label", feature_cols_,
+                                       sample_sizes=[10, 50, 100, 150, 200, 250, 300, 350, 500, 750, 1000],
+                                       n_iterations=50, svm_c=1,
+                                       svm_kernel="rbf")
     plot_results(results_, metrics_to_plot_)
     # run_classification_without_sampling()

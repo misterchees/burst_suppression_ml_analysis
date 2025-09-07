@@ -187,4 +187,4 @@ if __name__ == "__main__":
     class0 = "faw"
 
     # pca_center_of_cluster_analysis(hyperparams, class1, class0, 0.95, 1, pca_components=5, outliers="global")
-    pca_analysis(hyperparams, class1, class0, outliers="global", outlier_run="norm2_in_place_rm_outlier_6", model_name="svm", save_results=True)
+    pca_analysis(hyperparams, class1, class0, outliers="global", outlier_run="norm2_in_place_2", model_name="svm", save_results=True)

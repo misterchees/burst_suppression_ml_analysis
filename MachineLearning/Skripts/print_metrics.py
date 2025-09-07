@@ -102,10 +102,132 @@ def plot_cell_distributions_percent(results):
     plt.tight_layout()
     plt.show()
 
+def plot_run_metrics(list_of_runs, run_names_=None, metrics_to_plot=None,
+                     plot_confusion=False, plot_type="bar"):
+    """
+    Plots summary metrics across multiple runs.
+
+    :param list_of_runs: List of summary_dicts (each run).
+    :param run_names_: List of names/labels for runs. If None, indices are used.
+    :param metrics_to_plot: List of metrics to plot (subset of ["accuracy","precision","recall","f1"]).
+    :param plot_confusion: If True, also plots confusion matrices for each run.
+    :param plot_type: "bar", "box", or "violin".
+    """
+    if run_names_ is None:
+        run_names_ = [f"Run_{i + 1}" for i in range(len(list_of_runs))]
+
+    if metrics_to_plot is None:
+        metrics_to_plot = ["accuracy", "precision", "recall", "f1"]
+
+    # --- Collect scalar metrics (acc, pre, rec, f1) ---
+    metric_data = []
+    for run_name_, run_dict in zip(run_names_, list_of_runs):
+        for metric in metrics_to_plot:
+            if metric in run_dict:
+                mean_val = run_dict[metric]["mean"] * 100
+                var_val = run_dict[metric]["standard_deviation"] * 100
+                metric_data.append({
+                    "Run": run_name_,
+                    "Metric": metric.capitalize(),
+                    "Mean": mean_val,
+                    "Variance": var_val
+                })
+
+    df_metrics = pd.DataFrame(metric_data)
+
+    if df_metrics.empty:
+        print("No matching metrics found in list_of_runs.")
+        return
+
+    plt.figure(figsize=(10, 6))
+
+    if plot_type == "bar":
+        sns.barplot(data=df_metrics, x="Run", y="Mean", hue="Metric", errorbar="sd")
+        plt.xticks(rotation=90)
+        plt.ylabel("Score (%)")
+        plt.title("Run Metrics (Mean ± SD)")
+        plt.legend(title="Metric")
+
+    elif plot_type == "box":
+        sns.boxplot(data=df_metrics, x="Metric", y="Mean")
+        sns.stripplot(data=df_metrics, x="Metric", y="Mean", color="black", alpha=0.3)
+        plt.ylabel("Score (%)")
+        plt.title("Metric Distributions Across Runs")
+
+    elif plot_type == "violin":
+        sns.violinplot(data=df_metrics, x="Metric", y="Mean", inner="quartile")
+        sns.stripplot(data=df_metrics, x="Metric", y="Mean", color="black", alpha=0.3)
+        plt.ylabel("Score (%)")
+        plt.title("Metric Distributions Across Runs (Violin)")
+
+    else:
+        raise ValueError(f"Unknown plot_type: {plot_type}")
+
+    plt.tight_layout()
+    plt.show()
+
+    # --- Plot confusion matrices (optional) ---
+    if plot_confusion:
+        for run_name_, run_dict in zip(run_names_, list_of_runs):
+            cm_mean = run_dict["confusion_matrix"]["mean"].astype(float)
+            plt.figure(figsize=(5, 4))
+            sns.heatmap(cm_mean, annot=True, fmt=".1f", cmap="Blues", cbar=False)
+            plt.title(f"Confusion Matrix (mean %) - {run_name_}")
+            plt.ylabel("True")
+            plt.xlabel("Predicted")
+            plt.tight_layout()
+            plt.show()
+
+
+def select_top_bottom_runs(list_of_runs, run_names_=None, metric="accuracy", top_n=5):
+    """
+    Selects top and bottom runs based on a given metric.
+
+    :param list_of_runs: List of summary_dicts (each run).
+    :param run_names_: Optional list of names.
+    :param metric: Metric to rank runs by.
+    :param top_n: Number of top and bottom runs to return.
+    :returns: (selected_runs, selected_names)
+    """
+    if run_names_ is None:
+        run_names_ = [f"Run_{i + 1}" for i in range(len(list_of_runs))]
+
+    scores = []
+    for run_name_, run_dict in zip(run_names_, list_of_runs):
+        if metric in run_dict:
+            scores.append((run_name_, run_dict, run_dict[metric]["mean"]))
+
+    df = pd.DataFrame(scores, columns=["Run", "Dict", "Score"])
+    df = df.sort_values("Score", ascending=False)
+
+    top = df.head(top_n)
+    bottom = df.tail(top_n)
+
+    selected = pd.concat([top, bottom])
+    return list(selected["Dict"]), list(selected["Run"])
+
+
 
 
 if __name__ == "__main__":
     run_name = "norm2_in_place_2"
+    # from MachineLearning.Core.runner import generate_feature_combinations
+    # feat_comb = generate_feature_combinations()
+    # run_names = [rn for _,_,rn in feat_comb]
+    # summary_metrics = []
+    # for run_name in run_names:
+    #     summary_metrics.append(print_metrics(run_name)["summary"])
+
+    # plot_run_metrics(summary_metrics, run_names, plot_type="violin")
+    # metric = "precision"
+    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=5)
+    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
+    # metric = "recall"
+    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=5)
+    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
+    # metric = "f1"
+    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=5)
+    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
 
     all_metrics = print_metrics(run_name)
     # individual_results = all_metrics["individual_results"]
