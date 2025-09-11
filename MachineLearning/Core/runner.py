@@ -12,7 +12,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm2_in_place_rm_outlier_6"
+run_name = "norm2_in_place_recreate_awake_dummy_2"
 
 all_run_params_dict = {
     "current_params": {
@@ -74,7 +74,7 @@ metadata_to_analyze = ["ResultID"]
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
 # epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 
-steps_of_workflow = ["combine", "classify", "analyze"]
+steps_of_workflow = ["combine"]
 
 
 def run():
