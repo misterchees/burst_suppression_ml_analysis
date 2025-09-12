@@ -12,7 +12,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm2_in_place_recreate_awake_dummy_2"
+run_name = "norm2_z_score_0"
 
 all_run_params_dict = {
     "current_params": {

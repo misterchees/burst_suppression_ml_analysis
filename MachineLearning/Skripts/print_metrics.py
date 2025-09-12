@@ -142,11 +142,16 @@ def plot_run_metrics(list_of_runs, run_names_=None, metrics_to_plot=None,
     plt.figure(figsize=(10, 6))
 
     if plot_type == "bar":
-        sns.barplot(data=df_metrics, x="Run", y="Mean", hue="Metric", errorbar="sd")
+        ax = sns.barplot(data=df_metrics, x="Run", y="Mean", hue="Metric", errorbar="sd")
         plt.xticks(rotation=90)
         plt.ylabel("Score (%)")
         plt.title("Run Metrics (Mean ± SD)")
         plt.legend(title="Metric")
+
+        # --- Separator line in the middle (only for bar plot) ---
+        n_runs = len(run_names_)
+        separator_pos = n_runs / 2 - 0.5
+        plt.axvline(x=separator_pos, color="black", linestyle="--")
 
     elif plot_type == "box":
         sns.boxplot(data=df_metrics, x="Metric", y="Mean")
@@ -211,24 +216,27 @@ def select_top_bottom_runs(list_of_runs, run_names_=None, metric="accuracy", top
 
 if __name__ == "__main__":
     run_name = "norm2_in_place_2"
-    # from MachineLearning.Core.runner import generate_feature_combinations
-    # feat_comb = generate_feature_combinations()
-    # run_names = [rn for _,_,rn in feat_comb]
-    # summary_metrics = []
-    # for run_name in run_names:
-    #     summary_metrics.append(print_metrics(run_name)["summary"])
+    from MachineLearning.Core.runner import generate_feature_combinations
+    feat_comb = generate_feature_combinations()
+    run_names = [rn for _,_,rn in feat_comb]
+    summary_metrics = []
+    for run_name in run_names:
+        summary_metrics.append(print_metrics(run_name)["summary"])
 
-    # plot_run_metrics(summary_metrics, run_names, plot_type="violin")
-    # metric = "precision"
-    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=5)
-    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
-    # metric = "recall"
-    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=5)
-    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
-    # metric = "f1"
-    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=5)
-    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
+    plot_run_metrics(summary_metrics, run_names, plot_type="violin")
+    metric = "precision"
+    selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
+    plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
+    metric = "accuracy"
+    selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
+    plot_run_metrics(selected_dicts, selected_names, metrics_to_plot=[metric], plot_type="bar")
+    metric = "recall"
+    selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
+    plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
+    metric = "f1"
+    selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
+    plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
 
-    all_metrics = print_metrics(run_name)
+    # all_metrics = print_metrics(run_name)
     # individual_results = all_metrics["individual_results"]
     # plot_cell_distributions_percent(individual_results)

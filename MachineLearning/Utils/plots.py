@@ -17,7 +17,7 @@ class Plots:
         :param lowcut: lowcut frequency of butterworth filter
         :param highcut: highcut frequency of butterworth filter
         :param order: order of butterworth filter -> steepness of transition to filtered frequencies
-        :return: Figure and Axes of plot (if show=True)
+        :return: Figure and Axes of plot
         """
 
         # create butterworth filter with parameters
@@ -82,7 +82,7 @@ class Plots:
             ax.fill_between(freqs, power - spread, power + spread, color=color, alpha=alpha)
 
         ax.set_xlabel("Frequenz [Hz]")
-        ax.set_ylabel("Power [V²/Hz]" if not log_scale else "log(Power[V²/Hz])")
+        ax.set_ylabel("Power [V²/Hz]" if not log_scale else "log(Power[uV²/Hz])")
         ax.set_title(title)
         ax.grid(True)
         if max_freq is not None:

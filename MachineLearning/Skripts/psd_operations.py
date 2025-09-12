@@ -155,13 +155,13 @@ def _plot_3_psds(av_class_0_df: pd.DataFrame, av_class_1_outlier_df: pd.DataFram
                  hyperparameters: dict, save: bool, title_suffix: str = "", max_freq: float = 30, min_power: float = 0.0001,):
 
     fig, ax = Plots.plot_psd(None, av_class_0_df["Frequency_Hz"], av_class_0_df["PSD_V2_per_Hz_mean"],
-                             "faw_average", log_scale=True, spread=av_class_0_df["PSD_V2_per_Hz_spread"] ,
+                             "FAW_average", log_scale=True, spread=av_class_0_df["PSD_V2_per_Hz_spread"] ,
                              max_freq=max_freq, min_power=min_power)
     Plots.plot_psd((fig, ax), av_class_1_outlier_df["Frequency_Hz"], av_class_1_outlier_df["PSD_V2_per_Hz_mean"],
-                   "wrong_awake_average", log_scale=True, color="red", spread=av_class_1_outlier_df["PSD_V2_per_Hz_spread"] ,
+                   "MAW_average", log_scale=True, color="red", spread=av_class_1_outlier_df["PSD_V2_per_Hz_spread"] ,
                    max_freq=max_freq, min_power=min_power)
     fig, ax = Plots.plot_psd((fig, ax), av_class_1_non_outlier_df["Frequency_Hz"], av_class_1_non_outlier_df["PSD_V2_per_Hz_mean"],
-                    "correct_awake_average", log_scale=True, color="green", spread=av_class_1_non_outlier_df["PSD_V2_per_Hz_spread"],
+                    "CAW_average", log_scale=True, color="green", spread=av_class_1_non_outlier_df["PSD_V2_per_Hz_spread"],
                              title=f"PSD_averages_comparison_{title_suffix}" , max_freq=max_freq, min_power=min_power)
 
     if save:
@@ -174,10 +174,10 @@ def _plot_2_psds(av_class_0_df: pd.DataFrame, av_class_1_df: pd.DataFrame,
                  hyperparameters: dict, save: bool, title_suffix: str = "", max_freq: float = 30, min_power: float = 0.0001):
 
     fig, ax = Plots.plot_psd(None, av_class_0_df["Frequency_Hz"], av_class_0_df["PSD_V2_per_Hz_mean"],
-                             "faw_average", log_scale=True, spread=av_class_0_df["PSD_V2_per_Hz_spread"],
+                             "FAW_average", log_scale=True, spread=av_class_0_df["PSD_V2_per_Hz_spread"],
                              max_freq=max_freq, min_power=min_power)
     fig, ax = Plots.plot_psd((fig, ax), av_class_1_df["Frequency_Hz"], av_class_1_df["PSD_V2_per_Hz_mean"],
-                    "awake_average", log_scale=True, color="green", spread=av_class_1_df["PSD_V2_per_Hz_spread"],
+                    "AW_average", log_scale=True, color="green", spread=av_class_1_df["PSD_V2_per_Hz_spread"],
                              title=f"PSD_averages_comparison_{title_suffix}", max_freq=max_freq, min_power=min_power)
 
     if save:
@@ -223,5 +223,5 @@ if __name__ == "__main__":
     class1 = "awake"
     class0 = "faw"
 
-    calculate_mean_psds(hyperparams, class1, class0, plot=True, save_results=True, outliers=False)
+    calculate_mean_psds(hyperparams, class1, class0, plot=True, save_results=True, outliers=True)
     # calculate_center_of_mass_psds(hyperparams, 0.25,1,2, plot=True, save_results=True, spread_metric="sem")

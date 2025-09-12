@@ -5,6 +5,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 import matplotlib.pyplot as plt
 from MachineLearning.Models.svm_classifier import SVMClassifier
 import matplotlib
+from matplotlib.ticker import MultipleLocator
 matplotlib.use('TkAgg')
 
 def run_sampling_experiment(train_df, test_df, label_col, feature_cols, sample_sizes, n_iterations=10,
@@ -143,15 +144,19 @@ def plot_results(results, metrics_to_plot=None):
     if metrics_to_plot is None:
         metrics_to_plot = list(results.keys())
 
+    plt.figure(figsize=(10, 5))
     for m in metrics_to_plot:
         means = [np.mean(results[m][s]) for s in results[m]]
         stderrs = [np.std(results[m][s]) / np.sqrt(len(results[m][s])) for s in results[m]]
 
         plt.errorbar(list(results[m].keys()), means, yerr=stderrs, capsize=5, label=m)
 
+    # x-axis steps in 100
+    plt.gca().xaxis.set_major_locator(MultipleLocator(200))
     plt.xlabel("Sample size (per subset)")
     plt.ylabel("Score")
-    plt.legend()
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.tight_layout()
     plt.show()
 
 def run_classification_without_sampling(use_implemented_svm=False, label_col="label", metrics=("accuracy", "f1", "precision", "recall")):
@@ -220,7 +225,7 @@ if __name__ == "__main__":
     # results_ = run_sampling_experiment(train_df_, test_df_,"label", feature_cols_, sample_sizes=[2, 20, 100, 500, 750, 1000],
     #                                    n_iterations=50, sample_set="train", use_implemented_svm=False, svm_c=1, svm_kernel="rbf")
     results_ = run_sampling_experiment2(train_df_, test_df_, "label", feature_cols_,
-                                       sample_sizes=[10, 50, 100, 150, 200, 250, 300, 350, 500, 750, 1000],
+                                       sample_sizes=[50, 100, 150, 200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800],
                                        n_iterations=50, svm_c=1,
                                        svm_kernel="rbf")
     plot_results(results_, metrics_to_plot_)

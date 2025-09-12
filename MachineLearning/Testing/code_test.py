@@ -1,9 +1,8 @@
 """
 Here is the place to test any code.
 """
-from MachineLearning.Core.runner import generate_feature_combinations
+from MachineLearning.Utils.plots import Plots
+import matplotlib.pyplot as plt
 
-runs = generate_feature_combinations()
-for triple in runs:
-    print(triple)
-    print("###############################")
+fig, ax = Plots.plot_butterworth_filtering()
+plt.show()

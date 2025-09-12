@@ -83,4 +83,4 @@ classification_params:
   svm:
     C: 1
     kernel: rbf
-run_name: norm2_in_place_recreate_awake_dummy_2
+run_name: norm2_z_score_0
