@@ -90,9 +90,9 @@ class Plots:
         else:
             ax.set_xlim([min(freqs), max(freqs)])
         if min_power is not None:
-            ax.set_ylim([min_power, max(power)+max(power)])
+            ax.set_ylim([min_power, max(power)+max(power)*10])
         else:
-            ax.set_ylim([min(power), max(power)+max(power)])
+            ax.set_ylim([min(power), max(power)+max(power)*10])
         ax.legend()
 
         return fig, ax

@@ -79,8 +79,8 @@ classification_params:
   random_seed: 42
   remove_outliers: false
   remove_outlier_epochs: false
-  outlier_run_name: norm2_in_place_rm_outlier_5
+  outlier_run_name: norm2_z_score_rm_outlier_5
   svm:
     C: 1
     kernel: rbf
-run_name: norm2_z_score_0
+run_name: zscorenorm2_bandABDT_kurt_perm_shan_skew

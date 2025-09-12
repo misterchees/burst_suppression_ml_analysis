@@ -1,5 +1,5 @@
 from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
-from MachineLearning.IO.load_data import LoadData
+from MachineLearning.IO.load_data import LoadData, PathUtils
 from MachineLearning.Utils.config_handler import load_config
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -126,6 +126,7 @@ def plot_run_metrics(list_of_runs, run_names_=None, metrics_to_plot=None,
             if metric in run_dict:
                 mean_val = run_dict[metric]["mean"] * 100
                 var_val = run_dict[metric]["standard_deviation"] * 100
+                run_name_ = run_name_.removeprefix("zscorenorm2_")
                 metric_data.append({
                     "Run": run_name_,
                     "Metric": metric.capitalize(),
@@ -212,10 +213,77 @@ def select_top_bottom_runs(list_of_runs, run_names_=None, metric="accuracy", top
     return list(selected["Dict"]), list(selected["Run"])
 
 
+def collect_run_metrics(list_of_runs, run_names_=None, metrics_to_collect=None):
+    """
+    Collects summary metrics across multiple runs into a DataFrame.
+
+    :param list_of_runs: List of summary_dicts (each run).
+    :param run_names_: List of names/labels for runs. If None, indices are used.
+    :param metrics_to_collect: List of metrics to collect (subset of ["accuracy","precision","recall","f1"]).
+    :return: pd.DataFrame with one row per run and metrics as columns.
+    """
+    if run_names_ is None:
+        run_names_ = [f"Run_{i + 1}" for i in range(len(list_of_runs))]
+
+    if metrics_to_collect is None:
+        metrics_to_collect = ["accuracy", "precision", "recall", "f1"]
+
+    rows = []
+    for run_name_, run_dict in zip(run_names_, list_of_runs):
+        clean_name = run_name_.removeprefix("zscorenorm2_")
+        row = {"Run": clean_name}
+        for metric in metrics_to_collect:
+            if metric in run_dict:
+                row[metric.capitalize()] = run_dict[metric]["mean"] * 100
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+    return df
+
+def best_and_worst_per_feature_count(df, metric="Accuracy"):
+    """
+    For each number of features, return the best and worst runs based on a selected metric.
+
+    :param df: DataFrame with at least columns ["Run", metric].
+    :param metric: Metric name to evaluate (e.g., "Accuracy", "Precision", "Recall", "F1").
+    :return: DataFrame summarizing best and worst runs per feature count.
+    """
+
+    def count_features(run_name_):
+        """Count features in a run name (special case: bandX... expands to multiple)."""
+        parts = run_name_.split("_")
+        total = 0
+        for p in parts:
+            if p.startswith("band"):
+                total += len(p.replace("band", ""))  # each letter counts as one feature
+            else:
+                total += 1
+        return total
+
+    df = df.copy()
+    df["NumFeatures"] = df["Run"].apply(count_features)
+
+    results = []
+    for num_feats, group in df.groupby("NumFeatures"):
+        # best
+        best_row = group.loc[group[metric].idxmax()]
+        # worst
+        worst_row = group.loc[group[metric].idxmin()]
+
+        results.append({
+            "NumFeatures": num_feats,
+            "BestRun": best_row["Run"],
+            "BestScore": best_row[metric],
+            "WorstRun": worst_row["Run"],
+            "WorstScore": worst_row[metric],
+        })
+
+    return pd.DataFrame(results).sort_values("NumFeatures").reset_index(drop=True)
+
 
 
 if __name__ == "__main__":
-    run_name = "norm2_in_place_2"
+    run_name = ""
     from MachineLearning.Core.runner import generate_feature_combinations
     feat_comb = generate_feature_combinations()
     run_names = [rn for _,_,rn in feat_comb]
@@ -223,19 +291,30 @@ if __name__ == "__main__":
     for run_name in run_names:
         summary_metrics.append(print_metrics(run_name)["summary"])
 
+    # # Create dataframes with subset runs
+    # collected_run_metrics = collect_run_metrics(summary_metrics, run_names, metrics_to_collect=["accuracy", "precision", "recall", "f1"])
+    # PathUtils.save_file_as_csv(collected_run_metrics, r"D:\Daten\Further_analysis\Subset_runs\subset_run_metrics.csv", False)
+    # metric = "Accuracy"
+    # best_worst_acc_df = best_and_worst_per_feature_count(collected_run_metrics, metric=metric)
+    # PathUtils.save_file_as_csv(best_worst_acc_df, r"D:\Daten\Further_analysis\Subset_runs\best_worst_acc_df.csv", False)
+    # metric = "F1"
+    # best_worst_f1_df = best_and_worst_per_feature_count(collected_run_metrics, metric=metric)
+    # PathUtils.save_file_as_csv(best_worst_f1_df, r"D:\Daten\Further_analysis\Subset_runs\best_worst_f1_df.csv", False)
+
+    # Create plots with run data
     plot_run_metrics(summary_metrics, run_names, plot_type="violin")
-    metric = "precision"
-    selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
-    plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
-    metric = "accuracy"
-    selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
-    plot_run_metrics(selected_dicts, selected_names, metrics_to_plot=[metric], plot_type="bar")
-    metric = "recall"
-    selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
-    plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
-    metric = "f1"
-    selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
-    plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
+    # metric = "precision"
+    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
+    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
+    # metric = "accuracy"
+    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
+    # plot_run_metrics(selected_dicts, selected_names, metrics_to_plot=[metric], plot_type="bar")
+    # metric = "recall"
+    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
+    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
+    # metric = "f1"
+    # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
+    # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
 
     # all_metrics = print_metrics(run_name)
     # individual_results = all_metrics["individual_results"]

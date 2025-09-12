@@ -12,7 +12,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm2_z_score_0"
+run_name = "norm2_z_score_rm_outlier_6"
 
 all_run_params_dict = {
     "current_params": {
@@ -50,7 +50,7 @@ all_run_params_dict = {
         "random_seed": 42,
         "remove_outliers": False,
         "remove_outlier_epochs": False,
-        "outlier_run_name": "norm2_in_place_rm_outlier_5",
+        "outlier_run_name": "norm2_z_score_rm_outlier_5",
         model_key: model_params
     }
 }
@@ -74,7 +74,7 @@ metadata_to_analyze = ["ResultID"]
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
 # epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 
-steps_of_workflow = ["combine"]
+steps_of_workflow = ["combine", "classify", "analyze"]
 
 
 def run():
@@ -152,22 +152,22 @@ def generate_feature_combinations(base_features=("bandpower", "spectral_skewness
 
                         # Every run_name_ has the same order of abbreviations
                         feature_names = sorted(feature_names)
-                        run_name_ = "zscorenorm_" + "_".join(feature_names)
+                        run_name_ = "zscorenorm2_" + "_".join(feature_names)
 
                         runs.append((feature_subset, bands_to_remove_, run_name_))
             else:
                 feature_names = [feature_short[f] for f in feature_subset]
                 feature_names = sorted(feature_names)
-                run_name_ = "zscorenorm_" + "_".join(feature_names)
+                run_name_ = "zscorenorm2_" + "_".join(feature_names)
                 runs.append((feature_subset, [], run_name_))
 
     return runs
 
 
 if __name__ == "__main__":
-    run()
-    # run_combinations = generate_feature_combinations()
-    # for run_combination in run_combinations:
-    #     features_to_combine, bands_to_remove, run_name = run_combination
-    #     features_dict["features_to_combine"] = features_to_combine
-    #     run()
+    # run()
+    run_combinations = generate_feature_combinations()
+    for run_combination in run_combinations:
+        features_to_combine, bands_to_remove, run_name = run_combination
+        features_dict["features_to_combine"] = features_to_combine
+        run()

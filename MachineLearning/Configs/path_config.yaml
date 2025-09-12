@@ -73,6 +73,7 @@ base_dir: # Basic directory for all data in this project
                 pca: "PCA"
                 k_means: "Kmeans"
                 stat_diff: "Statistical_difference"
+                subset_runs: "Subset_runs"
 
         global_outliers: # Subdirectory for outliers gathered over multiple runs
             path_name: "Global_outliers"
