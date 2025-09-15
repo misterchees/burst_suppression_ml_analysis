@@ -43,14 +43,14 @@ feature_params:
       - 30
     normalize_to: bands
   shannon_entropy:
-    normalize: false
+    normalize: true
   spectral_skewness:
-    normalize: false
+    normalize: true
     n_method: clip
     lower_bound: 0
     upper_bound: 1
   spectral_kurtosis:
-    normalize: false
+    normalize: true
     n_method: clip
     lower_bound: 0
     upper_bound: 1
@@ -68,7 +68,7 @@ feature_params:
     channel: 1
     order: 3
     delay: 1
-    normalize: false
+    normalize: true
   fuzzy_entropy:
     channel: 1
     m: 2
@@ -83,4 +83,4 @@ classification_params:
   svm:
     C: 1
     kernel: rbf
-run_name: zscorenorm2_bandABDT_kurt_perm_shan_skew
+run_name: epoch_wise_run_0

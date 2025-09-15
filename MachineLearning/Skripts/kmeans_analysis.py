@@ -40,10 +40,10 @@ def _run_analysis(data, n_cluster: int, _random_state: int, plot: str, hyperpara
     if plot == "2D" or plot == "3D":
         if plot == "2D":
             model.plot_components_2d(data,labels=labels, marker_size=5, alpha=0.4, separate_plots=False, save_plot=True,
-                           title=f"Kmeans_2D_clusters_{n_cluster}_random_state_{_random_state}_for_{_data_subset}")
+                           title=f"K-Means {n_cluster} Clusters")
         else:
             model.plot_components_3d(data,labels=labels, marker_size=5, alpha=0.4, separate_plots=False, save_plot=True,
-                           title=f"Kmeans_3D_clusters_{n_cluster}_random_state_{_random_state}_for_{_data_subset}")
+                           title=f"K-Means {n_cluster} Clusters")
 
 
 if __name__ == "__main__":
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         "fixed_window_size": 20,
         "overlap": 0.0
     }
-    random_states = [42, 89, 111, 4]
+    random_states = [111]
     n_cluster_array = [2, 3, 4, 5]
     data_subset_array = ["correct_awake", "all"]
     for data_subset in data_subset_array:

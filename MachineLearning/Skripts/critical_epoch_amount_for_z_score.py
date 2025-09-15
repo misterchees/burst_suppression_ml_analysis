@@ -146,16 +146,19 @@ def plot_results(results, metrics_to_plot=None):
 
     plt.figure(figsize=(10, 5))
     for m in metrics_to_plot:
-        means = [np.mean(results[m][s]) for s in results[m]]
-        stderrs = [np.std(results[m][s]) / np.sqrt(len(results[m][s])) for s in results[m]]
+        means = [np.mean(results[m][s]) * 100 for s in results[m]]
+        stderrs = [np.std(results[m][s]) / np.sqrt(len(results[m][s])) * 100 for s in results[m]]
 
-        plt.errorbar(list(results[m].keys()), means, yerr=stderrs, capsize=5, label=m)
+        plt.errorbar(list(results[m].keys()), means, yerr=stderrs, capsize=5, label=m.capitalize())
 
-    # x-axis steps in 100
+    # x-axis steps in 200
     plt.gca().xaxis.set_major_locator(MultipleLocator(200))
-    plt.xlabel("Sample size (per subset)")
-    plt.ylabel("Score")
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    # y-axis from 40% to 100% in 10% steps
+    plt.ylim(40, 100)
+    plt.gca().yaxis.set_major_locator(MultipleLocator(10))
+    plt.xlabel("Sample Size")
+    plt.ylabel("Score (%)")
+    plt.legend(loc='upper right')
     plt.tight_layout()
     plt.show()
 

@@ -12,7 +12,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm2_z_score_rm_outlier_6"
+run_name = "epoch_wise_run_0"
 
 all_run_params_dict = {
     "current_params": {
@@ -35,14 +35,14 @@ all_run_params_dict = {
     },
     "feature_params": {
         "relative_bandpower": {"normalize_to": "bands"},
-        "shannon_entropy": {"normalize": False},
-        "spectral_skewness": {"normalize": False, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
-        "spectral_kurtosis": {"normalize": False, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
+        "shannon_entropy": {"normalize": True},
+        "spectral_skewness": {"normalize": True, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
+        "spectral_kurtosis": {"normalize": True, "n_method": "clip", "lower_bound": 0, "upper_bound": 1},
         "mean": {"channel": channel},
         "variance": {"channel": channel},
         "amplitude": {"channel": channel},
         "sample_entropy": {"channel": channel, "emb_dim": 2, "tolerance": 0.2},
-        "permutation_entropy": {"channel": channel, "order": 3, "delay": 1, "normalize": False},
+        "permutation_entropy": {"channel": channel, "order": 3, "delay": 1, "normalize": True},
         "fuzzy_entropy": {"channel": channel, "m": 2, "r": 0.2, "n": 2}
     },
     "classification_params": {
@@ -74,7 +74,7 @@ metadata_to_analyze = ["ResultID"]
 epoch_classes = {0: "faw", 1: "awake"}  # Actual ML Project
 # epoch_classes = {0: "normal_an", 1: "awake"}  # Sanity Check
 
-steps_of_workflow = ["combine", "classify", "analyze"]
+steps_of_workflow = ["extract", "combine", "classify", "analyze"]
 
 
 def run():
@@ -165,9 +165,9 @@ def generate_feature_combinations(base_features=("bandpower", "spectral_skewness
 
 
 if __name__ == "__main__":
-    # run()
-    run_combinations = generate_feature_combinations()
-    for run_combination in run_combinations:
-        features_to_combine, bands_to_remove, run_name = run_combination
-        features_dict["features_to_combine"] = features_to_combine
-        run()
+    run()
+    # run_combinations = generate_feature_combinations()
+    # for run_combination in run_combinations:
+    #     features_to_combine, bands_to_remove, run_name = run_combination
+    #     features_dict["features_to_combine"] = features_to_combine
+    #     run()

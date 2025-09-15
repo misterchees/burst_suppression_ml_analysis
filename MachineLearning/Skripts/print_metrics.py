@@ -148,11 +148,27 @@ def plot_run_metrics(list_of_runs, run_names_=None, metrics_to_plot=None,
         plt.ylabel("Score (%)")
         plt.title("Run Metrics (Mean ± SD)")
         plt.legend(title="Metric")
+        # x axis: Rotate labels, replace _ with space and abbreviate features further
+        labels = [_prettify_feature_name(t.get_text()) for t in ax.get_xticklabels()]
+        ax.set_xticklabels(labels, rotation=45, ha="right")
 
         # --- Separator line in the middle (only for bar plot) ---
         n_runs = len(run_names_)
         separator_pos = n_runs / 2 - 0.5
         plt.axvline(x=separator_pos, color="black", linestyle="--")
+
+        # Values over bars
+        for p in ax.patches:
+            height = p.get_height()
+            if height > 0:
+                ax.text(
+                    p.get_x() + p.get_width() / 2,  # x middle of the bar
+                    height,                         # y bar height
+                    f"{height:.1f}",                # One value after delimiter
+                    ha="center", va="bottom",       # center over bar
+                    fontsize=8
+                )
+
 
     elif plot_type == "box":
         sns.boxplot(data=df_metrics, x="Metric", y="Mean")
@@ -164,7 +180,7 @@ def plot_run_metrics(list_of_runs, run_names_=None, metrics_to_plot=None,
         sns.violinplot(data=df_metrics, x="Metric", y="Mean", inner="quartile")
         sns.stripplot(data=df_metrics, x="Metric", y="Mean", color="black", alpha=0.3)
         plt.ylabel("Score (%)")
-        plt.title("Metric Distributions Across Runs (Violin)")
+        plt.title("Metric Distributions Across Runs")
 
     else:
         raise ValueError(f"Unknown plot_type: {plot_type}")
@@ -183,6 +199,38 @@ def plot_run_metrics(list_of_runs, run_names_=None, metrics_to_plot=None,
             plt.xlabel("Predicted")
             plt.tight_layout()
             plt.show()
+
+
+def _prettify_feature_name(name: str) -> str:
+    """
+    Maps raw feature codes to pretty labels for plotting.
+
+    :param name: Feature string (e.g., "bandAT_skew").
+    :return: Pretty formatted label.
+    """
+    mapping = {
+        "kurt": "KU",
+        "skew": "SK",
+        "perm": "PE",
+        "shan": "SE",
+    }
+
+    parts = name.split("_")
+    pretty_parts = []
+
+    for part in parts:
+        if part.startswith("band") and len(part) > 4:
+            # Extract band letters (e.g. "bandAT" -> "AT")
+            bands = part[4:]
+            # Convert to "Band(A, T)" etc.
+            pretty_parts.append(f"Band({', '.join(bands)})")
+        elif part in mapping:
+            pretty_parts.append(mapping[part])
+        else:
+            # Fallback: leave as is
+            pretty_parts.append(part)
+
+    return ", ".join(pretty_parts)
 
 
 def select_top_bottom_runs(list_of_runs, run_names_=None, metric="accuracy", top_n=5):
@@ -283,13 +331,13 @@ def best_and_worst_per_feature_count(df, metric="Accuracy"):
 
 
 if __name__ == "__main__":
-    run_name = ""
-    from MachineLearning.Core.runner import generate_feature_combinations
-    feat_comb = generate_feature_combinations()
-    run_names = [rn for _,_,rn in feat_comb]
-    summary_metrics = []
-    for run_name in run_names:
-        summary_metrics.append(print_metrics(run_name)["summary"])
+    run_name = "norm2_z_score_0"
+    # from MachineLearning.Core.runner import generate_feature_combinations
+    # feat_comb = generate_feature_combinations()
+    # run_names = [rn for _,_,rn in feat_comb]
+    # summary_metrics = []
+    # for run_name in run_names:
+    #     summary_metrics.append(print_metrics(run_name)["summary"])
 
     # # Create dataframes with subset runs
     # collected_run_metrics = collect_run_metrics(summary_metrics, run_names, metrics_to_collect=["accuracy", "precision", "recall", "f1"])
@@ -302,7 +350,7 @@ if __name__ == "__main__":
     # PathUtils.save_file_as_csv(best_worst_f1_df, r"D:\Daten\Further_analysis\Subset_runs\best_worst_f1_df.csv", False)
 
     # Create plots with run data
-    plot_run_metrics(summary_metrics, run_names, plot_type="violin")
+    # plot_run_metrics(summary_metrics, run_names, plot_type="violin")
     # metric = "precision"
     # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
     # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
@@ -316,6 +364,6 @@ if __name__ == "__main__":
     # selected_dicts, selected_names = select_top_bottom_runs(summary_metrics, run_names, metric=metric, top_n=3)
     # plot_run_metrics(selected_dicts, selected_names,metrics_to_plot=[metric], plot_type="bar")
 
-    # all_metrics = print_metrics(run_name)
+    all_metrics = print_metrics(run_name)
     # individual_results = all_metrics["individual_results"]
     # plot_cell_distributions_percent(individual_results)

@@ -141,7 +141,7 @@ def load_labeled_data(hyperparameters, class_1, class_0, outliers: str = None, o
     :param outliers: Optional path or identifier to locate outlier data.
         Must be either 'global' or 'local'.
     :type outliers: str, optional
-    :param outlier_run: Optional additional specification to process outlier labeling.
+    :param outlier_run: Optional additional specification to process outlier labeling, if outliers is local.
     :type outlier_run: str, optional
     :param model_name: Name of the model for which data is being prepared, if applicable.
     :type model_name: str, optional
@@ -187,4 +187,4 @@ if __name__ == "__main__":
     class0 = "faw"
 
     # pca_center_of_cluster_analysis(hyperparams, class1, class0, 0.95, 1, pca_components=5, outliers="global")
-    pca_analysis(hyperparams, class1, class0, outliers="global", outlier_run="norm2_in_place_2", model_name="svm", save_results=True)
+    pca_analysis(hyperparams, class1, class0, outliers="global", model_name="svm", save_results=True)

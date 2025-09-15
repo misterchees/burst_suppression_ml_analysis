@@ -40,7 +40,7 @@ class PCAAnalyzer:
         return self.pca_result
 
     def plot_components_2d(self, labels=None, figsize=(8, 6), jitter=False, jitter_strength=0.01, alpha=0.6,
-                           marker_size=20, separate_plots=False, title="2D PCA Scatterplot", save_plot=False):
+                           marker_size=20, separate_plots=False, title="PCA Scatterplot", save_plot=False):
         """
         Visualizes the first two principal components from PCA results in a 2D scatter plot. For more details
         look into MachineLearning.Utils.plots.py
@@ -77,7 +77,7 @@ class PCAAnalyzer:
 
 
     def plot_components_3d(self, labels=None, jitter=False, jitter_strength=0.01, alpha=0.6, marker_size=20,
-                           separate_plots=False, title="3D PCA Scatterplot", save_plot=False):
+                           separate_plots=False, title="PCA Scatterplot", save_plot=False):
         """
         Visualizes the first three principal components from PCA results in a 3D scatter plot. For more details
         look into MachineLearning.Utils.plots.py
@@ -119,7 +119,7 @@ class PCAAnalyzer:
         if self.variance_ratio is None:
             raise ValueError("Run fit_transform() first.")
 
-        fig, ax = Plots.plot_scree(self.variance_ratio)
+        fig, ax = Plots.plot_scree(self.variance_ratio, "Explained Variance per Principal Component")
         if save_plot:
             saver = SaveResult()
             saver.save_further_analysis(self.hyperparams, fig, "plot", "pca", "PCA_scree", "plot")

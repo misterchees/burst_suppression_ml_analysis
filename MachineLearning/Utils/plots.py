@@ -45,7 +45,7 @@ class Plots:
         ax.grid(True)
         ax.set_xlim(0, fs / 2)
         ax.axvline(lowcut, color='red', linestyle='--', label=f'{lowcut} Hz')
-        ax.axvline(highcut, color='red', linestyle='--', label=f'{highcut} Hz')
+        ax.axvline(highcut, color='green', linestyle='--', label=f'{highcut} Hz')
         ax.legend()
         fig.tight_layout()
 
@@ -81,7 +81,7 @@ class Plots:
         if spread is not None:
             ax.fill_between(freqs, power - spread, power + spread, color=color, alpha=alpha)
 
-        ax.set_xlabel("Frequenz [Hz]")
+        ax.set_xlabel("Frequency [Hz]")
         ax.set_ylabel("Power [V²/Hz]" if not log_scale else "log(Power[uV²/Hz])")
         ax.set_title(title)
         ax.grid(True)
@@ -90,9 +90,9 @@ class Plots:
         else:
             ax.set_xlim([min(freqs), max(freqs)])
         if min_power is not None:
-            ax.set_ylim([min_power, max(power)+max(power)*10])
+            ax.set_ylim([min_power, max(power)+max(power)])
         else:
-            ax.set_ylim([min(power), max(power)+max(power)*10])
+            ax.set_ylim([min(power), max(power)+max(power)])
         ax.legend()
 
         return fig, ax
@@ -259,6 +259,8 @@ class Plots:
         if pca_result is None:
             raise ValueError("Given PCA result is None.")
 
+        label_dict = {0:"FAW", 1:"CAW", 2:"MAW"}
+        color_dict = {0:"red", 1:"orange", 2:"green"}
         X = pca_result[:, :2]  # First 2 PCs
 
         if jitter:
@@ -275,9 +277,10 @@ class Plots:
                 for ul in unique_labels:
                     mask = labels == ul
                     fig, ax = plt.subplots(figsize=figsize)
-                    ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=str(ul))
-                    ax.set_xlabel("PC1")
-                    ax.set_ylabel("PC2")
+                    # ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=ul+1)
+                    ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=label_dict[ul], color=color_dict[ul])
+                    ax.set_xlabel("First Principal Component (PC1)")
+                    ax.set_ylabel("Second Principal Component (PC2)")
                     ax.set_title(f"{title} - Label {ul}")
                     ax.legend()
                     ax.grid(True)
@@ -288,9 +291,10 @@ class Plots:
                 fig, ax = plt.subplots(figsize=figsize)
                 for ul in unique_labels:
                     mask = labels == ul
-                    ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=str(ul))
-                ax.set_xlabel("PC1")
-                ax.set_ylabel("PC2")
+                    # ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=ul+1)
+                    ax.scatter(X[mask, 0], X[mask, 1], alpha=alpha, s=marker_size, label=label_dict[ul], color=color_dict[ul])
+                ax.set_xlabel("First Principal Component (PC1)")
+                ax.set_ylabel("Second Principal Component (PC2)")
                 ax.set_title(title)
                 ax.legend()
                 ax.grid(True)
@@ -300,8 +304,8 @@ class Plots:
         else:
             fig, ax = plt.subplots(figsize=figsize)
             ax.scatter(X[:, 0], X[:, 1], alpha=alpha, s=marker_size)
-            ax.set_xlabel("PC1")
-            ax.set_ylabel("PC2")
+            ax.set_xlabel("First Principal Component (PC1)")
+            ax.set_ylabel("Second Principal Component (PC2)")
             ax.set_title(title)
             ax.grid(True)
             plt.tight_layout()
@@ -371,19 +375,47 @@ class Plots:
 
         return figs_axes if separate_plots else figs_axes[0]
 
+
     @staticmethod
-    def plot_scree(variance_ratio, title="Scree_plot"):
+    def plot_scree(variance_ratio, title="Scree Plot"):
+        """
+        Plots a scree plot of explained variance ratios per principal component.
+
+        :param variance_ratio: list or np.ndarray, explained variance ratios (in fraction, e.g. 0.25 = 25%)
+        :param title: str, optional, title of the plot
+        :returns: (fig, ax) matplotlib figure and axis
+        """
+        from matplotlib.ticker import MaxNLocator, PercentFormatter
         if variance_ratio is None:
             raise ValueError("Given Variance Ratio is None.")
 
+        # convert to percentage
+        variance_percent = np.array(variance_ratio) * 100
+        pcs = np.arange(1, len(variance_percent) + 1)
+
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(np.arange(1, len(variance_ratio) + 1), variance_ratio, marker='o')
-        ax.set_xlabel("Principal Component")
-        ax.set_ylabel("Explained Variance Ratio")
+        ax.plot(pcs, variance_percent, marker='o')
+
+        # x-axis formatting
+        ax.set_xlabel("Principal Component (PC)")
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))  # whole numbers
+
+        # y-axis formatting
+        ax.set_ylabel("Explained Variance (%)")
+        ax.set_ylim(0, 70)
+        ax.yaxis.set_major_formatter(PercentFormatter(xmax=100))  # y-values in %
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # whole numbers
+        ax.yaxis.set_major_locator(plt.MultipleLocator(10)) # 10% steps
+
+        # Show values for each datapoint
+        for x, y in zip(pcs, variance_percent):
+            ax.text(x, y + 1, f"{y:.0f}%", ha='center', va='bottom', fontsize=8)
+
         ax.set_title(title)
         ax.grid(True)
         plt.tight_layout()
         plt.show()
+
         return fig, ax
 
     @staticmethod
