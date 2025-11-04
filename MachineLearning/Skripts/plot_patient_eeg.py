@@ -4,10 +4,10 @@ loader = LoadData()
 plotter = Plots()
 
 
-_patient_id = 6
+_patient_id = 1127
 _filtered = False
 _channel = 1
-_both_channels = True
+_both_channels = False
 
 
 def plot_EEG(patient_id: int, filtered: bool, channel: int, both_channels: bool = False):

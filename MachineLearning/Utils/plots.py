@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 from scipy.signal import freqz
@@ -172,7 +173,7 @@ class Plots:
     @staticmethod
     def plot_eeg_signal(eeg_signal: np.ndarray, fs: int, filtered: bool):
         """
-        Plots a raw EEG signal with a time axis in seconds.
+        Plots an EEG signal with a time axis in seconds.
 
         :param eeg_signal: 1D NumPy array with EEG samples
         :param fs: Sampling frequency in Hz (default 128 Hz)
@@ -184,7 +185,7 @@ class Plots:
         plt.figure(figsize=(15, 5))
         plt.plot(time, eeg_signal, linewidth=0.8)
         plt.xlabel("Time [s]")
-        plt.ylabel("EEG Signal")
+        plt.ylabel("Amplitude [uV]")
         plt.title(f"EEG {"filtered" if filtered else "raw"} Signal")
         plt.grid(True)
         plt.tight_layout()
@@ -215,6 +216,62 @@ class Plots:
         plt.suptitle(f"2-Channel EEG Signal - {"filtered" if filtered else "raw"}", fontsize=14)
         plt.tight_layout()
         plt.subplots_adjust(top=0.9)  # Room for title
+        plt.show()
+
+    @staticmethod
+    def plot_signals_over_time(df: pd.DataFrame, columns_to_plot: list,
+                               title: str = "Signals over Time", fill_method = "interpolate"):
+        """
+        Plots selected numeric signals against Time, each in its own subplot (max 3 per figure).
+
+        :param df: DataFrame containing at least 'Time' and one or more numeric columns.
+        :param columns_to_plot: List of column names to plot against 'Time'.
+        :param title: Overall figure title.
+        :param fill_method: Method to use for filling missing values (default is 'interpolate').
+        """
+        import math
+        if "Time" not in df.columns:
+            raise ValueError("DataFrame must contain a 'Time' column.")
+        if not all(col in df.columns for col in columns_to_plot):
+            missing = [col for col in columns_to_plot if col not in df.columns]
+            raise ValueError(f"The following columns are missing from the DataFrame: {missing}")
+
+        # Clean data: convert empty strings to NaN and ensure numeric dtype
+        df = df.replace(r"^\s*$", pd.NA, regex=True)
+        for col in columns_to_plot:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        # Determine layout (max 3 subplots per figure)
+        n_cols = min(3, len(columns_to_plot))
+        n_rows = math.ceil(len(columns_to_plot) / n_cols)
+
+        # Create figure
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5 * n_rows), sharex=True)
+        axes = np.atleast_1d(axes).flatten()  # ensures iterable axes even if 1
+
+        # Plot each signal
+        for idx, col in enumerate(columns_to_plot):
+            ax = axes[idx]
+            # Preprocess gaps
+            signal = Plots._preprocess_signal(df, col, fill_method)
+
+            # Choose plot type
+            if fill_method == "step":
+                ax.step(df["Time"], signal, where="post", linewidth=1.2, label=col)
+            else:
+                ax.plot(df["Time"], signal, linewidth=1.2, label=col)
+            ax.set_title(col)
+            ax.set_xlabel("Time [s]")
+            ax.set_ylabel("Value")
+            ax.grid(True)
+            ax.legend()
+
+        # Remove unused subplots (if any)
+        for j in range(len(columns_to_plot), len(axes)):
+            fig.delaxes(axes[j])
+
+        fig.suptitle(title, fontsize=14, y=1.02)
+        plt.tight_layout()
         plt.show()
 
     @staticmethod
@@ -552,3 +609,21 @@ class Plots:
 
             ax.plot_wireframe(ellipsoid[:, :, 0], ellipsoid[:, :, 1], ellipsoid[:, :, 2],
                               color=color, alpha=0.3)
+
+    @staticmethod
+    def _preprocess_signal(df: pd.DataFrame, col: str, method: str):
+        """
+        Fills missing values for plotting signals with gaps.
+
+        :param df: DataFrame containing the signal.
+        :param col: Column name to process.
+        :param method: "step" (forward-fill) or "interpolate" (linear).
+        :return: Series with filled values.
+        """
+        s = pd.to_numeric(df[col], errors="coerce")
+        if method == "step":
+            return s.ffill()  # forward-fill (keeps last known value)
+        elif method == "interpolate":
+            return s.interpolate(method="linear", limit_direction="both")
+        else:
+            raise ValueError(f"Unknown method '{method}', use 'step' or 'interpolate'.")
