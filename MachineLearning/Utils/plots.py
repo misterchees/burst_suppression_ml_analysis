@@ -275,6 +275,72 @@ class Plots:
         plt.show()
 
     @staticmethod
+    def plot_eeg_bis_mac_over_time(
+            eeg_signal: np.ndarray,
+            fs: int,
+            df_signals: pd.DataFrame,
+            filtered: bool = True,
+            bis_cols: list = ("BIS_BIS", "BIS_SR"),
+            mac_col: str = "Primus_MAC",
+            fill_method: str = "interpolate"
+    ):
+        """
+        Plots EEG, BIS, and MAC signals aligned over time in vertically stacked subplots.
+
+        :param eeg_signal: 1D numpy array containing EEG samples.
+        :param fs: Sampling frequency of the EEG in Hz.
+        :param df_signals: DataFrame with columns ['Time', 'BIS_BIS', 'BIS_SR', 'Primus_MAC'].
+        :param filtered: Whether the EEG is filtered (used only for title).
+        :param bis_cols: Columns in df_signals representing BIS-related metrics.
+        :param mac_col: Column representing MAC values.
+        :param fill_method: How to handle NaN gaps ("interpolate" or "step").
+        """
+        if "Time" not in df_signals.columns:
+            raise ValueError("DataFrame must contain a 'Time' column.")
+
+        # Clean empty strings and ensure numeric columns
+        df_signals = df_signals.replace(r"^\s*$", np.nan, regex=True)
+
+        # --- Prepare EEG time axis ---
+        eeg_time = np.arange(len(eeg_signal)) / fs
+
+        # --- Create figure with 3 stacked subplots ---
+        fig, axes = plt.subplots(3, 1, figsize=(15, 10), sharex=False)
+        ax_eeg, ax_bis, ax_mac = axes
+
+        # --- EEG plot ---
+        ax_eeg.plot(eeg_time, eeg_signal, color="black", linewidth=0.7)
+        ax_eeg.set_title(f"EEG {'filtered' if filtered else 'raw'} Signal", fontsize=12)
+        ax_eeg.set_ylabel("Amplitude [µV]")
+        ax_eeg.grid(True)
+
+        # --- BIS plot ---
+        for col in bis_cols:
+            if col in df_signals.columns:
+                signal = Plots._preprocess_signal(df_signals, col, "interpolate")
+                ax_bis.plot(df_signals["Time"], signal, linewidth=1.0, label=col)
+        ax_bis.set_title("BIS Parameters", fontsize=12)
+        ax_bis.set_ylabel("BIS Value")
+        ax_bis.legend()
+        ax_bis.grid(True)
+
+        # --- MAC plot ---
+        if mac_col in df_signals.columns:
+            mac_signal = Plots._preprocess_signal(df_signals, mac_col, fill_method)
+            if fill_method == "step":
+                ax_mac.step(df_signals["Time"], mac_signal, where="post", color="orange", linewidth=1.0, label=mac_col)
+            else:
+                ax_mac.plot(df_signals["Time"], mac_signal, color="orange", linewidth=1.0, label=mac_col)
+            ax_mac.legend()
+        ax_mac.set_title("MAC (Primus)", fontsize=12)
+        ax_mac.set_xlabel("Time [s]")
+        ax_mac.set_ylabel("MAC Value")
+        ax_mac.grid(True)
+
+        plt.tight_layout()
+        plt.show()
+
+    @staticmethod
     def plot_kmeans_results(X, labels, centroids=None, title="K-Means Clustering"):
         """
         Visualizes K-Means clustering results in 2D.
