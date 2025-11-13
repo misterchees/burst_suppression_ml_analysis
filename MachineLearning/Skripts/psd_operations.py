@@ -147,6 +147,19 @@ def average_psd_from_epochs(psd_folderpath: str, epochs_df: pd.DataFrame, spread
 
     return avg_psd_df
 
+def plot_single_psd(patient_id: int, filtered: bool):
+
+    # Import and initialize classes
+    from MachineLearning.Features.transforms import Transforms
+    psd_transforms = Transforms(("faw","awake"), "welch", None)
+    loader = LoadData()
+    plotter = Plots()
+
+    # Get EEG -> calculate PSD from channel 1 -> plot PSD
+    fs, patient_eeg = loader.load_eeg_data(patient_id, filtered)
+    frequency, power = psd_transforms.calculate_psd(patient_eeg[:, 0])
+    plotter.plot_psd(None, frequency, power, None, log_scale=True, max_freq=35, min_power=0.000000001 )
+    plt.show()
 
 def _plot_3_psds(av_class_0_df: pd.DataFrame, av_class_1_outlier_df: pd.DataFrame, av_class_1_non_outlier_df: pd.DataFrame,
                  hyperparameters: dict, save: bool, title_suffix: str = "", max_freq: float = 30, min_power: float = 0.0001,):
@@ -220,5 +233,6 @@ if __name__ == "__main__":
     class1 = "awake"
     class0 = "faw"
 
-    calculate_mean_psds(hyperparams, class1, class0, plot=True, save_results=True, outliers=False)
+    # calculate_mean_psds(hyperparams, class1, class0, plot=True, save_results=True, outliers=False)
     # calculate_center_of_mass_psds(hyperparams, 0.25,1,2, plot=True, save_results=True, spread_metric="sem")
+    plot_single_psd(1127, True)

@@ -69,7 +69,20 @@ class Transforms(MLObject):
             frequencies, power = self.calculate_psd(eeg_segment)
             saving_func(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
 
-    def calculate_psd(self, eeg_segment):
+    def calculate_psd(self, eeg_segment: np.ndarray):
+        """
+        Calculates the Power Spectral Density (PSD) of the provided EEG data segment using a specified
+        transformation method. This method currently supports the Welch method for PSD calculation.
+
+        :param eeg_segment: A numpy array representing the EEG segment for which the Power
+           Spectral Density needs to be calculated. The array should contain time-series EEG data.
+        :type eeg_segment: numpy.ndarray
+        :returns:
+        - frequencies (numpy.ndarray) -- Array of frequency bins.
+        - power (numpy.ndarray) -- Corresponding power values for each frequency bin.
+        :rtype: tuple(numpy.ndarray, numpy.ndarray)
+        :raises ValueError: If the specified transform method is unrecognized or not supported.
+        """
         if self.transform_method == "welch":
             params = load_config("parameters_config.yaml")["transform_params"][self.transform_method]
             fs = params["fs"]

@@ -57,7 +57,7 @@ class Plots:
                  log_scale=False, spread=None, alpha=0.3, max_freq: float = None, min_power: float = None):
         """
         Plots a PSD with optional uncertainty shading.
-        :param fig_and_ax: Tuple with (fig, ax) for subplot integration.
+        :param fig_and_ax: Tuple with (fig, ax) for subplot integration. If None, a new figure and axis will be created.
         :param freqs: Frequencies in Hz.
         :param power: Mean PSD values.
         :param label: Label for the line.
