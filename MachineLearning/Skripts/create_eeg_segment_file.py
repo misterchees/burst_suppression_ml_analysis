@@ -95,6 +95,7 @@ def remove_empty_eeg_segments(df: pd.DataFrame, eeg_col: str = "eeg") -> pd.Data
 
 def get_ids_from_run(_run_name: str) -> list:
     loader = LoadData()
+    # All run metadata are currently in a folder with this coded information
     metadata_params = {
         "merged_episodes": False,
         "bis_threshold": 70,
@@ -123,6 +124,6 @@ if __name__ == '__main__':
         "fixed_window_size": 7,
         "overlap": 0.75
     }
-    run_name = "rm_outliers_1"
+    run_name = "norm2_z_score_0"
 
     create_eeg_segment_file("faw", "awake", hyperparams, run_name)

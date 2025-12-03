@@ -158,7 +158,7 @@ def plot_single_psd(patient_id: int, filtered: bool):
     # Get EEG -> calculate PSD from channel 1 -> plot PSD
     fs, patient_eeg = loader.load_eeg_data(patient_id, filtered)
     frequency, power = psd_transforms.calculate_psd(patient_eeg[:, 0])
-    plotter.plot_psd(None, frequency, power, None, log_scale=True, max_freq=35, min_power=0.000000001 )
+    plotter.plot_psd(None, frequency, power, None, log_scale=True, max_freq=30, min_power=0.000000001 )
     plt.show()
 
 def _plot_3_psds(av_class_0_df: pd.DataFrame, av_class_1_outlier_df: pd.DataFrame, av_class_1_non_outlier_df: pd.DataFrame,

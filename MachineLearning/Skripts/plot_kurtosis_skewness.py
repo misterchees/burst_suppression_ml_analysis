@@ -121,6 +121,7 @@ def plot_skewness_visuals():
     skew_val_neg = skewnorm.stats(a=a_neg, loc=loc_neg, scale=scale_neg, moments='s')
 
     ax1.plot(x, y_neg_skew, 'r-', lw=2.5, label=f'Negativ Schief (Schiefe={skew_val_neg:.2f})')
+    ax1.axvline(x=0, color='black', linestyle='--', linewidth=1.5, alpha=0.5) # Vertikale Linie
     ax1.set_title('Negative Skewness', fontsize=14)
 
     # --- 5. Rechter Plot: Positive Schiefe (Rechts-schief) ---
@@ -137,6 +138,7 @@ def plot_skewness_visuals():
     skew_val_pos = skewnorm.stats(a=a_pos, loc=loc_pos, scale=scale_pos, moments='s')
 
     ax2.plot(x, y_pos_skew, 'r-', lw=2.5, label=f'Positiv Schief (Schiefe={skew_val_pos:.2f})')
+    ax2.axvline(x=0, color='black', linestyle='--', linewidth=1.5, alpha=0.5)
     ax2.set_title('Positive Skewness', fontsize=14)
 
     # Entfernt Zahlen auf Achsen für beide Plots
