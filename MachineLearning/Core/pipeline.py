@@ -306,7 +306,7 @@ class Pipeline:
             remove_outlier_ids: bool = False,
             remove_epochs: bool = False,
             outlier_run_name: str = None,
-            normalize_before_split: bool = False
+            normalize_before_split: bool = True
     ):
         """
         Loads the test set, creates splits, splitting first on patient level and then tries to create equivalent

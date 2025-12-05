@@ -12,7 +12,7 @@ model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "epoch_wise_run_0"
+run_name = "norm2_z_score_rm_outlier_6"
 
 all_run_params_dict = {
     "current_params": {
@@ -49,7 +49,7 @@ all_run_params_dict = {
         "test_size": 0.15,
         "random_seed": 42,
         "remove_outliers": False,
-        "remove_outlier_epochs": False,
+        "remove_outlier_epochs": True,
         "outlier_run_name": "norm2_z_score_rm_outlier_5",
         model_key: model_params
     }
@@ -102,7 +102,7 @@ def run():
         force_overwrite=True,
         force_transform=False,
         force_extract=True,
-        global_outliers=False
+        global_outliers=True
     )
 
     pipeline.complete_run(steps_of_workflow)

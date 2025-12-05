@@ -4,13 +4,13 @@ import os
 
 # --- CONFIGURATION ---
 # Input Directories
-PATH_EEG_DATA = r"D:\Daten\Initial_data\vitalDB_mat_EEG"
-PATH_FILTERED_EEG_DATA = r"D:\Daten\Filtered_05_40"
-PATH_FAW_DATA = r"D:\Daten\Other\EEG_segments_for_more_powerful_classification_models\Input data"
-PATH_ANESTART = r"D:\Daten\anestart_analysis_results.csv"
+PATH_EEG_DATA = r"E:\Daten\Initial_data\vitalDB_mat_EEG"
+PATH_FILTERED_EEG_DATA = r"E:\Daten\trimmed_normalized_filtered_05_40"
+PATH_FAW_DATA = r"E:\Daten\Other\EEG_segments_for_more_powerful_classification_models\Input data"
+PATH_ANESTART = r"E:\Daten\anestart_analysis_results.csv"
 
 # Output Directory
-PATH_OUTPUT = r"D:\Daten\Other\EEG_segments_for_more_powerful_classification_models\Output data"
+PATH_OUTPUT = r"E:\Daten\Other\EEG_segments_for_more_powerful_classification_models\Output data"
 
 # Signal Parameters
 SAMPLING_RATE = 128
@@ -118,11 +118,13 @@ def process_label_1(anestart_df):
         current_idx = 0
         # While the end of the current segment is within bounds
         while current_idx + SAMPLES_PER_SEGMENT <= max_idx:
+            # Define end point of segment
+            end_idx = current_idx + SAMPLES_PER_SEGMENT
             # Extract segment
             segment = eeg_signal[current_idx: current_idx + SAMPLES_PER_SEGMENT]
 
-            # Construct row: [patient_id, eeg_0...eeg_895, label]
-            row_data = [case_id] + segment.tolist() + [1]
+            # Construct row: [patient_id, start, end, eeg_0...eeg_895, label]
+            row_data = [case_id, current_idx, end_idx] + segment.tolist() + [1]
             segments.append(row_data)
 
             # Move window
@@ -171,7 +173,8 @@ def process_label_0(faw_filename, faw_folder):
             if end_idx <= len(eeg_signal):
                 segment = eeg_signal[start_idx: end_idx]
 
-                row_data = [case_id] + segment.tolist() + [0]
+                # Construct row: [patient_id, start, end, eeg_0...eeg_895, label]
+                row_data = [case_id, start_idx, end_idx] + segment.tolist() + [0]
                 segments.append(row_data)
 
     return segments
@@ -193,7 +196,7 @@ def main():
     label_1_list = process_label_1(anestart_df)
 
     # Create DataFrame for Label 1
-    columns = ['patient_id'] + EEG_COL_NAMES + ['label']
+    columns = ['patient_id', 'segment_start', 'segment_end'] + EEG_COL_NAMES + ['label']
     df_label_1 = pd.DataFrame(label_1_list, columns=columns)
 
     print(f"Label 1 processing complete. Generated {len(df_label_1)} segments.")
@@ -216,7 +219,7 @@ def main():
 
         # Construct output filename
         if FILTERED:
-            output_filename = f_name.replace(".csv", ".parquet").replace("Summary_Episodes_faw_", "filtered_")
+            output_filename = f_name.replace(".csv", ".parquet").replace("Summary_Episodes_faw_", "normalized_filtered_")
         else:
             output_filename = f_name.replace(".csv", ".parquet").replace("Summary_Episodes_faw_", "")
         output_path = os.path.join(PATH_OUTPUT, output_filename)
