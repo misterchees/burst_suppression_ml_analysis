@@ -5,14 +5,14 @@ from MachineLearning.Core.pipeline import Pipeline
 from MachineLearning.Utils.config_handler import replace_bands_in_config
 import itertools
 
-INITIAL_DATA_SUBDIR_KEY = "combined_raw_data"
+INITIAL_DATA_SUBDIR_KEY = "raw_eeg_mat"
 channel = 1
 model_key = "svm"
 model_params = {"C": 1, "kernel": "rbf"}
 filter_method = "butterworth"
 normalize_method = "zscore"
 transform_method = "welch"
-run_name = "norm2_z_score_rm_outlier_6"
+run_name = "awake_cleaned_0"
 
 all_run_params_dict = {
     "current_params": {
@@ -49,7 +49,7 @@ all_run_params_dict = {
         "test_size": 0.15,
         "random_seed": 42,
         "remove_outliers": False,
-        "remove_outlier_epochs": True,
+        "remove_outlier_epochs": False,
         "outlier_run_name": "norm2_z_score_rm_outlier_5",
         model_key: model_params
     }
@@ -100,9 +100,9 @@ def run():
         metadata_to_analyze=metadata_to_analyze,
         run_name=run_name,
         force_overwrite=True,
-        force_transform=False,
+        force_transform=True,
         force_extract=True,
-        global_outliers=True
+        global_outliers=False
     )
 
     pipeline.complete_run(steps_of_workflow)

@@ -1,15 +1,22 @@
 import os
 
+from MachineLearning.Preprocessing.normalizing import Normalizing
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.filter_utils import FilterUtils
+from MachineLearning.Preprocessing.filtering import Filtering
 from scipy import signal
 import pandas as pd
 import numpy as np
+from pathlib import Path
+from typing import List
 
 loader = LoadData()
 saver = SaveResult()
-
+filter_instance = Filtering("butterworth")
+normalize_instance = Normalizing("zscore")
+path_csv = r"E:\Daten\Initial_data\Cleaned_awake_EEG"
+path_mat = r"E:\Daten\Initial_data\vitalDB_mat_EEG"
 
 def preprocess_all_eegs(lowcut, highcut, order):
     # Ensure output directory exists to avoid crashes
@@ -90,5 +97,71 @@ def butterworth(eeg_data, fs, lowcut, highcut, order, result_id, output_dir):
     print(f"Patient ID: {result_id} successfully filtered and saved to {save_path}")
 
 
+def filter_cleaned_awake_eegs():
+    try:
+        files_to_filter = find_missing_mat_equivalents(path_csv, path_mat)
+
+        print(f"Found {len(files_to_filter)} CSV files without a MAT equivalent.")
+        print(f" IDs: {files_to_filter}")
+
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+
+    for f in files_to_filter:
+        filter_instance.butterworth(int(f), 0.5, 30, 4)
+
+def normalize_cleaned_awake_eegs():
+    try:
+        files_to_normalize = find_missing_mat_equivalents(path_csv, path_mat)
+
+        print(f"Found {len(files_to_normalize)} CSV files without a MAT equivalent.")
+        print(f" IDs: {files_to_normalize}")
+
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+
+    # conversion to int
+    files_to_normalize = [int(file_id) for file_id in files_to_normalize]
+    normalize_instance.normalize_multiple_eeg(eeg_list=files_to_normalize)
+
+
+
+
+def find_missing_mat_equivalents(csv_source_dir: str, mat_target_dir: str) -> List[str]:
+    """
+    Identifies file IDs that exist as .csv in the source directory but are missing
+    as .mat files in the target directory.
+
+    :param csv_source_dir: Directory path containing the source .csv files.
+    :param mat_target_dir: Directory path containing the .mat files to check against.
+    :return: A sorted list of IDs (strings) that have no corresponding .mat file.
+    """
+    source_path = Path(csv_source_dir)
+    target_path = Path(mat_target_dir)
+
+    # Check if directories actually exist to prevent confusion
+    if not source_path.exists() or not target_path.exists():
+        raise FileNotFoundError("One or both of the provided directories do not exist.")
+
+    # 1. Collect all IDs from the CSV directory
+    # f.stem extracts the filename without the extension (e.g., '123' from '123.csv')
+    # We use a set comprehension for efficiency and to perform set operations later
+    csv_ids = {f.stem for f in source_path.glob('*.csv')}
+
+    # 2. Collect all IDs from the MAT directory
+    mat_ids = {f.stem for f in target_path.glob('*.mat')}
+
+    # 3. Calculate the difference
+    # 'missing_ids' will contain items that are in csv_ids but NOT in mat_ids
+    missing_ids = csv_ids - mat_ids
+
+    # Return as a sorted list for easier reading/processing
+    return sorted(list(missing_ids))
+
+
+
+
 if __name__ == "__main__":
-    preprocess_all_eegs(0.5, 40, 4)
+    # preprocess_all_eegs(0.5, 40, 4)
+    # filter_cleaned_awake_eegs()
+    normalize_cleaned_awake_eegs()

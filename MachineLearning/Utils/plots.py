@@ -382,8 +382,8 @@ class Plots:
         if pca_result is None:
             raise ValueError("Given PCA result is None.")
 
-        label_dict = {0:"FAW", 1:"CAW", 2:"MAW"}
-        color_dict = {0:"red", 1:"orange", 2:"blue"}
+        label_dict = {0:"FAW", 1:"AW", 2:"MAW"}
+        color_dict = {0:"red", 1:"blue", 2:"orange"}
         X = pca_result[:, :2]  # First 2 PCs
 
         if jitter:

@@ -34,9 +34,9 @@ class Filtering:
         :param eeg_list: list with all result_ids of EEGs to be filtered
         """
         if self.method == "butterworth":
-            lowcut = self.filter_params["lowcut"]
-            highcut = self.filter_params["highcut"]
-            order = self.filter_params["order"]
+            lowcut = self.filter_params["butterworth"]["lowcut"]
+            highcut = self.filter_params["butterworth"]["highcut"]
+            order = self.filter_params["butterworth"]["order"]
 
             for result_id in eeg_list:
                 self.butterworth(result_id, lowcut, highcut, order)

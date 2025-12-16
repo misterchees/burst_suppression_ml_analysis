@@ -78,9 +78,9 @@ classification_params:
   test_size: 0.15
   random_seed: 42
   remove_outliers: false
-  remove_outlier_epochs: true
+  remove_outlier_epochs: false
   outlier_run_name: norm2_z_score_rm_outlier_5
   svm:
     C: 1
     kernel: rbf
-run_name: norm2_z_score_rm_outlier_6
+run_name: awake_cleaned_0

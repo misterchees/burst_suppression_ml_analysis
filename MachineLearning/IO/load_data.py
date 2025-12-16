@@ -24,8 +24,8 @@ def load_psd_with_start_end_resultid(folder_path: str, filename: str) \
         raise ValueError(f"Name of file {filename} has no typical structure for single episode PSD."
                          "Typical structure example: PSD_0_1_2.csv")
     metadata = filename.replace(".csv", "").split("_")[1:]  # PSD_0_1_2.csv -> ['0','1','2']
-    start = int(metadata[0])
-    end = int(metadata[1])
+    start = int(float(metadata[0]))
+    end = int(float(metadata[1]))
     result_id = int(metadata[2])
     psd_dataframe = pd.read_csv(psd_fullpath)
 
@@ -56,15 +56,19 @@ class LoadData(IOCore):
         df = pd.read_csv(csv_fullpath)
         return df
 
-    def load_awake_times_as_df(self, parameters: dict, transition_time=10) -> pd.DataFrame:
+    def load_awake_times_as_df(self, parameters: dict, awake_cleaned: bool = True, transition_time=10) -> pd.DataFrame:
         """
         Reads a CSV file with 'caseid' and 'anestart' columns and generates epochs
         based on a fixed epoch length.
 
         :param parameters: Parameters for episodes. Contains length of each epoch.
+        :param awake_cleaned: A boolean to indicate if the episodes should be taken from the awake_cleaned.txt
         :param transition_time: The transition time for patient to respond to anesthesia beginning.
         :returns: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
         """
+        if awake_cleaned:
+            return self.load_cleaned_awake_times_as_df(parameters)
+
         csv_path = self.return_csv_path_from_basedir("awake_times")
         input_df = pd.read_csv(csv_path)
         epoch_length = int(parameters["fixed_window_size"])
@@ -87,6 +91,39 @@ class LoadData(IOCore):
                 })
 
         return pd.DataFrame(all_epochs)
+
+    @staticmethod
+    def load_cleaned_awake_times_as_df(parameters: dict) -> pd.DataFrame:
+        """
+        Does basically the same as load_awake_times_as_df. Difference is start of awake epochs is not zero and the
+        input file path is hardcoded.
+        :param parameters: Parameters for episodes. Contains length of each epoch.
+        :return: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
+        """
+        csv_path = r"E:\Daten\awake_cleaned.txt"
+        input_df = pd.read_csv(csv_path)
+        epoch_length = int(parameters["fixed_window_size"])
+
+        all_epochs = []
+
+        for _, row in input_df.iterrows():
+            caseid = int(row['case_id'])
+            epoch_start = float(row['start_time'])
+            epoch_end = float(row['end_time'])
+            num_epochs = int(
+                (epoch_end - epoch_start) // epoch_length)  # segment into epochs based on episode length
+
+            for i in range(num_epochs):
+                start = epoch_start + (i * epoch_length)
+                end = start + epoch_length
+                all_epochs.append({
+                    'Start': start,
+                    'End': end,
+                    'ResultID': caseid
+                })
+
+        return pd.DataFrame(all_epochs)
+
 
     def sample_anesthesia_epochs(self, parameters: dict, num_epochs: int, transition_sec: int = 10,
                                  safety_margin_min: int = 10, random_state: int = 42,
@@ -207,15 +244,15 @@ class LoadData(IOCore):
         :param result_id: The patient ID
         :return: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a raw-EEG samples array with two channels
         """
-        # Lazy import
-        import scipy.io
-
         # Assemble Path to directory with .mat files
         vitaldb_eeg_dir = self.return_folder_path(["initial_data", "raw_eeg_mat"])
 
         mat_file_path = os.path.join(vitaldb_eeg_dir, f"{result_id}.mat")
         if not os.path.isfile(mat_file_path):
-            raise FileNotFoundError(f"MAT-file not found: {mat_file_path}")
+            return self._load_eeg_vitaldb_csv(result_id)
+
+        # Lazy import
+        import scipy.io
 
         # load .mat file
         eeg_cols = self.data_names["eeg_files"]
@@ -224,6 +261,32 @@ class LoadData(IOCore):
         raw_eeg = mat_data[eeg_cols["eeg_rawEEG"]]
 
         return fs, raw_eeg
+
+    def _load_eeg_vitaldb_csv(self, result_id: int) -> Tuple[int, np.ndarray]:
+        # Assemble Path to directory with .mat files
+        vitaldb_eeg_dir = self.return_folder_path(["initial_data", "raw_eeg_mat"])
+        csv_file_path = os.path.join(vitaldb_eeg_dir, f"{result_id}.csv")
+        if not os.path.isfile(csv_file_path):
+            raise FileNotFoundError(f"File found: {csv_file_path}")
+
+        fs = 128
+        csv_file = pd.read_csv(csv_file_path)
+        raw_eeg = csv_file[['BIS/EEG1_WAV', 'BIS/EEG2_WAV']].to_numpy()
+        # --- Pre-processing: Handle NaN values ---
+        # Convert to DataFrame to utilize pandas' powerful interpolation methods
+        # This fixes the issue where NaNs cause the filter to output only NaNs
+        df_raw = pd.DataFrame(raw_eeg)
+
+        # Linear interpolation fills gaps based on surrounding values
+        # limit_direction='both' ensures NaNs at the very beginning or end are also filled
+        df_interpolated = df_raw.interpolate(method='linear', axis=0, limit_direction='both')
+
+        # Convert back to ndarray for the signal processing steps
+        clean_eeg = df_interpolated.to_numpy()
+
+        return fs, clean_eeg
+
+
 
     def _load_filtered_eeg_data(self, result_id: int) -> Tuple[int, np.ndarray]:
         """
