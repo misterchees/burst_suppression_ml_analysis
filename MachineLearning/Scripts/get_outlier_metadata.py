@@ -1,4 +1,4 @@
-from MachineLearning.Skripts.outlier_selection import select_multiple_outliers
+from MachineLearning.Scripts.outlier_selection import select_multiple_outliers
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.config_handler import load_config

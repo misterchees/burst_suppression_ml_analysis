@@ -1,0 +1,32 @@
+- [ ] Overhaul project structure
+  - [x] Organize information about the project in a sensible way
+  - [ ] Integrate unorganized Code files into file structure
+  - [ ] Rewrite README.md to function as entry point (as it is supposed to be)
+- [ ] Fix Bugs
+	- [ ] Not all parameters are toggable from Runner
+	- [ ] cluster analysis plots skript overwrite data instead of creating new if you use outliers
+- [ ] Needed functionality -> efficiency, robustness and reusability
+	- [ ] Make it possible to work with parquet data
+		- [ ] Add functionality to Read, write, load and save functions
+	- [ ] Add functionality to inspect runs in a more readable way than opening the json
+- [ ] Make tests for basic functions of pipeline
+	- [ ] Create test data that covers edge cases to find bugs
+	- [ ] Test Filtering
+	- [ ] Test Normalization
+	- [ ] Test Transformation to PSD
+	- [ ] Test Feature Extraction
+	- [ ] Test Combination of Features
+	- [ ] Test Classification
+	- [ ] Test Splitting
+	- [ ] Test Analysis
+	- [ ] Test Run logging
+	- [ ] Test Skripts
+- [ ] Implement good coding practices
+	- [ ] Remove duplicate/unused code
+	- [ ] Break down functions
+	- [ ] Add/update comments
+- [ ] Migrate all matlab code to python (*Optional*)
+- [ ] Make the initial steps independent of VitalDB (*Optional*)
+- [ ] Implement CLI/UI to run pipeline outside of IDE
+	- [ ] Should handle mostly all data in configs
+	- [ ] 
