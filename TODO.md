@@ -1,4 +1,4 @@
-- [ ] Overhaul project structure
+- [x] Overhaul project structure
   - [x] Organize information about the project in a sensible way
   - [x] Remove empty files
   - [x] Review files from /MachineLearning/Scripts and optionally integrate into file structure
