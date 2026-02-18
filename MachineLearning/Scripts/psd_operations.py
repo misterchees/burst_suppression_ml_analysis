@@ -1,6 +1,6 @@
 from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resultid
 from MachineLearning.IO.save_result import SaveResult
-from MachineLearning.Scripts.cluster_analysis import return_outliers, split_by_outliers
+from MachineLearning.Scripts.ResultAnalyses.cluster_analysis import return_outliers, split_by_outliers
 from MachineLearning.Utils.plots import Plots
 import pandas as pd
 import numpy as np

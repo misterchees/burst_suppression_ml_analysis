@@ -1,6 +1,6 @@
 from MachineLearning.Models.k_means import KMeans
 from MachineLearning.IO.load_data import LoadData
-from MachineLearning.Scripts.cluster_analysis import return_outliers, split_by_outliers
+from MachineLearning.Scripts.ResultAnalyses.cluster_analysis import return_outliers, split_by_outliers
 import pandas as pd
 
 

@@ -1,7 +1,7 @@
 - [ ] Overhaul project structure
   - [x] Organize information about the project in a sensible way
   - [x] Remove empty files
-  - [ ] Review files from Scripts and optionally integrate into file structure
+  - [x] Review files from /MachineLearning/Scripts and optionally integrate into file structure
 - [ ] Update path handling to make it OS independent
 - [ ] Fix Bugs
 	- [ ] Not all parameters are toggable from Runner
