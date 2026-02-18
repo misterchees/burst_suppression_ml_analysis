@@ -1,7 +1,8 @@
 - [ ] Overhaul project structure
   - [x] Organize information about the project in a sensible way
-  - [ ] Integrate unorganized Code files into file structure
-  - [ ] Rewrite README.md to function as entry point (as it is supposed to be)
+  - [x] Remove empty files
+  - [ ] Review files from Scripts and optionally integrate into file structure
+- [ ] Update path handling to make it OS independent
 - [ ] Fix Bugs
 	- [ ] Not all parameters are toggable from Runner
 	- [ ] cluster analysis plots skript overwrite data instead of creating new if you use outliers
@@ -25,7 +26,14 @@
 	- [ ] Remove duplicate/unused code
 	- [ ] Break down functions
 	- [ ] Add/update comments
-- [ ] Migrate all matlab code to python (*Optional*)
+- [ ] Migrate all matlab code to python
+  - [ ] Add function to convert time column from raw file to plain number of seconds
+  - [ ] Migrate existing code
+    - [ ] Copy functionality
+    - [ ] Test it
+    - [ ] Remove replaced matlab code
+- [ ] Rewrite README.md to function as entry point (as it is supposed to be)
+- [ ] Update methodology.md
 - [ ] Make the initial steps independent of VitalDB (*Optional*)
 - [ ] Implement CLI/UI to run pipeline outside of IDE
 	- [ ] Should handle mostly all data in configs

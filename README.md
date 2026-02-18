@@ -1,20 +1,22 @@
-# What is this about?
-This Repo is for the codebase adjacent to the Bachelor Thesis from me - Jesús Nieto Reyes. The 
-Thesis revolves around the question of how to improve the detection and analysis of Burst 
-Suppression Patterns. The investigation here will focus on the connection between unusually 
-high BIS Values, which are sometimes associated with Burst Suppression Patterns.
-
-## Roadmap
-### Dataset
-Dataset from [VitalDB](https://vitaldb.net/dataset/)
-- [x] Skript for Downloading Data
-- [x] Load Skript into this Repo
+# Differentiating Burst Suppression from Wakefulness Using EEG-Based Machine Learning Classification
 
 
-## BIS_bumpSearch
-This is a class, that provides functionalities around searching for Episodes, where the BIS is 
-unusually high, with high MAC Values present. These episodes show a contradiction, since high
-BIS values are typical for being awake but high MAC values are typical for being anesthesized.
+## What is this about?
+This Repo is for the code that is the foundation of above stated Bachelor Thesis. It revolves around the 
+question of how to improve the detection and analysis of Burst Suppression Patterns. The investigation focuses 
+on the contradictory connection between high BIS Values and high MAC values, where the first indicates 
+wakefulness and the latter high levels of anesthesia. Burst Suppression is assumed to be the reason for these cases.
+
+## Installation
++ Required Python Version: 3.9+ 
++ Install dependencies with `pip install -r requirements.txt`
+
+## Data structure
+
+## Quick Start
++ Main entry point TBD
+
+
 
 
 
