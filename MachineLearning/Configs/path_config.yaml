@@ -1,83 +1,121 @@
-# A wise man once said, never change the key, always change the value
-base_dir: # Basic directory for all data in this project
-    path_name: "D:\\Daten"
-    subdirs:
-        faw: # Subdirectory of subsets with episodes of fake awakeness (FAW)
-            path_name: "FAW_subsets"
-        initial_data: # Subdirectory for all initial raw data only
-            path_name: "Initial_data"
-            subdirs:
-                combined_raw_data: "vitaldb_csvprocessed_BIS_BIS_SR_MAC" # contains synchronized and combined additional data: bis, bis_sr and mac
-                raw_eeg_mat: "vitalDB_mat_EEG" # contains the raw EEGs
-        features: # Subdirectory for features and related data (like PSDs for freq domain features)
-            path_name: "Features"
-            subdirs:
-                psds: "PSD" # PSDs for frequency domain features
-                bandpower: "Rel_bandpower" # Relative bandpowers of alpha, beta, gamma, theta, delta
-                shannon_entropy: "Shannon_entropy" # spectral shannon entropy
-                spectral_skewness: "Spectral_skewness" # spectral skewness
-                spectral_kurtosis: "Spectral_kurtosis" # spectral kurtosis
-                mean: "Mean" # Mean for EEG time domain
-                variance: "Variance" # Variance for EEG time domain
-                amplitude: "Amplitude" # Amplitude of EEG
-                sample_entropy: "Sample_entropy" # Sample Entropy in time domain
-                permutation_entropy: "Permutation_entropy" # Permutation Entropy in time domain
-                fuzzy_entropy: "Fuzzy_entropy" # Fuzzy Entropy in time domain
-        plots: # Subdirectory for plots
-            path_name: "Plots"
-        filtered_data: # Subdirectory for filtered data
-            path_name: "Filtered"
-        normalized_data: # Subdirectory for normalized (after filtering) data
-            path_name: "Normalized"
-        test_and_train_data: # Subdirectory for test training sets
-            path_name: "Test_and_train"
-            subdirs:
-                feature_sets: "Feature_sets" # Aggregated features
-                splits: "Splits" # Test and train sets derived from aggregated feature datapool
-        models: # Subdirectory for used models
-            path_name: "Models"
-            subdirs:
-                svm: "SVM"
-                rf: "RF"
-                k_nn: "KNN"
-                lda: "LDA"
-                xg_boost: "XGBoost"
-        results: # Subdirectory for classification results and result metrics (precision, recall, etc.)
-            path_name: "ML_Results"
-            subdirs:
-                svm: "SVM"
-                rf: "RF"
-                k_nn: "KNN"
-                lda: "LDA"
-                xg_boost: "XGBoost"
-        metadata_analysis: # Subdirectory for analysis results of classification metadata
-            path_name: "Metadata_analysis"
-            subdirs:
-                svm: "SVM"
-                rf: "RF"
-                k_nn: "KNN"
-                lda: "LDA"
-                xg_boost: "XGBoost"
-        run_metadata: # Subdirectory for specific runs and metadata
-            path_name: "Run_metadata"
-            subdirs:
-                svm: "SVM"
-                rf: "RF"
-                k_nn: "KNN"
-                lda: "LDA"
-                xg_boost: "XGBoost"
-        further_analysis:
-            path_name: "Further_analysis"
-            subdirs:
-                psd: "PSD"
-                pca: "PCA"
-                k_means: "Kmeans"
-                stat_diff: "Statistical_difference"
-                subset_runs: "Subset_runs"
+root: # Root of the relative structure of Files
+    faw: # Subsets with episodes of fake awakeness (FAW)
+        name: "FAW_subsets"
+    initial_data: # Initial raw data from source
+        name: "Initial_data"
+        children:
+            combined_raw_data:
+                name: "vitaldb_csvprocessed_BIS_BIS_SR_MAC" # combined tracks of bis, bis_sr and mac
+            raw_eeg_mat:
+                name: "vitalDB_mat_EEG" # Raw EEG tracks
+    features: # Features and related data (like PSDs for freq domain features)
+        name: "Features"
+        children:
+            psds:
+                name: "PSD" # Power Spectrum Densities
+            bandpower:
+                name: "Rel_bandpower" # Bandpowers relative to spectrum range
+            shannon_entropy:
+                name: "Shannon_entropy" # Spectral shannon entropy
+            spectral_skewness:
+                name: "Spectral_skewness" # spectral skewness
+            spectral_kurtosis:
+                name: "Spectral_kurtosis" # spectral kurtosis
+            mean:
+                name: "Mean" # Mean for EEG time domain
+            variance:
+                name: "Variance" # Variance for EEG time domain
+            amplitude:
+                name: "Amplitude" # Amplitude of EEG time domain
+            sample_entropy:
+                name: "Sample_entropy" # Sample Entropy in time domain
+            permutation_entropy:
+                name: "Permutation_entropy" # Permutation Entropy in time domain
+            fuzzy_entropy:
+                name: "Fuzzy_entropy" # Fuzzy Entropy in time domain
+    plots:
+        name: "Plots"
+    filtered_data:
+        name: "Filtered"
+    normalized_data:
+        name: "Normalized"
+    test_and_train_data:
+        name: "Test_and_train"
+        children:
+            feature_sets:
+                name: "Feature_sets" # Aggregated features
+            splits:
+                name: "Splits" # Test and train sets derived from aggregated feature data
+    models:
+        name: "Models"
+        children:
+            svm:
+                name: "SVM"
+            rf:
+                name: "RF"
+            k_nn:
+                name: "KNN"
+            lda:
+                name: "LDA"
+            xg_boost:
+                name: "XGBoost"
+    results: # Classification results and related metrics
+        name: "ML_Results"
+        children:
+            svm:
+                name: "SVM"
+            rf:
+                name: "RF"
+            k_nn:
+                name: "KNN"
+            lda:
+                name: "LDA"
+            xg_boost:
+                name: "XGBoost"
+    metadata_analysis: # Results of classification metadata analyses
+        name: "Metadata_analysis"
+        children:
+            svm:
+                name: "SVM"
+            rf:
+                name: "RF"
+            k_nn:
+                name: "KNN"
+            lda:
+                name: "LDA"
+            xg_boost:
+                name: "XGBoost"
+    run_metadata: # Metadata of pipeline runs
+        name: "Run_metadata"
+        children:
+            svm:
+                name: "SVM"
+            rf:
+                name: "RF"
+            k_nn:
+                name: "KNN"
+            lda:
+                name: "LDA"
+            xg_boost:
+                name: "XGBoost"
+    further_analysis: # Various Analyses around this project
+        name: "Further_analysis"
+        children:
+            psd:
+                name: "PSD"
+            pca:
+                name: "PCA"
+            k_means:
+                name: "Kmeans"
+            stat_diff:
+                name: "Statistical_difference"
+            subset_runs:
+                name: "Subset_runs"
 
-        global_outliers: # Subdirectory for outliers gathered over multiple runs
-            path_name: "Global_outliers"
+    global_outliers: # "Outliers" from the expected outcome gathered over multiple runs
+        name: "Global_outliers"
 
-    files:
-        metadata: "metadata_vitaldb" # File with metadata for all patients
-        awake_times: "anestart_analysis_results" # File with timeframes of awakeness for all patients
+    metadata:
+        name: "metadata_vitaldb" # File with metadata for all patients
+    awake_times:
+        name: "anestart_analysis_results" # File with timeframes of awakeness for all patients
