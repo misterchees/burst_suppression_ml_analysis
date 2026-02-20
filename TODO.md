@@ -2,7 +2,10 @@
   - [x] Organize information about the project in a sensible way
   - [x] Remove empty files
   - [x] Review files from /MachineLearning/Scripts and optionally integrate into file structure
-- [ ] Update path handling to make it OS independent
+- [ ] Update path handling to make it more robust
+  - [x] Restructure path_config.yaml
+  - [ ] Add and implement and test new path handling functions
+  - [ ] Delete all deprecated functions
 - [ ] Fix Bugs
 	- [ ] Not all parameters are toggable from Runner
 	- [ ] cluster analysis plots skript overwrite data instead of creating new if you use outliers
@@ -11,7 +14,8 @@
 		- [ ] Add functionality to Read, write, load and save functions
 	- [ ] Add functionality to inspect runs in a more readable way than opening the json
 - [ ] Make tests for basic functions of pipeline
-	- [ ] Create test data that covers edge cases to find bugs
+	- [ ] Create test environment
+    - [ ] Test Utils
 	- [ ] Test Filtering
 	- [ ] Test Normalization
 	- [ ] Test Transformation to PSD

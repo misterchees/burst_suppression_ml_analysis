@@ -1,0 +1,6 @@
+# Install all base requirements for the project
+-r requirements.txt
+
+# Development, formatting, and testing tools
+pytest
+pylint
