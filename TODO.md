@@ -4,7 +4,7 @@
   - [x] Review files from /MachineLearning/Scripts and optionally integrate into file structure
 - [ ] Update path handling to make it more robust
   - [x] Restructure path_config.yaml
-  - [ ] Add and implement and test new path handling functions
+  - [ ] Add, implement and test new path handling functions
   - [ ] Delete all deprecated functions
 - [ ] Fix Bugs
 	- [ ] Not all parameters are toggable from Runner
