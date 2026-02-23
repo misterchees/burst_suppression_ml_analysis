@@ -279,8 +279,7 @@ class SplitManager:
         """
         splits_list = []
 
-        # alias functions
-        exists = PathUtils.filepath_exists
+        # alias function
         get_fullpath = self.loader.return_folded_split_folder_fullpath
 
         for fold in range(self.k_folds):
@@ -289,7 +288,7 @@ class SplitManager:
             test_fullpath = get_fullpath(self.parameters, "test", fold, self.k_folds, False)
 
             # Check if files exist
-            if not exists(train_fullpath) or not exists(test_fullpath):
+            if not train_fullpath.is_file() or not test_fullpath.is_file():
                 raise FileNotFoundError(f"Could not find {train_fullpath} or {test_fullpath}")
 
             splits_list.append((train_fullpath, test_fullpath))

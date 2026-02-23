@@ -1,5 +1,6 @@
 """This module contains the IOCore class"""
 import os
+from pathlib import Path
 import warnings
 from MachineLearning.Utils.path_utils import PathUtils
 from MachineLearning.Utils.config_handler import load_config
@@ -16,7 +17,7 @@ class IOCore:
         self.path_config = load_config("path_config.yaml")
         self.data_names = load_config("data_names_config.yaml")
 
-    def psd_folder_path(self, parameters: dict, epoch_type: str) -> str:
+    def psd_folder_path(self, parameters: dict, epoch_type: str) -> Path:
         """
         Returns a path to the PSD directory, with the current parameters specified in <parameters>.
         :param parameters: Current Episode Parameters
@@ -51,12 +52,12 @@ class IOCore:
         else:
             return current_node
 
-    def return_folder_path(self, folder_keys: list[str]) -> str:
+    def return_folder_path(self, folder_keys: list[str]) -> Path:
         """
-        Returns a fullpath to the last folder given in folder keys, following all folders along the way.
+        Assembles a fullpath with folder keys, following all folders along the way.
         Returns the base dir if no arguments are given.
         :param folder_keys: Keys to assemble the path of folders
-        :return: Fullpath as string
+        :return: Fullpath defined by the folder_keys
         """
         root = self.path_config["base_dir"]
         current_node = root
@@ -69,7 +70,7 @@ class IOCore:
             else:
                 nodes.append(current_node)
 
-        fullpath = PathUtils.return_anypath(root["path_name"], *nodes)
+        fullpath = Path(root["path_name"], *nodes)
         return fullpath
 
     def return_all_feature_keys(self) -> list:
@@ -77,7 +78,7 @@ class IOCore:
         return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].keys())
 
     def return_file_fullpath(self, parameters: dict, last_node_file: bool, create_subdirs: bool,
-                             file_type: str, folder_keys: list[str]) -> str:
+                             file_type: str, folder_keys: list[str]) -> Path:
         """
         Returns a filepath depending on given parameters.
         :param parameters: Defines last subfolders and the filename containing metadata.
@@ -86,7 +87,7 @@ class IOCore:
         :param file_type: Defines together with parameters the last subfolders and file. Valid options are:
         'normal_an', 'faw' and 'awake'
         :param folder_keys: Keys that define the first part of the path from the base directory.
-        :return: The filepath as a String.
+        :return: The filepath as Path object
         """
         if file_type == "faw":
             fullpath = self.return_all_parameter_fullpath(parameters, last_node_file, create_subdirs, folder_keys)
@@ -98,7 +99,7 @@ class IOCore:
         return fullpath
 
     def return_no_parameters_fullpath(self, parameters: dict, file_type: str,
-                                      last_node_file=True, folder_keys: list[str]=None) -> str:
+                                      last_node_file=True, folder_keys: list[str]=None) -> Path:
         """
        Creates a filepath for a file depending on parameters, file type and folder keys,
        where the keys determine the folder and the parameters determine the name of the file.
@@ -109,15 +110,15 @@ class IOCore:
        :return: Path to the csv file
        """
         # Get subfolder. Only difference is the file name. Folder is the same.
-        last_node = PathUtils.return_node_name(parameters, file_type)
+        last_node = self._return_node_name(parameters, file_type)
 
         folder_dir = self.return_folder_path(folder_keys)
         last_node = f"{last_node}.csv" if last_node_file else last_node
-        output_path = PathUtils.return_anypath(folder_dir, last_node)
+        output_path = Path(folder_dir, last_node)
         return output_path
 
     def return_all_parameter_fullpath(self, parameters: dict, last_node_file: bool, create_dirs: bool,
-                                      folder_parts: list[str], run_name: str = None) -> str:
+                                      folder_parts: list[str], run_name: str = None) -> Path:
         """
         Returns a fullpath that is of following structure:
         folder1/folder2/...folderN/<folderN name_A_B_C_D/<episode Name>_X_Y
@@ -135,35 +136,35 @@ class IOCore:
 
         if not last_node_file:
             dir_abcd_xy_part = PathUtils.return_A_B_C_D_X_Y_path(prefix_name, parameters)
-            folder_path = PathUtils.return_anypath(dir_first_part, dir_abcd_xy_part)
+            folder_path = Path(dir_first_part, dir_abcd_xy_part)
             fullpath = folder_path
         else:
             dir_abcd_part = PathUtils.return_A_B_C_D_name(prefix_name, parameters)
-            folder_path = PathUtils.return_anypath(dir_first_part, dir_abcd_part)
+            folder_path = Path(dir_first_part, dir_abcd_part)
             xy_part = PathUtils.return_X_Y_name(parameters)
-            fullpath = PathUtils.return_anypath(folder_path, f"{xy_part}.csv")
+            fullpath = Path(folder_path, f"{xy_part}.csv")
 
         # Append run_name if given. If not, use the current run name if it's from a specific filepath
         if run_name is not None:
-            fullpath = PathUtils.return_anypath(fullpath, run_name)
+            fullpath = Path(fullpath, run_name)
         elif any(key in folder_parts for key in individual_run_keys):
             run_name = load_config("parameters_config.yaml")["run_name"]
             if run_name is None:
                 raise ValueError("Expected run_name in parameters_config but got None.")
-            fullpath = PathUtils.return_anypath(fullpath, run_name)
+            fullpath = Path(fullpath, run_name)
 
         if create_dirs:
             os.makedirs(os.path.dirname(fullpath) if last_node_file else fullpath, exist_ok=True)
 
         return fullpath
 
-    def return_single_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> str:
+    def return_single_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> Path:
         """
         Returns a fullpath to current train or test file in the split folder.
         :param parameters: Parameters that determine the subfolder path in the split folder.
         :param train_or_test: Defines if path leads to a train or test file. Valid options are 'train' and 'test'
         :param create_subdirs: Flag to create the necessary folders if not already present.
-        :return: The defined fullpath as string.
+        :return: The defined fullpath.
         """
 
         full_folder_path = self.return_all_parameter_fullpath(parameters, False, create_subdirs,
@@ -171,10 +172,10 @@ class IOCore:
 
         if train_or_test != "train" and train_or_test != "test":
             raise ValueError(f"train_or_test must be either 'train' or 'test'")
-        return PathUtils.return_anypath(full_folder_path, f"{train_or_test}_split.csv")
+        return Path(full_folder_path, f"{train_or_test}_split.csv")
 
     def return_folded_split_folder_fullpath(self, parameters: dict, train_or_test: str,
-                                            fold_idx: int, total_folds: int, create_subdirs=True) -> str:
+                                            fold_idx: int, total_folds: int, create_subdirs=True) -> Path:
         """
         Returns a fullpath to current train or test file in the split folder.
         :param parameters: Parameters that determine the subfolder path in the split folder.
@@ -182,7 +183,7 @@ class IOCore:
         :param fold_idx: Current fold index
         :param total_folds: Sum of folds.
         :param create_subdirs: Flag to create the necessary folders if not already present.
-        :return: The defined fullpath as string.
+        :return: The defined fullpath.
         """
 
         full_folder_path = self.return_all_parameter_fullpath(parameters, False, create_subdirs,
@@ -190,7 +191,7 @@ class IOCore:
 
         if train_or_test != "train" and train_or_test != "test":
             raise ValueError(f"train_or_test must be either 'train' or 'test'")
-        return PathUtils.return_anypath(full_folder_path, f"{fold_idx}_{total_folds}_{train_or_test}_split.csv")
+        return Path(full_folder_path, f"{fold_idx}_{total_folds}_{train_or_test}_split.csv")
 
     def return_related_fullpaths(self, hyperparameters: dict, run_name: str, folder_parts: list) -> list:
         """
@@ -238,7 +239,7 @@ class IOCore:
 
         return relevant_paths
 
-    def return_run_metadata_fullpath(self, hyperparameters: dict, run_name: str, model_key: str) -> str:
+    def return_run_metadata_fullpath(self, hyperparameters: dict, run_name: str, model_key: str) -> Path:
         """
         Returns the full path to the metadata file of a specific run based on the provided
         hyperparameters, run name, and model key.
@@ -310,3 +311,25 @@ class IOCore:
                              "Epoch_type must be either 'awake', 'normal_an' or 'faw'")
 
         PathUtils.clear_folder(folder_path)
+
+    @staticmethod
+    def _return_node_name(parameters: dict, node_type: str) -> str:
+        """
+        Provides a static method to return a formatted node name based on the given parameters
+        and node type. The method supports specific predefined node types and appends the
+        epoch length to generate the name.
+
+        :param parameters: A dictionary containing the configuration parameters.
+        :param node_type: Specifies the type of node. Valid values are 'awake' and 'normal_an'.
+
+        :return: A formatted string representing the node name based on the node type and
+            epoch length.
+
+        :raises ValueError: If the provided node type is not recognized.
+        """
+        epoch_length = parameters["fixed_window_size"]
+        if node_type == "awake":
+            return f"Awake_{epoch_length}"
+        elif node_type == "normal_an":
+            return f"Normal_ane_{epoch_length}"
+        raise ValueError(f"Unknown node type {node_type}. Valid types are 'awake' and 'normal_an'")

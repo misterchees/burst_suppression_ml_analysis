@@ -1,9 +1,14 @@
 """This module contains the SaveResult class"""
+import json
 import os
+from pathlib import Path
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
+
 from MachineLearning.IO.io_core import IOCore
 from MachineLearning.Utils.path_utils import PathUtils
+from MachineLearning.Utils.file_data_utils import FileDataUtils
 
 
 class SaveResult(IOCore):
@@ -70,7 +75,7 @@ class SaveResult(IOCore):
         self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
 
     def save_psd_in_given_directory(self, frequencies: np.ndarray, power: np.ndarray,
-                                    start: int, end: int, result_id: int, psd_dir_fullpath: str):
+                                    start: int, end: int, result_id: int, psd_dir_fullpath: Path):
         """
         Saves PSD data of EEG in a given directory with a name specified by start, end, and result_id.
         :param frequencies: Frequencies from the PSD
@@ -89,14 +94,14 @@ class SaveResult(IOCore):
 
         # create fullpath with PSD name to save data
         psd_filename = PathUtils.assemble_psd_file_name(start, end, result_id)
-        fullpath = PathUtils.return_anypath(psd_dir_fullpath, psd_filename)
+        fullpath = Path(psd_dir_fullpath, psd_filename)
 
         # save psd
         psd_df.to_csv(fullpath, index=False)
 
         print(f"Single episode PSD saved: {fullpath}")
 
-    def save_wholeEEG_psd(self, frequencies: np.ndarray, power: np.ndarray, filtered: bool, result_id: int):
+    def save_complete_eeg_psd(self, frequencies: np.ndarray, power: np.ndarray, filtered: bool, result_id: int):
         """
         Saves whole EEG PSDs in the PSD directory
         :param frequencies: Frequencies from the PSD
@@ -113,7 +118,7 @@ class SaveResult(IOCore):
             filter_prefix = "raw"
 
         psd_filename = f"PSD_{filter_prefix}_whole_EEG_{result_id}.csv"
-        whole_eeg_subdir = PathUtils.return_anypath(psd_dir, "whole_EEG_PSD", filter_prefix)
+        whole_eeg_subdir = Path(psd_dir, "whole_EEG_PSD", filter_prefix)
 
         # make sure directory exists
         os.makedirs(whole_eeg_subdir, exist_ok=True)
@@ -126,7 +131,7 @@ class SaveResult(IOCore):
         })
 
         # create fullpath with PSD name to save data
-        fullpath = PathUtils.return_anypath(whole_eeg_subdir, psd_filename)
+        fullpath = Path(whole_eeg_subdir, psd_filename)
 
         # save psd
         psd_df.to_csv(fullpath, index=False)
@@ -162,7 +167,7 @@ class SaveResult(IOCore):
         df = pd.DataFrame(eeg_track, columns=channels)
         eeg_subdir = self.return_folder_path(folder_keys)
         os.makedirs(os.path.dirname(eeg_subdir), exist_ok=True)
-        fullpath = PathUtils.return_anypath(eeg_subdir, f"{result_id}.csv")
+        fullpath = Path(eeg_subdir, f"{result_id}.csv")
 
         # Write fs as the header line, then the rounded data
         with open(fullpath, "w", newline='') as f:
@@ -242,7 +247,7 @@ class SaveResult(IOCore):
         from joblib import dump
         full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["models", model_key])
         model_file = f"{model_key}.joblib"
-        fullpath = PathUtils.return_anypath(full_folder_path, model_file)
+        fullpath = Path(full_folder_path, model_file)
         dump(model, fullpath)
 
     def save_ml_result(self, result_data, model_key: str, parameters: dict,
@@ -282,7 +287,7 @@ class SaveResult(IOCore):
         folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["results", model_key])
 
         # Save file depending on filetype
-        PathUtils.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
+        self.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
 
     def save_metadata_analysis(self, result_data, model_key: str, parameters: dict,
                        file_type: str, file_prefix: str = "", file_suffix: str = "", outlier_run_name: str = None):
@@ -325,7 +330,7 @@ class SaveResult(IOCore):
         )
 
         # Save file depending on filetype
-        PathUtils.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
+        self.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
 
     def save_predicted_set(self, test_df, test_path, pred_df, parameters, model_key):
         """
@@ -352,7 +357,7 @@ class SaveResult(IOCore):
         test_df_copy["error"] = (test_df_copy["label"] != test_df_copy["prediction"]).astype(
             int)  # Add prediction error column
 
-        test_filename = PathUtils.return_filename_from_fullpath(test_path)
+        test_filename = Path(test_path).stem
         self.save_ml_result(test_df_copy, model_key, parameters, "dataframe", test_filename, "full_and_pred")
 
     def save_run_metadata_to_json(self, parameters: dict, model_key: str, run_metadata: dict, filename: str):
@@ -376,8 +381,8 @@ class SaveResult(IOCore):
         :return: None
         """
         folderpath = self.return_all_parameter_fullpath(parameters, False, True, ["run_metadata", model_key])
-        fullpath = PathUtils.return_anypath(folderpath, filename)
-        PathUtils.save_data_as_json(run_metadata, fullpath)
+        fullpath = Path(folderpath, filename)
+        self.save_data_as_json(run_metadata, fullpath)
 
     def save_global_outliers(self, parameters: dict, outliers_df: pd.DataFrame, outlier_type: str):
         """
@@ -407,9 +412,9 @@ class SaveResult(IOCore):
         else:
             raise ValueError("Invalid outlier type. Expected 'epoch' or 'patient_id'.")
 
-        fullpath = PathUtils.return_anypath(folder_path, filename)
+        fullpath = Path(folder_path, filename)
         # Save outliers or append to an already existing file
-        new_rows, new_rows_number = PathUtils.append_unique_rows_to_csv(outliers_df, fullpath)
+        new_rows, new_rows_number = FileDataUtils.append_unique_rows_to_csv(outliers_df, fullpath)
 
         print(f"Saved outliers to {fullpath} with {new_rows_number} new rows")
 
@@ -433,4 +438,64 @@ class SaveResult(IOCore):
         """
         folder_path = self.return_all_parameter_fullpath(hyperparameters, False, True, ["further_analysis", analysis_key])
 
-        PathUtils.save_file_depending_on_filetype(result_type, folder_path, file_prefix, file_suffix, results)
+        self.save_file_depending_on_filetype(result_type, folder_path, file_prefix, file_suffix, results)
+
+
+    def save_file_depending_on_filetype(self, file_type, folder_path, file_prefix, file_suffix, result_data):
+        """
+        Saves a file in a specified format based on the provided file type. This function supports saving
+        dataframes, dictionaries, and plots. It generates the file name using the provided prefix and
+        suffix, and the file is saved in the specified folder.
+
+        :param file_type: Type of the file to be saved. Valid options are "dataframe", "dict", and "plot".
+        :param folder_path: Path of the folder where the file should be saved.
+        :param file_prefix: Prefix to be used in the generated file name.
+        :param file_suffix: Suffix to be used in the generated file name.
+        :param result_data: Data to be saved in the file. The format of this data must align with the
+            file type specified.
+        :return: None
+        :raises ValueError: If the provided file type is not supported.
+        """
+        if file_type == "dataframe":
+            file_name = f"{file_prefix}_{file_suffix}.csv"
+            saving_func = self.save_file_as_csv
+
+        elif file_type == "dict":
+            file_name = f"{file_prefix}_{file_suffix}.json"
+            saving_func = self.save_data_as_json
+
+        elif file_type == "plot":
+            file_name = f"{file_prefix}_{file_suffix}.png"
+            saving_func = self.save_plot
+
+        else:
+            raise ValueError(f"Unknown file type: {file_type}. Valid options are: dataframe, dict, plot")
+
+        fullpath = Path(folder_path, file_name)
+        saving_func(result_data, fullpath)
+        print(f"Successfully saved {file_type} to {fullpath}")
+
+    @staticmethod
+    def save_file_as_csv(data, fullpath, index=True):
+        """Saves data as a csv file in given fullpath."""
+        data.to_csv(fullpath, index=index)
+
+    @staticmethod
+    def save_plot(fig, fullpath: str):
+        """
+        Saves a matplotlib Figure to file.
+
+        :param fig: The matplotlib Figure object to save.
+        :param fullpath: Full path including filename and extension (e.g. 'figures/plot.png').
+        """
+        if fig is not None:
+            fig.savefig(fullpath, dpi=300)
+            plt.close(fig)
+        else:
+            print(f"Nothing to save at {fullpath}.")
+
+    @staticmethod
+    def save_data_as_json(data, fullpath):
+        serial_result_data = FileDataUtils.serialize_for_json(data)
+        with open(fullpath, "w") as f:
+            json.dump(serial_result_data, f, indent=4)

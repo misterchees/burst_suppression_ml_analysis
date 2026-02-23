@@ -1,5 +1,6 @@
 import pandas as pd
 from collections import Counter
+from pathlib import Path
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 
@@ -73,9 +74,12 @@ def get_initial_epoch_distribution(hyperparameters: dict, save_result=True):
         from MachineLearning.IO.save_result import PathUtils
         params_path = PathUtils.return_A_B_C_D_X_Y_path("Dist", hyperparameters)
         folderpath = "D:\\Daten\\Other\\Initial_epoch_distribution\\"
-        full_folderpath = PathUtils.return_anypath(folderpath,params_path)
-        PathUtils.create_dir_path(full_folderpath)
-        fullpath = PathUtils.return_anypath(full_folderpath,"epoch_dist.csv")
+        full_folderpath = Path(folderpath,params_path)
+        try:
+            full_folderpath.mkdir()
+        except FileExistsError:
+            print(f"Creation of File with Path {full_folderpath} failed. It already exists")
+        fullpath = Path(full_folderpath,"epoch_dist.csv")
 
         PathUtils.save_file_as_csv(result_df, fullpath)
 

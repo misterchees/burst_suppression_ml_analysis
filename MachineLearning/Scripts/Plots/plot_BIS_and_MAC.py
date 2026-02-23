@@ -1,5 +1,6 @@
-from MachineLearning.IO.load_data import LoadData, PathUtils
+from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Utils.plots import Plots
+from pathlib import Path
 import pandas as pd
 
 loader = LoadData()
@@ -8,11 +9,11 @@ plotter = Plots()
 _patient_id = 1127
 
 
-def plot_BIS_and_MAC(patient_id: int, eeg: bool):
-    # Assemble Folderpath
+def plot_bis_and_mac(patient_id: int, eeg: bool):
+    # Assemble folderpath
     folderpath = loader.return_folder_path(["initial_data", "combined_raw_data"])
     filename = f"{patient_id}.csv"
-    csv_path = PathUtils.return_anypath(folderpath, filename)
+    csv_path = Path(folderpath, filename)
 
     df = pd.read_csv(csv_path)
     if not eeg:
@@ -26,4 +27,4 @@ def plot_BIS_and_MAC(patient_id: int, eeg: bool):
 
 
 if __name__ == "__main__":
-    plot_BIS_and_MAC(_patient_id, True)
+    plot_bis_and_mac(_patient_id, True)

@@ -1,6 +1,7 @@
 import warnings
 import pandas as pd
 from fontTools.misc.classifyTools import Classifier
+from pathlib import Path
 
 from MachineLearning.Core.run_metadata import RunMetadata
 from MachineLearning.IO.load_data import LoadData, PathUtils
@@ -558,7 +559,7 @@ class Pipeline:
 
         if save_analysis:
             print(f"Saving analysis results to disk...")
-            filename = PathUtils.return_filename_from_fullpath(result_path)
+            filename = Path(result_path).stem
             saver = SaveResult()
             saver.save_metadata_analysis(error_correlation, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, "error_correlation")

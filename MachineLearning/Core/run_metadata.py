@@ -1,6 +1,7 @@
 """This module contains the RunMetadata class."""
 from datetime import datetime
 from typing import List, Union, Optional, Dict, Any
+from pathlib import Path
 
 import pandas as pd
 
@@ -139,7 +140,7 @@ class RunMetadata:
         for train_path, test_path in split_paths:
 
             # It doesn't matter from which path the fold number is retrieved (same for both)
-            fold_number = PathUtils.return_filename_from_fullpath(train_path).split("_")[0]
+            fold_number = str(Path(train_path).stem).split("_")[0] # Last file of Path is the stem
             fold_key = f"fold_{fold_number}"
 
             # Create dicts for the single instances of the splits
@@ -245,7 +246,7 @@ class RunMetadata:
 
         return subdict
 
-    def _find_run_with_same_parameters(self) -> str | None:
+    def _find_run_with_same_parameters(self) -> Path | None:
         """
         Checks for the existence of a specific parameter hash in previously stored metadata
         files within a given model's metadata directory. If the hash exists, the path to
@@ -257,7 +258,7 @@ class RunMetadata:
         within the metadata structure, a new hash is added for existing runs and checked
         against the current parameter hash.
 
-        :rtype: str or None
+        :rtype: Path or None
         :return: The path to the metadata file containing the matching parameter hash if
             found, otherwise returns None.
         """
@@ -271,10 +272,10 @@ class RunMetadata:
 
         for filename in files:
             # Load metadata file
-            fullpath = PathUtils.return_anypath(metadata_dir, filename)
-            metadata_dict = PathUtils.load_json(fullpath)
+            fullpath = Path(metadata_dir, filename)
+            metadata_dict = LoadData.load_json(fullpath)
 
-            # Check if there is a hash present in old runs. If not create one and update existing run
+            # Checks if there is a hash present in old runs. If not, creates a new one and updates the existing run
             if "param_hash" in metadata_dict:
                 if metadata_dict["param_hash"] == self.param_hash:
                     return fullpath

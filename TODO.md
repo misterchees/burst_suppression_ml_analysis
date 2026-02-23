@@ -5,6 +5,19 @@
 - [ ] Update path handling to make it more robust
   - [x] Restructure path_config.yaml
   - [ ] Add, implement and test new path handling functions
+    - [ ] Replace os.path functions with pathlib functionality (str → Path objects)
+      - [x] In path_utils
+      - [ ] In IOCore
+        - [ ] io_core
+        - [ ] load_data
+        - [ ] save_result
+    - [ ] Create and run tests for all functions in path_handling
+      - [ ] In path_utils
+      - [ ] In IOCore
+        - [ ] io_core
+        - [ ] load_data
+        - [ ] save_result
+  - [ ] Replace all findings of using the old base_dir logic with PathManager logic
   - [ ] Delete all deprecated functions
 - [ ] Fix Bugs
 	- [ ] Not all parameters are toggable from Runner

@@ -1,5 +1,5 @@
+from pathlib import Path
 from MachineLearning.Evaluation.split_manager import SplitManager
-from MachineLearning.IO.load_data import PathUtils
 from MachineLearning.Utils.feature_utils import FeatureUtils
 
 
@@ -14,8 +14,8 @@ def create_single_split(hyperparameters, class_0, class_1, folderpath, test_size
     split_manager.load_and_validate()
     train_df, test_df = split_manager.create_single_split()
 
-    train_fullpath = PathUtils.return_anypath(folderpath, "train_set.parquet")
-    test_fullpath = PathUtils.return_anypath(folderpath, "test_set.parquet")
+    train_fullpath = Path(folderpath, "train_set.parquet")
+    test_fullpath = Path(folderpath, "test_set.parquet")
     train_df.to_parquet(train_fullpath)
     test_df.to_parquet(test_fullpath)
 

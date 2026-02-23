@@ -133,4 +133,4 @@ class Transforms(MLObject):
         # calculate welch PSD
         frequencies, power = self.calculate_psd_welch(eeg_signal, fs, nperseg_seconds)
 
-        result_saver.save_wholeEEG_psd(frequencies, power, False, result_id)
+        result_saver.save_complete_eeg_psd(frequencies, power, False, result_id)

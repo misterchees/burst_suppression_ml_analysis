@@ -3,6 +3,7 @@ import pandas as pd
 
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.IO.load_data import LoadData, PathUtils
+from pathlib import Path
 from typing import List, Any
 
 
@@ -106,9 +107,9 @@ def get_ids_from_run(_run_name: str) -> list:
         "overlap": 0.0
     }
     run_folderpath = loader.return_all_parameter_fullpath(metadata_params, False, False, ["run_metadata", "svm"])
-    fullpath = PathUtils.return_anypath(run_folderpath, f"{_run_name}.json")
+    fullpath = Path(run_folderpath, f"{_run_name}.json")
 
-    run_metadata = PathUtils.load_json(fullpath)
+    run_metadata = LoadData.load_json(fullpath)
     used_patient_ids = run_metadata["final_patient_ids"]
     print(f"Patient IDs that will be used: {used_patient_ids}")
     return used_patient_ids

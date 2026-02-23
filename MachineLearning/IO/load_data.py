@@ -1,10 +1,13 @@
 """Module for the LoadData class, and a psd load function"""
+import json
 import os
+from pathlib import Path
 from typing import Tuple
 import numpy as np
 import pandas as pd
 
 from MachineLearning.IO.io_core import IOCore
+from MachineLearning.Utils.file_data_utils import FileDataUtils
 from MachineLearning.Utils.path_utils import PathUtils
 
 
@@ -16,7 +19,7 @@ def load_psd_with_start_end_resultid(folder_path: str, filename: str) \
     :param folder_path: The path to the folder of filename
     :return: A tuple structured this way (dataframe, start, end, result_id)
     """
-    psd_fullpath = PathUtils.return_anypath(folder_path, filename)
+    psd_fullpath = Path(folder_path, filename)
     print(f"Processing {psd_fullpath}")
     # Validation of single episode PSD name structure
     name_parts = filename.split(".")[0].split("_")
@@ -48,7 +51,7 @@ class LoadData(IOCore):
         """
         faw_dir = self.return_folder_path(["faw"])
         parameter_dir = PathUtils.return_A_B_C_D_X_Y_path("result", parameters)
-        csv_fullpath = PathUtils.return_anypath(faw_dir, f"{parameter_dir}.csv")
+        csv_fullpath = Path(faw_dir, f"{parameter_dir}.csv")
         # validate fullpath
         if not os.path.isfile(csv_fullpath):
             raise FileNotFoundError(f"CSV not found: {csv_fullpath}")
@@ -136,7 +139,7 @@ class LoadData(IOCore):
         :param transition_sec: Time (in seconds) after anestart before epochs are allowed
         :param safety_margin_min: Minutes to exclude from end of EEG to avoid flatline segments
         :param random_state: Random seed for reproducibility
-        :param epochs_per_eeg: Max number of epochs to sample per eeg (Less samples per patient -> better distribution)
+        :param epochs_per_eeg: Max number of epochs to sample per eeg (Fewer samples per patient -> better distribution)
         :returns: DataFrame with columns Start, End, ResultID
         """
         import random
@@ -168,7 +171,7 @@ class LoadData(IOCore):
             # Get duration of EEG file
             with open(eeg_path) as f:
                 num_lines = sum(1 for _ in f) - 1  # minus header
-            eeg_duration = num_lines // 128  # assuming 128 Hz sampling rate (128 rows per second)
+            eeg_duration = num_lines // 128  # assuming 128 Hz sampling rate
 
             # Compute valid range for sampling
             start_limit = anestart + transition_sec
@@ -388,11 +391,11 @@ class LoadData(IOCore):
         )
         return grouped
 
-    def return_csv_path_from_basedir(self, file_key: str) -> str:
+    def return_csv_path_from_basedir(self, file_key: str) -> Path:
         """Takes the path_config key of a file in the base directory and returns a path to that file."""
         base_dir = self.path_config["base_dir"]["path_name"]
         file_name = self.path_config["base_dir"]["files"][file_key]
-        file_path = PathUtils.return_anypath(base_dir, f"{file_name}.csv")
+        file_path = Path(base_dir, f"{file_name}.csv")
         return file_path
 
     def load_model(self, model_key: str, parameters: dict):
@@ -405,7 +408,7 @@ class LoadData(IOCore):
         from joblib import load
         full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["models", model_key])
         model_file = f"{model_key}.joblib"
-        model_fullpath = PathUtils.return_anypath(full_folder_path, model_file)
+        model_fullpath = Path(full_folder_path, model_file)
         model = load(model_fullpath)
         return model
 
@@ -414,9 +417,9 @@ class LoadData(IOCore):
         folder_path = self.return_all_parameter_fullpath(
             parameters, False, True, ["results", model_key], run_name)
         file_name = f"folds_metrics.json"
-        fullpath = PathUtils.return_anypath(folder_path, file_name)
+        fullpath = Path(folder_path, file_name)
 
-        return PathUtils.load_json(fullpath)
+        return self.load_json(fullpath)
 
     def load_metadata_file(self, parameters: dict, model_key: str, filename: str, outlier_run_name: str | None):
         """
@@ -449,12 +452,12 @@ class LoadData(IOCore):
         folder_path = self.return_all_parameter_fullpath(
             parameters, False, False, ["metadata_analysis", model_key], outlier_run_name
         )
-        fullpath = PathUtils.return_anypath(folder_path, filename)
+        fullpath = Path(folder_path, filename)
 
         # Load file based on extension
         extension = filename.split(".")[-1]
         if extension == "json":
-            return PathUtils.load_json(fullpath)
+            return self.load_json(fullpath)
         elif extension == "csv":
             return pd.read_csv(fullpath)
         else:
@@ -554,7 +557,7 @@ class LoadData(IOCore):
     def load_run_data(self, hyperparameters: dict, run_name: str, model_key: str):
         """Loads the run data from a run specified by name, hyperparameters, and model_key."""
         metadata_path = self.return_run_metadata_fullpath(hyperparameters, run_name, model_key)
-        metadata = PathUtils.load_json(metadata_path)
+        metadata = self.load_json(metadata_path)
         return metadata
 
     def load_splits(self, hyperparamers: dict, run_name: str, combined=True) -> dict|pd.DataFrame:
@@ -639,7 +642,7 @@ class LoadData(IOCore):
         :param outlier_type:
             Specifies the type of outliers to fetch, either "epoch" or "patient_id".
         :return:
-            Pandas DataFrame containing the global outliers data.
+            Pandas DataFrame containing the data of global outliers.
         :rtype: pd.DataFrame
         :raises ValueError:
             If the provided outlier_type is not "epoch" or "patient_id".
@@ -654,7 +657,7 @@ class LoadData(IOCore):
         else:
             raise ValueError("Invalid outlier type. Expected 'epoch' or 'patient_id'.")
 
-        fullpath = PathUtils.return_anypath(folder_path, filename)
+        fullpath = Path(folder_path, filename)
         # Load and return outlier df
         outliers_df = pd.read_csv(fullpath)
         return outliers_df
@@ -664,10 +667,10 @@ class LoadData(IOCore):
                                                          ["further_analysis", analysis_key])
 
         if result_type == "dataframe":
-            PathUtils.return_anypath(folder_path, filename)
-            return pd.read_csv(PathUtils.return_anypath(folder_path, filename))
+            Path(folder_path, filename)
+            return pd.read_csv(Path(folder_path, filename))
         elif result_type == "json":
-            return PathUtils.load_json(PathUtils.return_anypath(folder_path, filename))
+            return self.load_json(Path(folder_path, filename))
         else:
             raise ValueError(f"Invalid result type. Expected 'dataframe' or 'json', got {result_type}")
 
@@ -690,3 +693,15 @@ class LoadData(IOCore):
         saver.save_global_outliers(parameters, outliers_df, outlier_type)  # Add given outliers to global
         global_outliers_df = self.load_global_outliers(parameters, outlier_type)  # Get updated global outliers
         return global_outliers_df
+    
+    @staticmethod
+    def load_json(path: Path) -> dict:
+        """
+        Loads a JSON file from the given path and returns its content as a dictionary.
+
+        :param path: Path to the JSON file.
+        :return: Dictionary containing the JSON file's content.
+        """
+        with open(path, "r", encoding="utf-8") as f:
+            raw_json = json.load(f)
+        return FileDataUtils.deserialize_from_json(raw_json)

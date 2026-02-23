@@ -7,3 +7,4 @@ scikit-learn~=1.8.0
 seaborn~=0.13.2
 pyyaml
 python-dotenv
+joblib
