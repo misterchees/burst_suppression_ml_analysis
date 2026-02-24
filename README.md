@@ -1,7 +1,7 @@
 # Differentiating Burst Suppression from Wakefulness Using EEG-Based Machine Learning Classification
 
->Disclaimer: The term _epoch_ is used differently in this work than usual in Machine Learning context. 
-> Here it is used as name for the _windows of time_ extracted from the patients tracks.
+>Disclaimer: The term _epoch_ is used differently in this work than usual in the Machine Learning context. 
+> Here it is used as a name for the _windows of time_ extracted from the patient tracks. (Sometimes also called episode)
 
 ## What is this about?
 This Repo is for the code that is the foundation of above stated Bachelor Thesis. It revolves around the 

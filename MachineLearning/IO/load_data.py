@@ -1,8 +1,7 @@
 """Module for the LoadData class, and a psd load function"""
 import json
-import os
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List, Dict
 import numpy as np
 import pandas as pd
 
@@ -14,18 +13,21 @@ from MachineLearning.Utils.path_utils import PathUtils
 def load_psd_with_start_end_resultid(folder_path: str, filename: str) \
         -> Tuple[pd.DataFrame, int, int, int]:
     """
-    Loads a PSD csv file from given folder as Dataframe and returns it with metadata from the filename
-    :param filename: a file with this name structure -> start_end_resultid.csv
+    Loads a PSD csv file from the given folder as Dataframe and returns it with metadata extracted from the filename.
+    :param filename: A file with this name structure -> start_end_resultid.csv
     :param folder_path: The path to the folder of filename
-    :return: A tuple structured this way (dataframe, start, end, result_id)
+    :return: A tuple structured in the following way (dataframe, start, end, result_id)
     """
     psd_fullpath = Path(folder_path, filename)
     print(f"Processing {psd_fullpath}")
+
     # Validation of single episode PSD name structure
     name_parts = filename.split(".")[0].split("_")
     if len(name_parts) != 4 and name_parts[0] != "PSD":
         raise ValueError(f"Name of file {filename} has no typical structure for single episode PSD."
-                         "Typical structure example: PSD_0_1_2.csv")
+                         "Typical structure example for reference: PSD_0_1_2.csv")
+
+    # Get each name part and cast to int
     metadata = filename.replace(".csv", "").split("_")[1:]  # PSD_0_1_2.csv -> ['0','1','2']
     start = int(float(metadata[0]))
     end = int(float(metadata[1]))
@@ -44,18 +46,19 @@ class LoadData(IOCore):
 
     def load_faw_times_as_df(self, parameters: dict) -> pd.DataFrame:
         """
-        Assembles a path to the csv-file of interest depending on passed parameters
+        Assembles a path to the csv-file of with the times of the windows depending on passed parameters
         in the Fake-Awake (FAW) directory and loads it into a Pandas DataFrame.
         :param parameters: A dictionary with all episode parameters from the project
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
+        # Assemble the fullpath to the CSV file
         faw_dir = self.return_folder_path(["faw"])
         parameter_dir = PathUtils.return_A_B_C_D_X_Y_path("result", parameters)
         csv_fullpath = Path(faw_dir, f"{parameter_dir}.csv")
-        # validate fullpath
-        if not os.path.isfile(csv_fullpath):
+        # Validate fullpath
+        if not csv_fullpath.is_file():
             raise FileNotFoundError(f"CSV not found: {csv_fullpath}")
-        # read CSV to DataFrame
+        # Read CSV to DataFrame
         df = pd.read_csv(csv_fullpath)
         return df
 
@@ -64,9 +67,9 @@ class LoadData(IOCore):
         Reads a CSV file with 'caseid' and 'anestart' columns and generates epochs
         based on a fixed epoch length.
 
-        :param parameters: Parameters for episodes. Contains length of each epoch.
+        :param parameters: Parameters for epochs. Contains the length of each epoch.
         :param awake_cleaned: A boolean to indicate if the episodes should be taken from the awake_cleaned.txt
-        :param transition_time: The transition time for patient to respond to anesthesia beginning.
+        :param transition_time: The transition time for the patient to respond to anesthesia beginning.
         :returns: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
         """
         if awake_cleaned:
@@ -98,9 +101,9 @@ class LoadData(IOCore):
     @staticmethod
     def load_cleaned_awake_times_as_df(parameters: dict) -> pd.DataFrame:
         """
-        Does basically the same as load_awake_times_as_df. Difference is start of awake epochs is not zero and the
-        input file path is hardcoded.
-        :param parameters: Parameters for episodes. Contains length of each epoch.
+        Basically does the same as load_awake_times_as_df. The difference is the start of AW epochs is not zero
+        and the input file path is hardcoded.
+        :param parameters: Parameters for epochs. Contains the length of each epoch.
         :return: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
         """
         csv_path = r"E:\Daten\awake_cleaned.txt"
@@ -135,11 +138,12 @@ class LoadData(IOCore):
         Samples random EEG epochs from anesthesia segments (i.e., neither awake nor FAW).
 
         :param parameters: Defines length of each epoch.
-        :param num_epochs: Number of total epochs to sample
-        :param transition_sec: Time (in seconds) after anestart before epochs are allowed
-        :param safety_margin_min: Minutes to exclude from end of EEG to avoid flatline segments
-        :param random_state: Random seed for reproducibility
-        :param epochs_per_eeg: Max number of epochs to sample per eeg (Fewer samples per patient -> better distribution)
+        :param num_epochs: Number of total epochs to sample.
+        :param transition_sec: Time (in seconds) after anesthesia starts before epochs are allowed.
+        :param safety_margin_min: Minutes to exclude from the end of EEG to avoid flatline segments.
+        :param random_state: Random seed for reproducibility.
+        :param epochs_per_eeg: Max number of epochs to sample per eeg
+                                (Fewer samples per patient -> better distribution).
         :returns: DataFrame with columns Start, End, ResultID
         """
         import random
@@ -154,13 +158,14 @@ class LoadData(IOCore):
         result = []
 
         # List of all available EEG files
-        eeg_files = [f for f in os.listdir(filtered_data_dir) if f.endswith('.csv')]
+        eeg_files = [f for f in filtered_data_dir.iterdir() if f.suffix =='.csv']
         random.shuffle(eeg_files)
 
+        # Look into EEG files and sample anesthesia episodes with the specified parameters
         for eeg_file in eeg_files:
-            result_id = os.path.splitext(eeg_file)[0]  # 1.csv -> ['1', '.csv'] -> 1
-            eeg_path = os.path.join(filtered_data_dir, eeg_file)
-            # Lookup anestart for patient ID
+            result_id = eeg_file.stem  # 1.csv -> ['1', '.csv'] -> 1
+            eeg_path = Path(filtered_data_dir, eeg_file)
+            # Look up anestart for patient ID
             match = anestart_df.loc[anestart_df['caseid'].astype(str) == result_id, 'anestart']
             if not match.empty:
                 anestart = match.values[0]
@@ -168,7 +173,7 @@ class LoadData(IOCore):
                 # Default to safety margin if anestart is not available for this ID
                 anestart = safety_margin_min * 60
 
-            # Get duration of EEG file
+            # Get duration of the EEG file
             with open(eeg_path) as f:
                 num_lines = sum(1 for _ in f) - 1  # minus header
             eeg_duration = num_lines // 128  # assuming 128 Hz sampling rate
@@ -184,8 +189,8 @@ class LoadData(IOCore):
             if max_possible_epochs <= 0:
                 continue
 
-            # Sample max is constrained by length of EEG, number of needed epochs, or given number per EEG
-            # The smallest of these three will be picked
+            # Sample max is constrained by length of EEG, number of the necessary epochs, or given number per EEG
+            # The smallest of these three will be picked each iteration
             num_to_sample = min(max_possible_epochs, num_epochs - len(result), epochs_per_eeg)
             start_points = random.sample(range(start_limit, end_limit - epoch_length_sec + 1), num_to_sample)
 
@@ -197,12 +202,12 @@ class LoadData(IOCore):
                 })
 
             if len(result) >= num_epochs:
-                break  # early exit if we've collected enough
+                break  # Exit if we've collected enough
 
         return pd.DataFrame(result)
 
     def load_grouped_epochs(self, parameters: dict, epoch_type: str, num_epochs: int = None
-                            ) -> dict[int, list[tuple[int, int]]]:
+                            ) -> Dict[int, List[Tuple[int, int]]]:
         """
         Returns EEG snippets (Epochs) based on given parameters.
         :param parameters: Parameters for episodes containing primary parameters for chosen faw eopchs.
@@ -210,7 +215,7 @@ class LoadData(IOCore):
         :param num_epochs: Number of anesthesia epochs. Will be ignored if epoch_type is not 'normal_an'
         :return: Dictionary {ResultID: [(start1, end1), (start2, end2), ...]}
         """
-        # retrieve epochs based on epoch type
+        # Retrieve epochs based on their epoch type
         if epoch_type == 'awake':
             epoch_times_df = self.load_awake_times_as_df(parameters)
         elif epoch_type == 'faw':
@@ -226,8 +231,8 @@ class LoadData(IOCore):
 
     def load_eeg_data(self, result_id: int, filtered=True) -> Tuple[int, np.ndarray]:
         """
-        Assembles a path to the EEG File of interest, specified by the patient ID and
-        returns fs and raw EEG as a Tuple
+        Assembles a path to the EEG File of interest, specified by the patient ID.
+        Returns fs and raw EEG as a Tuple.
 
         :param result_id: The patient ID
         :param filtered: If True retrieves the filtered EEG file instead of the raw EEG file
@@ -250,11 +255,11 @@ class LoadData(IOCore):
         # Assemble Path to directory with .mat files
         vitaldb_eeg_dir = self.return_folder_path(["initial_data", "raw_eeg_mat"])
 
-        mat_file_path = os.path.join(vitaldb_eeg_dir, f"{result_id}.mat")
-        if not os.path.isfile(mat_file_path):
+        mat_file_path = Path(vitaldb_eeg_dir, f"{result_id}.mat")
+        if not mat_file_path.is_file():
             return self._load_eeg_vitaldb_csv(result_id)
 
-        # Lazy import
+        # Scipy import to read .mat files
         import scipy.io
 
         # load .mat file
@@ -266,17 +271,31 @@ class LoadData(IOCore):
         return fs, raw_eeg
 
     def _load_eeg_vitaldb_csv(self, result_id: int) -> Tuple[int, np.ndarray]:
+        """
+        Loads EEG data from a CSV file and performs basic pre-processing operations such as handling missing values.
+        The EEG data is extracted from specified columns, interpolated to handle NaN values, and returned as a clean
+        NumPy array along with the sampling frequency.
+
+        :param result_id: Identifier of the specific EEG result whose data needs to be loaded. The file name is
+                          derived from this ID in the format `{result_id}.csv`.
+
+        :return: A tuple containing the sampling frequency as an integer and the pre-processed EEG
+                data as a NumPy array.
+
+        :raise FileNotFoundError: If the specified CSV file corresponding to the `result_id` is not found
+                                in the expected directory.
+        """
         # Assemble Path to directory with .mat files
         vitaldb_eeg_dir = self.return_folder_path(["initial_data", "raw_eeg_mat"])
-        csv_file_path = os.path.join(vitaldb_eeg_dir, f"{result_id}.csv")
-        if not os.path.isfile(csv_file_path):
+        csv_file_path = Path(vitaldb_eeg_dir, f"{result_id}.csv")
+        if not csv_file_path.is_file():
             raise FileNotFoundError(f"File found: {csv_file_path}")
 
         fs = 128
         csv_file = pd.read_csv(csv_file_path)
         raw_eeg = csv_file[['BIS/EEG1_WAV', 'BIS/EEG2_WAV']].to_numpy()
         # --- Pre-processing: Handle NaN values ---
-        # Convert to DataFrame to utilize pandas' powerful interpolation methods
+        # Convert to DataFrame to use pandas' powerful interpolation methods
         # This fixes the issue where NaNs cause the filter to output only NaNs
         df_raw = pd.DataFrame(raw_eeg)
 
@@ -284,11 +303,10 @@ class LoadData(IOCore):
         # limit_direction='both' ensures NaNs at the very beginning or end are also filled
         df_interpolated = df_raw.interpolate(method='linear', axis=0, limit_direction='both')
 
-        # Convert back to ndarray for the signal processing steps
+        # Convert back to ndarray
         clean_eeg = df_interpolated.to_numpy()
 
         return fs, clean_eeg
-
 
 
     def _load_filtered_eeg_data(self, result_id: int) -> Tuple[int, np.ndarray]:
@@ -297,11 +315,11 @@ class LoadData(IOCore):
         :param result_id: The patient ID
         :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
         """
-        # Assemble Path to directory with .csv files
+        # Assemble Path to directory with filtered-EEG files
         filtered_eeg_dir = self.return_folder_path(["filtered_data"])
 
-        filepath = os.path.join(filtered_eeg_dir, f"{result_id}.csv")
-        if not os.path.isfile(filepath):
+        filepath = Path(filtered_eeg_dir, f"{result_id}.csv")
+        if not filepath.is_file():
             raise FileNotFoundError(f"File not found: {filepath}")
 
         with open(filepath, 'r') as f:
@@ -317,32 +335,33 @@ class LoadData(IOCore):
 
         return fs, raw_eeg
 
-    def load_eeg_epochs_from_csv(self, result_id: int, epochs: list, channel: int, folder_keys: list[str]) -> tuple[int, dict]:
+    def load_eeg_epochs_from_csv(self, result_id: int, epochs: list, channel: int, folder_keys: List[str])\
+            -> Tuple[int, Dict[Tuple[int, int], np.ndarray]]:
         """
-        Reads only selected EEG segments (epochs) for a given channel from a CSV file with
-        a header comment and sampling rate.
+        Reads EEG segments selected by the information in epochs for a given channel from a CSV file.
+        Assuming the file has a header comment containing the sampling rate.
 
-        :param result_id: Patient ID to determine path to the EEG CSV file.
+        :param result_id: Patient ID to determine the path to the EEG CSV file.
         :param epochs: List of (start_time, end_time) tuples in seconds.
         :param channel: EEG channel to extract (1 or 2).
         :param folder_keys: List of folder keys to determine the path to the EEG CSV file.
-        :returns: Tuple of (sampling rate as int, dict of (start, end) -> EEG segment as ndarray)
+        :returns: Tuple of (sampling rate as int, dict of (start, end): EEG segment as ndarray)
         """
-        # Step 0: Assemble Path to directory with .csv files
+        # Assemble Path to directory with .csv files
         eeg_dir = self.return_folder_path(folder_keys)
 
-        filepath = os.path.join(eeg_dir, f"{result_id}.csv")
-        if not os.path.isfile(filepath):
+        filepath = Path(eeg_dir, f"{result_id}.csv")
+        if not filepath.is_file():
             raise FileNotFoundError(f"File not found: {filepath}")
 
-        # Step 1: Read sampling rate (fs) from the first comment line
+        # Read sampling rate (fs) from the first comment line
         with open(filepath, 'r') as f:
             first_line = f.readline().strip()
             if not first_line.startswith("# fs = "):
                 raise ValueError("Missing or malformed sampling rate comment line.")
             fs = int(first_line.replace("# fs = ", "").strip())
 
-        # Step 2: Compute required data row indices (account for header lines)
+        # Compute required data row indices (account for header lines)
         index_offset = 2  # One comment line and one header line
         required_rows = set()
         sample_ranges = []
@@ -353,20 +372,20 @@ class LoadData(IOCore):
             sample_ranges.append((start_row, end_row))
             required_rows.update(range(start_row, end_row))
 
-        # Step 3: Build row-skipping function for pandas
+        # Build row-skipping function for pandas (for efficiency)
         def skiprows(i):
             return i != 1 and i not in required_rows  # only keeps header line and required rows
 
-        # Step 4: Read only selected rows and the requested channel
+        # Read only selected rows and the requested channel
         col = str(channel)  # 1 -> '1'
         df = pd.read_csv(filepath, usecols=[col], skiprows=skiprows)
 
-        # Step 5: Extract segments from the DataFrame
+        # Extract segments from the DataFrame
         values = df[col].to_numpy()
         segments = {}
         cursor = 0
 
-        # create output dict as segments ((start, end): segment)
+        # create output dict as segments. Looks like this: {(start1, end1): segment1, ..., (startN, endN): segmentN}
         for (start_sec, end_sec), (start_row, end_row) in zip(epochs, sample_ranges):
             num_samples = end_row - start_row
             segment = values[cursor:cursor + num_samples]
@@ -376,7 +395,7 @@ class LoadData(IOCore):
         return fs, segments
 
     @staticmethod
-    def group_epochs_by_result_id(all_epochs_df: pd.DataFrame) -> dict[int, list[tuple[int, int]]]:
+    def group_epochs_by_result_id(all_epochs_df: pd.DataFrame) -> Dict[int, List[Tuple[int, int]]]:
         """
         Groups epoch start/end times by ResultID into a dictionary.
 
@@ -412,7 +431,18 @@ class LoadData(IOCore):
         model = load(model_fullpath)
         return model
 
-    def load_metrics(self, parameters: dict, model_key: str, run_name: str = None ):
+    def load_metrics(self, parameters: dict, model_key: str, run_name: str = None ) -> dict:
+        """
+        Loads the metrics from a JSON file located in a specified directory, which path is
+        computed dynamically based on provided parameters, model key, and an optional run name.
+
+
+        :param parameters: Dictionary containing configuration details required to construct the file path.
+        :param model_key: The specific model identifier, used to locate corresponding result directories.
+        :param run_name: The specific run name to further narrow down the folder path, if provided.
+
+        :return: A dictionary containing the loaded metrics from the JSON file.
+        """
         # Construct the path to the folder from where the file will be loaded
         folder_path = self.return_all_parameter_fullpath(
             parameters, False, True, ["results", model_key], run_name)
@@ -423,30 +453,18 @@ class LoadData(IOCore):
 
     def load_metadata_file(self, parameters: dict, model_key: str, filename: str, outlier_run_name: str | None):
         """
-        Loads metadata file based on the given parameters, model key, and filename.
+        Loads a metadata file based on the given parameters, model key, and filename.
 
-        This method retrieves the file path for a metadata file using the specified
-        parameters and determines its extension. The data is then loaded and returned
-        if the file has a supported format.
-
-        :param parameters:
-            A dictionary containing the hyperparameters used to
-            construct the file path.
-        :param model_key:
-            The key associated with a specific model, used as an identifier while
-            forming the directory path for the metadata file.
-        :param filename:
-            The name of the metadata file to be loaded, including its extension.
-        :param outlier_run_name:
-            The name of the outlier run to load metadata for. If None, loads metadata for the current run_name.
-        :return:
-            Parsed data from the metadata file. The return type depends on the file
-            format: a JSON object for `.json` files or a pandas DataFrame for `.csv`
-            files.
-        :rtype:
-            Union[dict, pandas.DataFrame]
-        :raises ValueError:
-            If the file's extension is not supported (i.e., not "json" or "csv").
+        :param parameters: A dictionary containing the hyperparameters used to
+                            construct the file path.
+        :param model_key: The key associated with a specific model, used as an identifier while
+                            forming the directory path for the metadata file.
+        :param filename: The name of the metadata file to be loaded, including its extension.
+        :param outlier_run_name: The name of the outlier run to load metadata for.
+                                If None, loads metadata for the current run_name.
+        :return: Parsed data from the metadata file. The return type depends on the file
+                format: a JSON object for `.json` files or a pandas DataFrame for `.csv` files.
+        :raises ValueError: If the files extension is not supported (i.e., not "json" or "csv").
         """
         # Construct the path to the folder from where the file will be loaded
         folder_path = self.return_all_parameter_fullpath(
@@ -471,18 +489,14 @@ class LoadData(IOCore):
         If the specified file does not exist, attempts to create it from previous analysis results.
 
         :param parameters: A dictionary containing parameter configurations for the model.
-        :type parameters: dict
         :param model_key: The key or identifier of the model for which problematic IDs are being loaded.
-        :type model_key: str
-        :param outlier_run_name: The name of the outlier run to load IDs for. If None, loads IDs for the current run_name.
-        :type outlier_run_name: str | None
+        :param outlier_run_name: The name of the outlier run to load IDs for.
+                                    If None, loads IDs for the current run_name.
         :param global_outliers: Flag indicating whether to include outliers from all runs.
-        :type global_outliers: bool
         :return: A list of outlier groups extracted from the metadata file.
-        :rtype: list
 
         :raises FileNotFoundError: If the metadata file does not exist and cannot be created from
-            previous analysis results.
+                                    previous analysis results.
         """
 
         print("Loading IDs of outlier groups...")
@@ -501,7 +515,7 @@ class LoadData(IOCore):
                       "No problematic IDs can be loaded.")
                 return None
 
-        # Ensure that global outliers include outliers from given run by saving them before loading global outliers
+        # Ensure that global outliers include outliers from the given run by saving them before loading global outliers
         if global_outliers:
             outliers_df = self._update_and_get_global_outliers(parameters, outliers_df, "patient_id")
 
@@ -518,15 +532,10 @@ class LoadData(IOCore):
         The function returns the outlier epochs in the form of a DataFrame or None if no problematic epochs are found.
 
         :param parameters: Configuration parameters used in the operation.
-        :type parameters: dict
         :param model_key: Unique identifier for the model being used.
-        :type model_key: str
         :param outlier_run_name: Optional identifier for the run to load outlier metadata for.
-        :type outlier_run_name: str | None
         :param global_outliers: Flag indicating whether to include global outliers in the analysis.
-        :type global_outliers: bool
         :return: A DataFrame containing the problematic outlier epochs or None if no problematic epochs are found.
-        :rtype: pd.DataFrame | None
         """
 
         print("Loading outlier epochs...")
@@ -554,7 +563,7 @@ class LoadData(IOCore):
 
         return outliers_df
 
-    def load_run_data(self, hyperparameters: dict, run_name: str, model_key: str):
+    def load_run_data(self, hyperparameters: dict, run_name: str, model_key: str) -> dict:
         """Loads the run data from a run specified by name, hyperparameters, and model_key."""
         metadata_path = self.return_run_metadata_fullpath(hyperparameters, run_name, model_key)
         metadata = self.load_json(metadata_path)
@@ -566,15 +575,11 @@ class LoadData(IOCore):
 
         :param hyperparamers: Configuration dictionary specifying parameters
                               required to determine dataset split file paths.
-        :type hyperparamers: dict
         :param run_name: Name of the run used to access associated split file paths.
-        :type run_name: str
         :param combined: Flag to determine whether all splits should be combined
                          into a single DataFrame. Defaults to True.
-        :type combined: bool
         :returns: A single combined DataFrame if 'combined' is True. Otherwise, a dictionary
                   of DataFrames indexed by the file name (stem) of each split.
-        :rtype: dict | pd.DataFrame
         """
         splits_list = self.return_related_fullpaths(hyperparamers, run_name, ["test_and_train_data", "splits"])
 
@@ -589,6 +594,21 @@ class LoadData(IOCore):
             return df_dict
 
     def load_results(self, hyperparamers: dict, run_name: str, model_key: str, combined=True) -> dict|pd.DataFrame:
+        """
+        Loads experiment results based on specified hyperparameters, run name, and model key
+        into a dictionary of DataFrames or a combined DataFrame
+
+        :param hyperparamers: Dictionary containing hyperparameter values used to filter
+                            the related results.
+        :param run_name: Name of the experiment run to identify the result files.
+        :param model_key: Specific model key to filter and locate result files.
+        :param combined: Flag indicating whether to return a single concatenated
+                        DataFrame (True) or a dictionary of individual DataFrames
+                        (False). Defaults to True.
+        :return: If combined is True, returns a pandas DataFrame combining all individual result DataFrames.
+                If combined is False, returns a dictionary where keys are file names and values
+                are the corresponding result DataFrames.
+        """
         results_list = self.return_related_fullpaths(hyperparamers, run_name, ["results", model_key])
 
         df_dict = {}
@@ -601,7 +621,7 @@ class LoadData(IOCore):
         else:
             return df_dict
 
-    def load_combined_features_df(self, parameters: dict, class_1: str, class_0: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def load_combined_features_df(self, parameters: dict, class_1: str, class_0: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Load combined features dataframes for the specified classes.
 
@@ -614,10 +634,8 @@ class LoadData(IOCore):
         :param class_1: The name or identifier of the first class whose data will be loaded.
             Valid options are: 'normal_an', 'faw' and 'awake'
         :param class_0: The name or identifier of the second class whose data will be loaded.
-            Valic options are: 'normal_an', 'faw' and 'awake'
+            Valid options are: 'normal_an', 'faw' and 'awake'
         :return: A tuple of pandas DataFrames corresponding to the data of `class_1` and `class_0`.
-
-        :rtype: Tuple[pd.DataFrame, pd.DataFrame]
         """
         class_1_path = self.return_file_fullpath(parameters, True, False, class_1,
                                                               ["test_and_train_data", "feature_sets"])
@@ -625,7 +643,7 @@ class LoadData(IOCore):
                                                               ["test_and_train_data", "feature_sets"])
         print(f"Loading {class_1} data from {class_1_path}\n "
               f"Loading {class_0} data from {class_0_path}")
-        class_1_df = pd.read_csv(class_1_path).copy()
+        class_1_df = pd.read_csv(class_1_path).copy() # Copying to avoid pd messing with the file content
         class_0_df = pd.read_csv(class_0_path).copy()
 
         return class_1_df, class_0_df
@@ -637,19 +655,14 @@ class LoadData(IOCore):
         the file location using the provided parameters. It reads and returns the data from
         the corresponding CSV file.
 
-        :param parameters:
-            List of parameters used to determine the folder path for outliers files.
-        :param outlier_type:
-            Specifies the type of outliers to fetch, either "epoch" or "patient_id".
-        :return:
-            Pandas DataFrame containing the data of global outliers.
-        :rtype: pd.DataFrame
-        :raises ValueError:
-            If the provided outlier_type is not "epoch" or "patient_id".
+        :param parameters: List of parameters used to determine the folder path for outliers files.
+        :param outlier_type: Specifies the type of outliers to fetch, either "epoch" or "patient_id".
+        :return: Pandas DataFrame containing the data of global outliers.
+        :raises ValueError: If the provided outlier_type is not "epoch" or "patient_id".
         """
         folder_path = self.return_all_parameter_fullpath(parameters, False, False, ["global_outliers"])
 
-        # Build fullpath depending on outlier type
+        # Build a fullpath depending on the outlier type
         if outlier_type == "epoch":
             filename = "global_epoch_outliers.csv"
         elif outlier_type == "patient_id":
@@ -662,7 +675,30 @@ class LoadData(IOCore):
         outliers_df = pd.read_csv(fullpath)
         return outliers_df
 
-    def load_further_results(self, hyperparameters: dict, analysis_key: str, result_type: str, filename: str):
+    def load_further_results(self, hyperparameters: dict, analysis_key: str, result_type: str, filename: str)\
+            -> pd.DataFrame|dict:
+        """
+        Loads additional results specified by the analysis key, result type, and filename from
+        the corresponding path derived using the given hyperparameters.
+
+        This method determines the full path to the results based on the hyperparameters
+        and loads the data in either a DataFrame or JSON structure, as specified by the result
+        type. It raises an exception if the result type is invalid.
+
+
+        :param hyperparameters: Dictionary containing the hyperparameters which are used
+            to generate the full path to the results.
+        :param analysis_key: The Key, used to identify the specific analysis folder within the
+            hyperparameters structure.
+        :param result_type: The type of results to load. Must be either 'dataframe' (loads
+            using pandas) or 'json' (loads using the custom JSON loader).
+        :param filename: The name of the file to be loaded from the derived folder path.
+
+        :returns: The loaded results as a pandas DataFrame if the type is
+            'dataframe', or as a dictionary if the type is 'json'.
+
+        :raises ValueError: If the `result_type` is not 'dataframe' or 'json'.
+        """
         folder_path = self.return_all_parameter_fullpath(hyperparameters, False, True,
                                                          ["further_analysis", analysis_key])
 
@@ -674,22 +710,22 @@ class LoadData(IOCore):
         else:
             raise ValueError(f"Invalid result type. Expected 'dataframe' or 'json', got {result_type}")
 
-    def _update_and_get_global_outliers(self, parameters, outliers_df: pd.DataFrame, outlier_type: str):
+    def _update_and_get_global_outliers(self, parameters, outliers_df: pd.DataFrame, outlier_type: str) -> pd.DataFrame:
         """
         Updates the global outliers with new outliers and retrieves the updated global outliers.
         This function saves the new outliers to the global outliers using an external saver instance
         and then fetches the updated global outliers dataset.
 
         :param parameters: The parameters required for saving and loading global outliers.
-        :type parameters: Any
         :param outliers_df: A pandas DataFrame containing the new outliers to be added to the global outliers.
         :param outlier_type: A string representing the specific type of outlier
             valid options are: "patient_id", "epoch".
-        :return: A pandas DataFrame containing the updated global outliers after addition of the new outliers.
-        :rtype: pd.DataFrame
+        :return: A pandas DataFrame containing the updated global outliers after the addition of the new outliers.
         """
+        # Create the saver instance
         from MachineLearning.IO.save_result import SaveResult
         saver = SaveResult()
+
         saver.save_global_outliers(parameters, outliers_df, outlier_type)  # Add given outliers to global
         global_outliers_df = self.load_global_outliers(parameters, outlier_type)  # Get updated global outliers
         return global_outliers_df

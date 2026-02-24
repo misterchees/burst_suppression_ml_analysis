@@ -7,8 +7,8 @@
   - [ ] Add, implement and test new path handling functions
     - [ ] Replace os.path functions with pathlib functionality (str → Path objects)
       - [x] In path_utils
-      - [ ] In IOCore
-        - [ ] io_core
+      - [ ] In IO
+        - [x] io_core
         - [ ] load_data
         - [ ] save_result
     - [ ] Create and run tests for all functions in path_handling
@@ -19,13 +19,20 @@
         - [ ] save_result
   - [ ] Replace all findings of using the old base_dir logic with PathManager logic
   - [ ] Delete all deprecated functions
-- [ ] Fix Bugs
-	- [ ] Not all parameters are toggable from Runner
-	- [ ] cluster analysis plots skript overwrite data instead of creating new if you use outliers
-- [ ] Needed functionality -> efficiency, robustness and reusability
-	- [ ] Make it possible to work with parquet data
-		- [ ] Add functionality to Read, write, load and save functions
-	- [ ] Add functionality to inspect runs in a more readable way than opening the json
+  - [ ] Fix Bugs
+    - [ ] Remove/refactor deprecated functions/calls like pd.loc
+    - [ ] Not all parameters are toggable from Runner
+    - [ ] cluster analysis plots skript overwrite data instead of creating new if you use outliers
+- [ ] Needed functionality → efficiency, robustness and reusability
+	- [ ] Make it possible to work with different data types like .parquet and .mat 
+		- [ ] Add/rework functions to read, write, load and save functions accordingly
+    - [ ] Change/Delete the following functions and dependencies:
+        - [ ] IO/load_data/load_awake_times_as_df + load_cleaned_awake_times_as_df
+        - [ ] IO/load_data/load_eeg_data and subfunctions. Make them independent of the raw data type
+    - [ ] Change design of:
+      - [ ] Filtered EEG data structure. The header with fs breaks the structure and currently serves no real purpose
+            since the fs is always the same (128 Hz) throughout the project. 
+    - [ ] Add functionality to inspect runs in a more readable way than opening the json
 - [ ] Make tests for basic functions of pipeline
 	- [ ] Create test environment
     - [ ] Test Utils
@@ -41,8 +48,11 @@
 	- [ ] Test Skripts
 - [ ] Implement good coding practices
 	- [ ] Remove duplicate/unused code
-	- [ ] Break down functions
-	- [ ] Add/update comments
+      - [ ] Check EEG loading functions
+      - [ ] Check load_problematic_ids and load_problematic_epochs in IO/load_data
+    - [ ] Break down functions
+    - [ ] Add/update comments and docstrings
+    - [ ] Use Typing for complex outputs in functions
 - [ ] Migrate all matlab code to python
   - [ ] Add function to convert time column from raw file to plain number of seconds
   - [ ] Migrate existing code
