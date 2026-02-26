@@ -10,7 +10,7 @@ from MachineLearning.Utils.file_data_utils import FileDataUtils
 from MachineLearning.Utils.path_utils import PathUtils
 
 
-def load_psd_with_start_end_resultid(folder_path: str, filename: str) \
+def load_psd_with_start_end_resultid(folder_path: Path, filename: str) \
         -> Tuple[pd.DataFrame, int, int, int]:
     """
     Loads a PSD csv file from the given folder as Dataframe and returns it with metadata extracted from the filename.
@@ -53,8 +53,9 @@ class LoadData(IOCore):
         """
         # Assemble the fullpath to the CSV file
         faw_dir = self.return_folder_path(["faw"])
-        parameter_dir = PathUtils.return_A_B_C_D_X_Y_path("result", parameters)
-        csv_fullpath = Path(faw_dir, f"{parameter_dir}.csv")
+        a_b_c_d_dir = PathUtils.return_A_B_C_D_path("result", parameters)
+        x_y_name = PathUtils.return_X_Y_name(parameters)
+        csv_fullpath = Path(faw_dir, a_b_c_d_dir, f"{x_y_name}.csv")
         # Validate fullpath
         if not csv_fullpath.is_file():
             raise FileNotFoundError(f"CSV not found: {csv_fullpath}")
@@ -264,7 +265,7 @@ class LoadData(IOCore):
 
         # load .mat file
         eeg_cols = self.data_names["eeg_files"]
-        mat_data = scipy.io.loadmat(mat_file_path)
+        mat_data = scipy.io.loadmat(str(mat_file_path))
         fs = int(mat_data[eeg_cols["eeg_fs"]].squeeze())
         raw_eeg = mat_data[eeg_cols["eeg_rawEEG"]]
 

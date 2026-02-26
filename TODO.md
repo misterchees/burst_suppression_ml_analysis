@@ -5,14 +5,14 @@
 - [ ] Update path handling to make it more robust
   - [x] Restructure path_config.yaml
   - [ ] Add, implement and test new path handling functions
-    - [ ] Replace os.path functions with pathlib functionality (str → Path objects)
+    - [x] Replace os.path functions with pathlib functionality (str → Path objects)
       - [x] In path_utils
-      - [ ] In IO
+      - [x] In IO
         - [x] io_core
-        - [ ] load_data
-        - [ ] save_result
-    - [ ] Create and run tests for all functions in path_handling
-      - [ ] In path_utils
+        - [x] load_data
+        - [x] save_result
+    - [ ] Create and run tests for all functions in path handling modules
+      - [x] In path_utils
       - [ ] In IOCore
         - [ ] io_core
         - [ ] load_data
@@ -50,7 +50,13 @@
 	- [ ] Remove duplicate/unused code
       - [ ] Check EEG loading functions
       - [ ] Check load_problematic_ids and load_problematic_epochs in IO/load_data
+      - [ ] Merge the save psd functions in IO/save_result
+      - [ ] Probably merge save_ml_result, save_metadata_analysis and save_predicted_set in IO/save_result
+      - [ ] Look into functions that basically just wrap other functions and delete e.g., save_further_analysis
+      in IO/save_result
+      - [ ] Try to remove explicit file_type arguments in saving functions and infer them from the specific files
     - [ ] Break down functions
+    - [ ] Add Logging
     - [ ] Add/update comments and docstrings
     - [ ] Use Typing for complex outputs in functions
 - [ ] Migrate all matlab code to python

@@ -8,3 +8,6 @@ seaborn~=0.13.2
 pyyaml
 python-dotenv
 joblib
+nolds
+antropy
+entropyhub

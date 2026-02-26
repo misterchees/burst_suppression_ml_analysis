@@ -125,7 +125,7 @@ class IOCore:
         Returns a fullpath that is of the following structure:
         folder1/folder2/...folderN/<folderN name_A_B_C_D/<episode Name>_X_Y
         :param parameters: Dictionary of parameters that defines A, B, C, D, X, Y
-        :param last_node_file: Flag to determine if the last node is a csv file.
+        :param last_node_file: Flag to determine if the last node is a csv file or a directory.
          -> fullpath ends then with .../<episode Name>_X_Y.csv
         :param create_dirs: Flag to create the necessary folders if not already present.
         :param folder_parts: Keys of folders from the path_config that define folder1 to folderN
@@ -134,17 +134,18 @@ class IOCore:
         """
         # Keys of stages that are stored in individual runs (i.e., the corresponding run folders)
         individual_run_keys = ["splits", "models", "results", "metadata_analysis"]
+        # Prepare all individual parts of the path to assemble
         dir_first_part = self.return_folder_path(folder_parts)
         prefix_name = self.return_folder_name(*folder_parts)
+        dir_abcd_part = PathUtils.return_A_B_C_D_path(prefix_name, parameters)
+        xy_part = PathUtils.return_X_Y_name(parameters)
 
+        # X_Y (Parameters of individual epochs) can be either a directory or a file
         if not last_node_file:
-            dir_abcd_xy_part = PathUtils.return_A_B_C_D_X_Y_path(prefix_name, parameters)
-            folder_path = Path(dir_first_part, dir_abcd_xy_part)
+            folder_path = Path(dir_first_part, dir_abcd_part, xy_part)
             fullpath = folder_path
         else:
-            dir_abcd_part = PathUtils.return_A_B_C_D_name(prefix_name, parameters)
             folder_path = Path(dir_first_part, dir_abcd_part)
-            xy_part = PathUtils.return_X_Y_name(parameters)
             fullpath = Path(folder_path, f"{xy_part}.csv")
 
         # Append run_name if given. If not, use the current run name if it's from a specific filepath

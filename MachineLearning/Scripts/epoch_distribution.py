@@ -72,9 +72,10 @@ def get_initial_epoch_distribution(hyperparameters: dict, save_result=True):
 
     if save_result:
         from MachineLearning.IO.save_result import PathUtils
-        params_path = PathUtils.return_A_B_C_D_X_Y_path("Dist", hyperparameters)
+        a_b_c_d_dir = PathUtils.return_A_B_C_D_path("Dist", hyperparameters)
+        x_y_name = PathUtils.return_X_Y_name(hyperparameters)
         folderpath = "D:\\Daten\\Other\\Initial_epoch_distribution\\"
-        full_folderpath = Path(folderpath,params_path)
+        full_folderpath = Path(folderpath, a_b_c_d_dir, x_y_name)
         try:
             full_folderpath.mkdir()
         except FileExistsError:

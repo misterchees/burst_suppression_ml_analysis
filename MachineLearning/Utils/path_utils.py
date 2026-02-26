@@ -4,16 +4,16 @@ from pathlib import Path
 
 class PathUtils:
     @staticmethod
-    def return_A_B_C_D_name(prefix, parameters: dict) -> str:
+    def return_A_B_C_D_path(prefix, parameters: dict) -> Path:
         """
-        Calculates and returns a name variable defined by the class attributes,
+        Calculates and returns a path variable defined by the class attributes,
         refractory time, min_episode_length, mac_threshold, and bis_threshold.
         Example: result_70_080_20_5
 
         :param prefix: Prefix of the subfolder name variable.
         :param parameters: A dictionary with all mentioned parameters
 
-        :return: Subfolder string variable.
+        :return: Subfolder path variable.
         """
         # Extract parameters from dict
         mac_threshold = parameters["mac_threshold"]
@@ -23,17 +23,17 @@ class PathUtils:
 
         # leave 2 digits after decimal point and remove it afterward: 0.5 -> 050, 0.25 -> 025 etc.
         mac_threshold = f"{mac_threshold:.2f}".replace(".", "")
-        return f"{prefix}_{bis_threshold}_{mac_threshold}_{min_episode_length}_{refractory_time}"
+        return Path(f"{prefix}_{bis_threshold}_{mac_threshold}_{min_episode_length}_{refractory_time}")
 
     @staticmethod
-    def return_X_Y_name(parameters: dict) -> str:
+    def return_X_Y_name(parameters: dict) -> Path:
         """
-        Calculates and returns a name variable defined by the class attributes:
+        Calculates and returns a path variable defined by the class attributes:
         merged_episodes, fixed_window_size, and overlap.
         Example: Summary_Episode_20_000
 
         :param parameters: A dictionary with all mentioned parameters
-        :return: Subfolder string variable.
+        :return: Subfolder path variable.
         """
         # extract parameters from dict
         merged_episodes = parameters["merged_episodes"]
@@ -46,19 +46,7 @@ class PathUtils:
             episode_name = "Summary_Merged_Episodes"
         # leave 2 digits after decimal point and remove it afterward: 0.5 -> 050, 0.25 -> 025 etc.
         overlap = f"{overlap:.2f}".replace(".", "")
-        return f"{episode_name}_{fixed_window_size}_{overlap}"
-
-    @staticmethod
-    def return_A_B_C_D_X_Y_path(prefix: str, parameters: dict) -> Path:
-        """
-        Returns a path-like string. For details look into return_A_B_C_D_name and return_X_Y_name functions.
-        :param prefix: Prefix of abcd folder
-        :param parameters: parameters that decide about the variables.
-        :return: Path object of general structure <prefix>_A_B_C_D/<Episode>_X_Y
-        """
-        abcd_folder = PathUtils.return_A_B_C_D_name(prefix, parameters)
-        xy_folder = PathUtils.return_X_Y_name(parameters)
-        return Path(abcd_folder, xy_folder)
+        return Path(f"{episode_name}_{fixed_window_size}_{overlap}")
 
     @staticmethod
     def list_files_in_folder(folder_path: Path, extension_filter: str = None, print_to_console=False, fullpaths=False)\
@@ -76,21 +64,19 @@ class PathUtils:
             print(f"Folder does not exist: {folder_path}")
             return [], 0
 
-        all_files = [
-            f for f in folder_path.iterdir() # List contents of folder
-            if Path(folder_path, f).is_file() # Check if ~/folder_path/f is a file
-        ]
+        all_files = [f for f in folder_path.iterdir() if f.is_file()] # Aggregate only files
 
         if extension_filter:
             all_files = [f for f in all_files if f.suffix.lower() == extension_filter.lower()]
 
-        if fullpaths:
-            all_files = [folder_path / f for f in all_files] # appends f to folder_path
+        if not fullpaths:
+            all_files = [f.name for f in all_files]
 
         if print_to_console:
             for file in all_files:
                 print(file)
 
+        # Print information based on the extension filter flag
         print(f"\nTotal files{f' with extension {extension_filter}' if extension_filter else ''}: {len(all_files)}")
 
         return all_files, len(all_files)
@@ -105,18 +91,9 @@ class PathUtils:
             return
 
         for filename in folder_path.iterdir():
-            file_path = Path(folder_path, filename)
-            if file_path.is_file():  # Delete only files, not subdirs
+            if filename.is_file():  # Delete only files, not subdirs
                 try:
-                    file_path.unlink()
-                    print(f"Deleted file: {file_path}")
+                    filename.unlink()
+                    print(f"Deleted file: {filename}")
                 except Exception as e:
-                    print(f"Error deleting file {file_path}: {e}")
-
-    @staticmethod
-    def assemble_psd_file_name(start: int, end: int, result_id: int) -> str:
-        """Assembles the name of a PSD file with given metadata."""
-        if start is None or end is None or result_id is None:
-            raise ValueError("start, end and result_id must be values")
-
-        return f"PSD_{start}_{end}_{result_id}.csv"
+                    print(f"Error deleting file {filename}: {e}")

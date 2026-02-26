@@ -1,5 +1,7 @@
 """This Module contains the feature extractor class."""
 import os
+from pathlib import Path
+
 from nolds import sampen
 from antropy import perm_entropy
 from EntropyHub import FuzzEn
@@ -80,7 +82,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "bandpower"
 
         # Extract and save feature
-        self.extract_feature_from_PSDs(feature_key, normalize_to=normalize_to)
+        self.extract_feature_from_psds(feature_key, normalize_to=normalize_to)
 
     @register_feature_calculator("bandpower")
     def calculate_relative_bandpower(self, psd_df: pd.DataFrame, normalize_to="bands") -> dict:
@@ -136,7 +138,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "shannon_entropy"
 
         # Extract and save feature
-        self.extract_feature_from_PSDs(feature_key, normalize=normalize)
+        self.extract_feature_from_psds(feature_key, normalize=normalize)
 
     @register_feature_calculator("shannon_entropy")
     def calculate_shannon_entropy(self, psd_df: pd.DataFrame, normalize=False) -> float:
@@ -188,7 +190,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "spectral_skewness"
 
         # Extract and save feature
-        self.extract_feature_from_PSDs(feature_key, normalize=normalize, n_method=n_method,
+        self.extract_feature_from_psds(feature_key, normalize=normalize, n_method=n_method,
                                        lower_bound=lower_bound, upper_bound=upper_bound)
 
     @register_feature_calculator("spectral_skewness")
@@ -253,7 +255,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "spectral_kurtosis"
 
         # Calculate results for PSDs
-        self.extract_feature_from_PSDs(feature_key, normalize=normalize, n_method=n_method,
+        self.extract_feature_from_psds(feature_key, normalize=normalize, n_method=n_method,
                                        lower_bound=lower_bound, upper_bound=upper_bound)
 
     @register_feature_calculator("spectral_kurtosis")
@@ -315,7 +317,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "mean"
 
         # Calculate and save results for epochs
-        self.extract_feature_from_EEG(feature_key)
+        self.extract_feature_from_eeg(feature_key)
 
     @register_feature_calculator("mean")
     def calculate_mean(self, signal: np.ndarray) -> floating:
@@ -343,7 +345,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "variance"
 
         # Calculate and save results for epochs
-        self.extract_feature_from_EEG(feature_key)
+        self.extract_feature_from_eeg(feature_key)
 
     @register_feature_calculator("variance")
     def calculate_variance(self, signal: np.ndarray) -> floating:
@@ -370,7 +372,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "amplitude"
 
         # Calculate and save results for epochs
-        self.extract_feature_from_EEG(feature_key)
+        self.extract_feature_from_eeg(feature_key)
 
     @register_feature_calculator("amplitude")
     def calculate_amplitude(self, signal: np.ndarray) -> float:
@@ -399,7 +401,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "sample_entropy"
 
         # Calculate and save results for epochs
-        self.extract_feature_from_EEG(feature_key, emb_dim=emb_dim, tolerance=tolerance)
+        self.extract_feature_from_eeg(feature_key, emb_dim=emb_dim, tolerance=tolerance)
 
     @register_feature_calculator("sample_entropy")
     def calculate_sample_entropy(self, signal: np.ndarray, emb_dim: int = 2, tolerance: float = 0.2) -> float:
@@ -432,7 +434,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "permutation_entropy"
 
         # Calculate and save results for epochs
-        self.extract_feature_from_EEG(feature_key, order=order, delay=delay, normalize=normalize)
+        self.extract_feature_from_eeg(feature_key, order=order, delay=delay, normalize=normalize)
 
     @register_feature_calculator("permutation_entropy")
     def calculate_permutation_entropy(self, signal: np.ndarray, order: int = 3, delay: int = 1,
@@ -466,7 +468,7 @@ class EEGFeatureExtractor(MLObject):
         feature_key = "fuzzy_entropy"
 
         # Calculate and save results for epochs
-        self.extract_feature_from_EEG(feature_key, m=m, r=r, n=n)
+        self.extract_feature_from_eeg(feature_key, m=m, r=r, n=n)
 
     @register_feature_calculator("fuzzy_entropy")
     def calculate_fuzzy_entropy(self, signal: np.ndarray, m: int = 2, r: float = 0.2, n: int = 2) -> float:
@@ -483,7 +485,7 @@ class EEGFeatureExtractor(MLObject):
         result = FuzzEn(signal, m, std_r, n)
         return result['FuzzEn']
 
-    def extract_feature_from_EEG(self, feature_key: str, **kwargs):
+    def extract_feature_from_eeg(self, feature_key: str, **kwargs):
         """
         Helper function to automate calculation of feature defined by feature key.
 
@@ -499,9 +501,9 @@ class EEGFeatureExtractor(MLObject):
         feature_name = self.data_loader.return_feature_name(feature_key)
 
         for epoch_type in self.epoch_types:
-            self.calculate_and_save_feature_from_EEG(feature_key, feature_name, func, epoch_type, **kwargs)
+            self.calculate_and_save_feature_from_eeg(feature_key, feature_name, func, epoch_type, **kwargs)
 
-    def calculate_and_save_feature_from_EEG(self, feature_key: str, feature_name: str,
+    def calculate_and_save_feature_from_eeg(self, feature_key: str, feature_name: str,
                                             func, epoch_type: str, **func_kwargs: str):
         """
         Calculates a feature directly from EEG and saves it to a file.
@@ -537,7 +539,7 @@ class EEGFeatureExtractor(MLObject):
         self.result_saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
         print(message)
 
-    def extract_feature_from_PSDs(self, feature_key: str, **kwargs):
+    def extract_feature_from_psds(self, feature_key: str, **kwargs):
         """
         Helper function to extract a feature of Epoch PSDs of all Epochs of the current classes. It saves them
         in a file in the respective directory.
@@ -587,7 +589,7 @@ class EEGFeatureExtractor(MLObject):
         self.result_saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
         print(message)
 
-    def apply_function_to_all_psds(self, psd_directory_path: str, func, feature_name, **func_kwargs) -> list:
+    def apply_function_to_all_psds(self, psd_directory_path: Path, func, feature_name, **func_kwargs) -> list:
         """
         Takes a path to a psd_directory and applies given function func to all psd files.
         :param psd_directory_path: Path to psd directory.
