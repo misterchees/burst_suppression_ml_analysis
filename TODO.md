@@ -1,7 +1,7 @@
 - [x] Overhaul project structure
-  - [x] Organize information about the project in a sensible way
+  - [x] Organize information about the project sensibly
   - [x] Remove empty files
-  - [x] Review files from /MachineLearning/Scripts and optionally integrate into file structure
+  - [x] Review files from /MachineLearning/Scripts and optionally integrate into the file structure
 - [ ] Update path handling to make it more robust
   - [x] Restructure path_config.yaml
   - [ ] Add, implement and test new path handling functions
@@ -31,7 +31,7 @@
         - [ ] IO/load_data/load_eeg_data and subfunctions. Make them independent of the raw data type
     - [ ] Change design of:
       - [ ] Filtered EEG data structure. The header with fs breaks the structure and currently serves no real purpose
-            since the fs is always the same (128 Hz) throughout the project. 
+            since fs is always the same (128 Hz) throughout the project. 
     - [ ] Add functionality to inspect runs in a more readable way than opening the json
 - [ ] Make tests for basic functions of pipeline
 	- [ ] Create test environment
@@ -51,10 +51,14 @@
       - [ ] Check EEG loading functions
       - [ ] Check load_problematic_ids and load_problematic_epochs in IO/load_data
       - [ ] Merge the save psd functions in IO/save_result
+      - [ ] Merge return_all_paramater_fullpath and return_no_parameter_fullpath in io_core if possible 
+      - [ ] return_folded_split_folder_fullpath and return_single_split_folder_fullpath only exist to reinforce 
+      name consistency ofo folders but are basically just Wrappers for return_all_parameter_fullpath. Find another way! 
       - [ ] Probably merge save_ml_result, save_metadata_analysis and save_predicted_set in IO/save_result
       - [ ] Look into functions that basically just wrap other functions and delete e.g., save_further_analysis
       in IO/save_result
       - [ ] Try to remove explicit file_type arguments in saving functions and infer them from the specific files
+    - [ ] Try to find a better module for IO/io_core/IOCore/return_all_feature_keys 
     - [ ] Break down functions
     - [ ] Add Logging
     - [ ] Add/update comments and docstrings

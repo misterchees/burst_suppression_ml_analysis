@@ -11,7 +11,7 @@ _patient_id = 1127
 
 def plot_bis_and_mac(patient_id: int, eeg: bool):
     # Assemble folderpath
-    folderpath = loader.return_folder_path(["initial_data", "combined_raw_data"])
+    folderpath = loader.return_path_info(["initial_data", "combined_raw_data"])
     filename = f"{patient_id}.csv"
     csv_path = Path(folderpath, filename)
 

@@ -5,6 +5,7 @@ from typing import List
 
 from MachineLearning.Utils.path_utils import PathUtils
 from MachineLearning.Utils.config_handler import load_config
+from MachineLearning.Utils.path_manager import PathManager
 
 
 class IOCore:
@@ -17,66 +18,24 @@ class IOCore:
         """Initializes the IOCore class with the path and data config to handle paths."""
         self.path_config = load_config("path_config.yaml")
         self.data_names = load_config("data_names_config.yaml")
+        self.path_manager = PathManager()
 
-    def psd_folder_path(self, parameters: dict, epoch_type: str) -> Path:
+    def return_path_info(self, folder_keys: List[str], stem = False) -> Path | str:
         """
-        Returns a path to the PSD directory, with the current parameters specified in <parameters>.
-        :param parameters: Current Episode Parameters
-        :param epoch_type: Type of Episode, that influences the path.
-        :return: Path to the PSD directory
+        Return information of the path for given keys in folder structure.
+
+        :param folder_keys: List of keys to define the path.
+        :param stem: If True, only the stem of the path is returned. Defaults to False.
+        :return: Path as a Path or stem as a string.
         """
-        output_path = self.return_file_fullpath(parameters, False, True, epoch_type, ["features", "psds"])
-        return output_path
-
-    def return_feature_name(self, feature_key: str) -> str:
-        """Returns the name of the feature for a given key from path_config"""
-        return self.return_folder_name("features", feature_key)
-
-    def return_folder_name(self, *folder_keys: str) -> str:
-        """
-        Returns the name of the folder for given folder_keys from path_config by recursively traveling
-        one node deeper for every key.
-        :param folder_keys: Any number of folder keys.
-        :return: Name of the folder
-        """
-        # Check if keys given
-        if len(folder_keys) == 0:
-            raise ValueError(f"No folder keys specified.")
-
-        current_node = self.path_config["base_dir"]
-        for key in folder_keys:
-            current_node = current_node["subdirs"][key]
-
-        # If it's a leaf in the yaml config, then its key:value, else it's key:dict with name in key = path_name
-        if isinstance(current_node, dict):
-            return current_node["path_name"]
-        else:
-            return current_node
-
-    def return_folder_path(self, folder_keys: list[str]) -> Path:
-        """
-        Assembles a fullpath with folder keys, following all folders along the way.
-        Returns the base dir if no arguments are given.
-        :param folder_keys: Keys to assemble the path of folders
-        :return: Fullpath defined by the folder_keys
-        """
-        root = self.path_config["base_dir"]
-        current_node = root
-        nodes = []
-        for key in folder_keys:
-            current_node = current_node["subdirs"][key]
-            # If it's a leaf in the yaml config, then its key:value, else it's key:dict with name in key = path_name
-            if isinstance(current_node, dict):
-                nodes.append(current_node["path_name"])
-            else:
-                nodes.append(current_node)
-
-        fullpath = Path(root["path_name"], *nodes)
-        return fullpath
+        path = self.path_manager.get_path(*folder_keys)
+        if stem:
+            path = str(path.stem)
+        return path
 
     def return_all_feature_keys(self) -> list:
         """Returns a list of all features keys from the path config."""
-        return list(self.path_config["base_dir"]["subdirs"]["features"]["subdirs"].keys())
+        return list(self.path_config["root"]["features"]["children"].keys())
 
     def return_file_fullpath(self, parameters: dict, last_node_file: bool, create_subdirs: bool,
                              file_type: str, folder_keys: list[str]) -> Path:
@@ -100,7 +59,7 @@ class IOCore:
         return fullpath
 
     def return_no_parameters_fullpath(self, parameters: dict, file_type: str,
-                                      last_node_file=True, folder_keys: list[str]=None) -> Path:
+                                      last_node_file=True, folder_keys: List[str]=None) -> Path:
         """
        Creates a filepath for a file depending on parameters, file type, and folder keys,
        where the keys determine the folder and the parameters determine the name of the file.
@@ -114,13 +73,13 @@ class IOCore:
         last_node = self._return_node_name(parameters, file_type)
 
         # Get the correct folder path based on folder_keys
-        folder_dir = self.return_folder_path(folder_keys)
+        folder_dir = self.return_path_info(folder_keys)
         last_node = f"{last_node}.csv" if last_node_file else last_node
         output_path = Path(folder_dir, last_node)
         return output_path
 
     def return_all_parameter_fullpath(self, parameters: dict, last_node_file: bool, create_dirs: bool,
-                                      folder_parts: list[str], run_name: str = None) -> Path:
+                                      folder_parts: List[str], run_name: str = None) -> Path:
         """
         Returns a fullpath that is of the following structure:
         folder1/folder2/...folderN/<folderN name_A_B_C_D/<episode Name>_X_Y
@@ -135,8 +94,8 @@ class IOCore:
         # Keys of stages that are stored in individual runs (i.e., the corresponding run folders)
         individual_run_keys = ["splits", "models", "results", "metadata_analysis"]
         # Prepare all individual parts of the path to assemble
-        dir_first_part = self.return_folder_path(folder_parts)
-        prefix_name = self.return_folder_name(*folder_parts)
+        dir_first_part = self.return_path_info(folder_parts)
+        prefix_name = dir_first_part.stem
         dir_abcd_part = PathUtils.return_A_B_C_D_path(prefix_name, parameters)
         xy_part = PathUtils.return_X_Y_name(parameters)
 
@@ -165,6 +124,7 @@ class IOCore:
     def return_single_split_folder_fullpath(self, parameters: dict, train_or_test: str, create_subdirs=True) -> Path:
         """
         Returns a fullpath to the current train or test file in the split folder (single split).
+        Ensures consistent names of the split files
         :param parameters: Parameters that determine the subfolder path in the split folder.
         :param train_or_test: Defines if the path leads to a train or test file. Valid options are 'train' and 'test'
         :param create_subdirs: Flag to create the necessary folders if not already present.
@@ -182,6 +142,7 @@ class IOCore:
                                             fold_idx: int, total_folds: int, create_subdirs=True) -> Path:
         """
         Returns a fullpath to the current train or test file in the split folder (part of a folded split).
+        Ensures consistent names of the split files
         :param parameters: Parameters that determine the subfolder path in the split folder.
         :param train_or_test: Defines if the path leads to a train or test file. Valid options are 'train' and 'test'
         :param fold_idx: Current fold index
@@ -270,7 +231,7 @@ class IOCore:
         """
 
         patient_ids = []
-        directory = self.return_folder_path(["initial_data", initial_data_key])
+        directory = self.return_path_info(["initial_data", initial_data_key])
 
         for file in directory.iterdir():
             try:

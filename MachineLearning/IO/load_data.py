@@ -52,7 +52,7 @@ class LoadData(IOCore):
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
         # Assemble the fullpath to the CSV file
-        faw_dir = self.return_folder_path(["faw"])
+        faw_dir = self.return_path_info(["faw"])
         a_b_c_d_dir = PathUtils.return_A_B_C_D_path("result", parameters)
         x_y_name = PathUtils.return_X_Y_name(parameters)
         csv_fullpath = Path(faw_dir, a_b_c_d_dir, f"{x_y_name}.csv")
@@ -153,7 +153,7 @@ class LoadData(IOCore):
         random.seed(random_state)
         anestart_csv_path = self.return_csv_path_from_basedir("awake_times")
         epoch_length_sec = int(parameters["fixed_window_size"])
-        filtered_data_dir = self.return_folder_path(["filtered_data"])
+        filtered_data_dir = self.return_path_info(["filtered_data"])
 
         anestart_df = pd.read_csv(anestart_csv_path)
         result = []
@@ -254,7 +254,7 @@ class LoadData(IOCore):
         :return: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a raw-EEG samples array with two channels
         """
         # Assemble Path to directory with .mat files
-        vitaldb_eeg_dir = self.return_folder_path(["initial_data", "raw_eeg_mat"])
+        vitaldb_eeg_dir = self.return_path_info(["initial_data", "raw_eeg_mat"])
 
         mat_file_path = Path(vitaldb_eeg_dir, f"{result_id}.mat")
         if not mat_file_path.is_file():
@@ -287,7 +287,7 @@ class LoadData(IOCore):
                                 in the expected directory.
         """
         # Assemble Path to directory with .mat files
-        vitaldb_eeg_dir = self.return_folder_path(["initial_data", "raw_eeg_mat"])
+        vitaldb_eeg_dir = self.return_path_info(["initial_data", "raw_eeg_mat"])
         csv_file_path = Path(vitaldb_eeg_dir, f"{result_id}.csv")
         if not csv_file_path.is_file():
             raise FileNotFoundError(f"File found: {csv_file_path}")
@@ -317,7 +317,7 @@ class LoadData(IOCore):
         :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
         """
         # Assemble Path to directory with filtered-EEG files
-        filtered_eeg_dir = self.return_folder_path(["filtered_data"])
+        filtered_eeg_dir = self.return_path_info(["filtered_data"])
 
         filepath = Path(filtered_eeg_dir, f"{result_id}.csv")
         if not filepath.is_file():
@@ -349,7 +349,7 @@ class LoadData(IOCore):
         :returns: Tuple of (sampling rate as int, dict of (start, end): EEG segment as ndarray)
         """
         # Assemble Path to directory with .csv files
-        eeg_dir = self.return_folder_path(folder_keys)
+        eeg_dir = self.return_path_info(folder_keys)
 
         filepath = Path(eeg_dir, f"{result_id}.csv")
         if not filepath.is_file():

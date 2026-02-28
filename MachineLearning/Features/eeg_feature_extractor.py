@@ -497,8 +497,8 @@ class EEGFeatureExtractor(MLObject):
 
         # Load function for this feature
         func = self.feature_calc_funcs[feature_key]
-        # get feature name
-        feature_name = self.data_loader.return_feature_name(feature_key)
+        # Get feature name
+        feature_name = self.data_loader.return_path_info(["features", feature_key], True)
 
         for epoch_type in self.epoch_types:
             self.calculate_and_save_feature_from_eeg(feature_key, feature_name, func, epoch_type, **kwargs)
@@ -552,8 +552,8 @@ class EEGFeatureExtractor(MLObject):
         # Load function for this feature
         func = self.feature_calc_funcs[feature_key]
 
-        # get feature name
-        feature_name = self.data_loader.return_feature_name(feature_key)
+        # Get feature name
+        feature_name = self.data_loader.return_path_info(["features", feature_key], True)
 
         for epoch_type in self.epoch_types:
             self.calculate_and_save_feature_from_psd(feature_key, feature_name, func, epoch_type, **kwargs)
@@ -569,25 +569,22 @@ class EEGFeatureExtractor(MLObject):
         :param func_kwargs: kwargs for func function.
         """
 
-        # Determine epochs from which to calculate, saving function and output message
-        if epoch_type == "awake":
-            dir_path = self.data_loader.psd_folder_path(self.parameter_dict, epoch_type)
-            message = f"Succesfully calculated and saved {feature_name} for awake PSDs"
-
-        elif epoch_type == "faw":
-            dir_path = self.data_loader.psd_folder_path(self.parameter_dict, epoch_type)
-            message = f"Succesfully calculated and saved {feature_name} for fake awake PSDs"
-
-        elif epoch_type == "normal_an":
-            dir_path = self.data_loader.psd_folder_path(self.parameter_dict, epoch_type)
-            message = f"Succesfully calculated and saved {feature_name} for normal anesthesia PSDs"
-        else:
+        # Process features based on given epoch type
+        message_dict = {
+            "awake": "awake",
+            "faw": "fake awake",
+            "normal_an": "normal anesthesia"
+        }
+        if epoch_type not in message_dict.keys():
             raise ValueError(f"Epoch type '{epoch_type}' not recognized. Valid types are 'awake', 'faw' or 'normal_an'")
+        dir_path = self.data_loader.return_file_fullpath(
+            self.parameter_dict, False, True, epoch_type, ["features", "psds"]
+        )
 
         output_list = self.apply_function_to_all_psds(dir_path, func, feature_name, **func_kwargs)
 
         self.result_saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
-        print(message)
+        print(f"Succesfully calculated and saved {feature_name} for {message_dict[epoch_type]} PSDs")
 
     def apply_function_to_all_psds(self, psd_directory_path: Path, func, feature_name, **func_kwargs) -> list:
         """

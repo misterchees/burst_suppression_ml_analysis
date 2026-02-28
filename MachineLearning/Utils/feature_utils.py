@@ -35,7 +35,8 @@ class FeatureUtils:
 
         for feature in features:
             try:
-                print(f"Merging feature {loader.return_feature_name(feature)}...")
+                # Message which feature is processed
+                print(f"Merging feature {loader.return_path_info(["features", feature], True)}...")
                 # loads feature
                 feature_path = loader.return_file_fullpath(parameters, True, False, epoch_type, ["features", feature])
                 df = pd.read_csv(feature_path)

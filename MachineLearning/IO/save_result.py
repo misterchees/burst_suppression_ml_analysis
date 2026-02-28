@@ -1,12 +1,12 @@
 """This module contains the SaveResult class"""
 import json
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from MachineLearning.IO.io_core import IOCore
-from MachineLearning.Utils.path_utils import PathUtils
+from MachineLearning.IO.io_core import IOCore, List
 from MachineLearning.Utils.file_data_utils import FileDataUtils
 
 
@@ -114,7 +114,7 @@ class SaveResult(IOCore):
         :param result_id: Patient ID corresponding to EEG.
         """
         # Assemble the path to the directory
-        psd_dir = self.return_folder_path(["features", "psds"])
+        psd_dir = self.return_path_info(["features", "psds"])
 
         if filtered:
             filter_prefix = "filtered"
@@ -157,7 +157,7 @@ class SaveResult(IOCore):
 
         result_df.to_csv(fullpath, index=False)
 
-    def save_eeg_track(self, eeg_track: np.ndarray, fs: int, result_id: int, folder_keys: list[str]):
+    def save_eeg_track(self, eeg_track: np.ndarray, fs: int, result_id: int, folder_keys: List[str]):
         """
         Saves an EEG as a <result_id>.csv. Assuming the EEG has only 2 channels, these
         will be the columns of the csv-file, and the first row contains the fs (sampling frequency)
@@ -170,7 +170,7 @@ class SaveResult(IOCore):
         # Get the number of each possible channel specified in config
         channels = self.data_names["eeg_files"]["eeg_channels"]
         df = pd.DataFrame(eeg_track, columns=channels)
-        eeg_subdir = self.return_folder_path(folder_keys) # Assemble a path to the dir of the file
+        eeg_subdir = self.return_path_info(folder_keys) # Assemble a path to the dir of the file
         eeg_subdir.mkdir(exist_ok=True) # Make sure folders in the path exist
         fullpath = Path(eeg_subdir, f"{result_id}.csv")
 
