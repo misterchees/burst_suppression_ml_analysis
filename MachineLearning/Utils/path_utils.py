@@ -44,7 +44,7 @@ class PathUtils:
         episode_name = "Summary_Episodes"
         if merged_episodes:
             episode_name = "Summary_Merged_Episodes"
-        # leave 2 digits after decimal point and remove it afterward: 0.5 -> 050, 0.25 -> 025 etc.
+        # leave 2 digits after the decimal point and remove it afterward: 0.5 -> 050, 0.25 -> 025 etc.
         overlap = f"{overlap:.2f}".replace(".", "")
         return Path(f"{episode_name}_{fixed_window_size}_{overlap}")
 

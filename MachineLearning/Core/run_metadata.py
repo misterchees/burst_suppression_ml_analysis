@@ -5,8 +5,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from MachineLearning.IO.save_result import SaveResult, PathUtils
+from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.IO.load_data import LoadData
+from MachineLearning.Utils.path_manager import PathManager
+from MachineLearning.Utils.path_utils import PathUtils
 from MachineLearning.Utils.config_handler import load_config, update_config
 
 
@@ -93,10 +95,9 @@ class RunMetadata:
         rel_bandpower_key = "relative_bandpower"
 
         # Assemble path and read header of combined features csv
-        loader = LoadData()
-        combined_features_path = loader.return_file_fullpath(
-            self.hyperparameters, True, False, self.epoch_types[0],
-            ["test_and_train_data", "feature_sets"]
+        pm = PathManager()
+        combined_features_path = pm.resolve_episode_path(
+            self.hyperparameters, self.epoch_types[0], ["test_and_train_data", "feature_sets"], True, False
         )
         combined_features_df_header = pd.read_csv(combined_features_path, nrows=0)
 
@@ -193,7 +194,7 @@ class RunMetadata:
     def save_to_json(self):
         """Save the metadata to a JSON file."""
         saver = SaveResult()
-        saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, self.to_dict(), f"{self.run_name}.json")
+        saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, self.to_dict(), Path(f"{self.run_name}.json"))
 
     def __repr__(self):
         """String representation of the RunMetadata object."""
@@ -215,9 +216,9 @@ class RunMetadata:
         base_name = run_name or default_run_name
 
         # Get folder with files and return a list of them
-        loader = LoadData()
-        metadata_dir = loader.return_all_parameter_fullpath(
-            self.hyperparameters, False, False, ["run_metadata", self.model_key]
+        pm = PathManager()
+        metadata_dir = pm.get_complex_ml_path(
+            self.hyperparameters, ["run_metadata", self.model_key], False, False
         )
         files,_ = PathUtils.list_files_in_folder(metadata_dir, ".json")
 
@@ -264,9 +265,9 @@ class RunMetadata:
         """
 
         # Get folder with files and return a list of them
-        loader = LoadData()
-        metadata_dir = loader.return_all_parameter_fullpath(
-            self.hyperparameters, False, False, ["run_metadata", self.model_key]
+        pm = PathManager()
+        metadata_dir = pm.get_complex_ml_path(
+            self.hyperparameters, ["run_metadata", self.model_key], False, False
         )
         files, _ = PathUtils.list_files_in_folder(metadata_dir, ".json")
 
@@ -287,7 +288,7 @@ class RunMetadata:
         return None
 
 
-    def _add_hash_to_existing_run(self, metadata_dict: dict, file: str) -> str:
+    def _add_hash_to_existing_run(self, metadata_dict: dict, file: Path) -> str:
         """
         Adds a hash based on provided metadata to an existing run and updates the metadata file.
 

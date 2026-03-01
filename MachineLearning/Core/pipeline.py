@@ -4,6 +4,7 @@ from fontTools.misc.classifyTools import Classifier
 from pathlib import Path
 
 from MachineLearning.Core.run_metadata import RunMetadata
+from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.IO.load_data import LoadData, PathUtils
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Features.transforms import Transforms
@@ -38,6 +39,9 @@ class Pipeline:
         :param force_transform: If True, transforms will be calculated even if the results already exist.
         :param force_extract: If True, the features will be extracted and combined even if the results already exist.
         """
+        # Instance utils
+        self.pm = PathManager()
+
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
 
@@ -68,7 +72,7 @@ class Pipeline:
 
         # Get ResultIDs specified by the folder of initial_data_key
         loader = LoadData()
-        self.patient_ids = loader.return_all_patient_ids(init_data_key)
+        self.patient_ids = loader.return_all_patient_ids(["initial_data", init_data_key])
 
         # Set run metadata class, collecting initial data
         filt_params_dict = {filter_method: updated_params["filtering_params"][filter_method]}
@@ -145,6 +149,7 @@ class Pipeline:
 
         # load faw and awake data dependent of epochtypes
         loader = LoadData()
+        pm = PathManager()
         parameters = self.get_current_hyperparams()
 
         if epoch_type == "normal_an":
@@ -157,7 +162,7 @@ class Pipeline:
             raise ValueError("Epoch type must be 'normal_an', 'awake' or 'faw'")
 
         if calculation_type == 'transform':
-            psd_folderpath = loader.return_file_fullpath(parameters, False, False, epoch_type, ["features", "psds"])
+            psd_folderpath = pm.resolve_episode_path(parameters, epoch_type, ["features", "psds"], False, False)
             comparison_dict = Comparison.compare_csv_to_psd_folder(times_df, psd_folderpath)
             identical = bool(comparison_dict["a_in_b"] and comparison_dict["b_in_a"])
             return identical
@@ -170,7 +175,7 @@ class Pipeline:
 
             # Returns True if ALL features are already calculated, False otherwise
             for feature in feature_list:
-                feature_filepath = loader.return_file_fullpath(parameters, True, False, epoch_type, ["features", feature])
+                feature_filepath = pm.resolve_episode_path(parameters, epoch_type, ["features", feature], True, False)
                 comparison_dict = Comparison.compare_two_csv(feature_filepath, times_df)
                 if not (comparison_dict["a_in_b"] and comparison_dict["b_in_a"]):
                     return False
@@ -289,7 +294,7 @@ class Pipeline:
         elif not isinstance(self.features, list):
             raise ValueError("Features must be either a list or a string with value 'all_features'")
         else:
-            known_features = FeatureUtils.return_all_features_dict()
+            known_features = FeatureUtils.return_all_features(self.pm, "dict")
             # validate features given in list
             feature_keys = known_features.keys()
             for key in self.features:
@@ -357,7 +362,7 @@ class Pipeline:
             return return_splits()
         return None
 
-    def _run_svm_classifier(self, train_path: str, test_path: str,
+    def _run_svm_classifier(self, train_path: str, test_path: Path,
                             classifier: Classifier = None, save_clf=True, save_pred=True, **kwargs):
         """
         Runs SVM classifier on train and test sets of given paths. It takes a pretrained Classifier or trains
@@ -467,7 +472,7 @@ class Pipeline:
         :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
         """
         loader = LoadData()
-        self.patient_ids = loader.return_all_patient_ids(initial_data_key)
+        self.patient_ids = loader.return_all_patient_ids(["initial_data", initial_data_key])
 
     @staticmethod
     def get_current_hyperparams() -> dict:
@@ -507,24 +512,18 @@ class Pipeline:
 
         return predictions, true_labels, probabilities
 
-    def _analyze_single_result(self, result_path: str, metadata_col: str, label: int, print_analysis=True, save_analysis=True,
+    def _analyze_single_result(self, result_path: Path, metadata_col: str, label: int, print_analysis=True, save_analysis=True,
                                plots=True):
         """
         Analyzes a single result file to evaluate the correlation between metadata and error rates, categorize errors by
         metadata groups, and assess the distribution of classes and confusion matrices for specified metadata.
 
         :param result_path: The file path to the CSV containing the results to be analyzed.
-        :type result_path: str
         :param metadata_col: The name of the metadata column in the results CSV to be analyzed.
-        :type metadata_col: str
         :param label: The label of the metadata column to be analyzed.
-        :type label: int
         :param print_analysis: A flag indicating whether the analysis results should be printed to the console.
-        :type print_analysis: bool, optional
         :param save_analysis: A flag indicating whether the analysis results should be saved to disk.
-        :type save_analysis: bool, optional
         :param plots: A flag indicating whether plots should be generated for the analysis results.
-        :type plots: bool, optional
         :return: None
         """
         from MachineLearning.Evaluation.metadata_analyzer import MetadataAnalyzer
@@ -559,7 +558,7 @@ class Pipeline:
 
         if save_analysis:
             print(f"Saving analysis results to disk...")
-            filename = Path(result_path).stem
+            filename = result_path.stem
             saver = SaveResult()
             saver.save_metadata_analysis(error_correlation, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, "error_correlation")
@@ -650,9 +649,9 @@ class Pipeline:
     def analyze_results(self, print_analysis=True, save_analysis=True, plots=False):
 
         # Gather all results
-        loader = LoadData()
+        pm = PathManager()
         parameter_dict = self.get_current_hyperparams()
-        result_folder = loader.return_all_parameter_fullpath(parameter_dict, False, False, ["results", self.model_key])
+        result_folder = pm.get_complex_ml_path(parameter_dict, ["results", self.model_key], False, False)
         path_list, _ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
 
         # Analyze all given metadata in all results

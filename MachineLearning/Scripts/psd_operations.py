@@ -1,6 +1,9 @@
+from pathlib import Path
+
 from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resultid
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Scripts.ResultAnalyses.cluster_analysis import return_outliers, split_by_outliers
+from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.Utils.plots import Plots
 import pandas as pd
 import numpy as np
@@ -10,6 +13,7 @@ from matplotlib import pyplot as plt
 def calculate_mean_psds(hyperparameters: dict, class_1: str, class_0: str, plot: bool = True, save_results: bool = True, outliers: bool = False):
     # Load combined feature dfs to get all epochs from this set
     loader = LoadData()
+    pm = PathManager()
     class_1_df, class_0_df = loader.load_combined_features_df(hyperparameters, class_1, class_0)
 
     if outliers:
@@ -17,11 +21,13 @@ def calculate_mean_psds(hyperparameters: dict, class_1: str, class_0: str, plot:
         outlier_df = return_outliers("global", loader, hyperparameters, outlier_run="", model_name="")
         class_1_outlier_df, class_1_non_outlier_df = split_by_outliers(class_1_df, outlier_df)
 
-    psd_faw_folderpath = loader.return_file_fullpath(
-        hyperparameters, False, False, "faw",["features", "psds"])
+    psd_faw_folderpath = pm.resolve_episode_path(
+        hyperparameters, "faw",["features", "psds"], False, False
+    )
 
-    psd_awake_folderpath = loader.return_file_fullpath(
-        hyperparameters, False, False, "awake",["features", "psds"])
+    psd_awake_folderpath = pm.resolve_episode_path(
+        hyperparameters, "awake",["features", "psds"], False, False
+    )
 
     spread_metric = "sem"
     av_class_0_df = average_psd_from_epochs(psd_faw_folderpath, class_0_df, spread_metric=spread_metric)
@@ -79,17 +85,21 @@ def calculate_center_of_mass_psds(hyperparameters: dict, confidence: float, clas
 
 def load_pca_cluster_center_results(hyperparameters: dict, confidence: float, class_a: int, class_b: int, spread_metric="std"):
     loader = LoadData()
+    pm = PathManager()
     confidence_str = str(confidence).replace(".", "")
     a_file_name = f"PCA_clusterlabel_{class_a}_region_with_confidence_{confidence_str}_dims_2.csv"
     b_file_name = f"PCA_clusterlabel_{class_b}_region_with_confidence_{confidence_str}_dims_2.csv"
     a_df = loader.load_further_results(hyperparameters, "pca", "dataframe",a_file_name)
     b_df = loader.load_further_results(hyperparameters, "pca", "dataframe",b_file_name)
 
-    psd_faw_folderpath = loader.return_file_fullpath(
-        hyperparameters, False, False, "faw", ["features", "psds"])
+    psd_faw_folderpath = pm.resolve_episode_path(
+        hyperparameters, "faw", ["features", "psds"], False, False
+    )
 
-    psd_awake_folderpath = loader.return_file_fullpath(
-        hyperparameters, False, False, "awake", ["features", "psds"])
+    psd_awake_folderpath = pm.resolve_episode_path(
+        hyperparameters, "awake", ["features", "psds"], False, False
+    )
+
 
     if class_a == 0:
         av_faw_df = average_psd_from_epochs(psd_faw_folderpath, a_df, spread_metric=spread_metric)
@@ -102,7 +112,7 @@ def load_pca_cluster_center_results(hyperparameters: dict, confidence: float, cl
     return av_faw_df, av_awake_df
 
 
-def average_psd_from_epochs(psd_folderpath: str, epochs_df: pd.DataFrame, spread_metric="std") -> pd.DataFrame:
+def average_psd_from_epochs(psd_folderpath: Path, epochs_df: pd.DataFrame, spread_metric="std") -> pd.DataFrame:
     """
     Calculates the average PSD and an uncertainty metric from multiple PSD epochs.
 

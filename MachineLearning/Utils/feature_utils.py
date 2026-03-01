@@ -1,27 +1,37 @@
+from typing import List
+
 import pandas as pd
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Preprocessing.normalizing import Normalizing
+from MachineLearning.Utils.path_manager import PathManager
 
 
 class FeatureUtils:
     @staticmethod
-    def combine_features(parameters: dict, epoch_type: str, all_features: bool, features: list, normalize=False):
+    def combine_features(
+            pm: PathManager,
+            parameters: dict,
+            epoch_type: str,
+            all_features: bool,
+            features: list,
+            normalize=False
+    ):
         """
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.
 
+        :param pm: PathManager instance to handle file paths.
         :param parameters: Parameters of the episodes from which the features are. Defines subfolder of features.
         :param all_features: If True, combine all available features found in the features directory.
         :param epoch_type: Defines the epochs from which the features were calculated. Defines subfolder of features.
         :param features: Specific feature keys to include (used only if all_features=False).
         :param normalize: If True, z-score normalize the features.
         """
-        loader = LoadData()
         saver = SaveResult()
         # Step 1: Determine which features to include
         if all_features:
-            features = loader.return_all_feature_keys()
+            features = FeatureUtils.return_all_features(pm, "keys")
         else:
             if not features:
                 raise ValueError("You must provide at least one feature name or set all_features=True.")
@@ -36,9 +46,11 @@ class FeatureUtils:
         for feature in features:
             try:
                 # Message which feature is processed
-                print(f"Merging feature {loader.return_path_info(["features", feature], True)}...")
+                print(f"Merging feature {pm.get_path("features", feature).stem}...")
                 # loads feature
-                feature_path = loader.return_file_fullpath(parameters, True, False, epoch_type, ["features", feature])
+                feature_path = pm.resolve_episode_path(
+                    parameters, epoch_type, ["features", feature], True, False
+                )
                 df = pd.read_csv(feature_path)
                 # To make it possible to remove single bands from classification
                 if feature == "bandpower":
@@ -146,7 +158,12 @@ class FeatureUtils:
         return df_norm
 
     @staticmethod
-    def return_all_features_dict() -> dict:
-        """Returns all features as a dictionary"""
-        data_loader = LoadData()
-        return data_loader.path_config["base_dir"]["subdirs"]["features"]["subdirs"]
+    def return_all_features(pm: PathManager, return_type: str = "keys") -> list | dict:
+        """
+        Returns all feature parameters from the path config.
+
+        :param pm: An initialized PathManager instance to avoid redundant file I/O.
+        :param return_type: Format of the returned data ('dict', 'keys', or 'values').
+        :return: Features in the requested format.
+        """
+        return pm.get_node_children(["features"], return_type=return_type)

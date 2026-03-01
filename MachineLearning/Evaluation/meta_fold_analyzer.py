@@ -6,10 +6,13 @@ import json
 import glob
 import matplotlib
 import matplotlib.pyplot as plt
+
+from MachineLearning.Utils.path_manager import PathManager
+
 matplotlib.use('TkAgg')
 import seaborn as sns
 
-from MachineLearning.IO.io_core import IOCore
+
 
 
 class MetaFoldAnalyzer:
@@ -28,11 +31,11 @@ class MetaFoldAnalyzer:
         self.parameters = parameters
         self.run_name = run_name
 
-        io_basics = IOCore()
+        pm = PathManager()
         # Set paths
-        self.ml_results_path = io_basics.return_all_parameter_fullpath(parameters, False, False, ["results", model_key], run_name)
-        self.metadata_path = io_basics.return_all_parameter_fullpath(
-            parameters, False, False, ["metadata_analysis", model_key], run_name)
+        self.ml_results_path = pm.get_complex_ml_path(parameters, ["results", model_key], False, False, run_name)
+        self.metadata_path = pm.get_complex_ml_path(
+            parameters, ["metadata_analysis", model_key], False, False, run_name)
 
         # Container for analysis data
         self.fold_errors_by_group = {}

@@ -24,7 +24,7 @@ def preprocess_all_eegs(lowcut, highcut, order):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    all_ids = loader.return_all_patient_ids("raw_eeg_mat")
+    all_ids = loader.return_all_patient_ids(["initial_data", "raw_eeg_mat"])
     for result_id in all_ids:
         # Load data of patient
         try:

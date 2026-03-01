@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 from MachineLearning.Utils.feature_utils import FeatureUtils
-from MachineLearning.IO.load_data import LoadData, PathUtils
+from MachineLearning.IO.load_data import LoadData
+from MachineLearning.Utils.path_manager import PathManager
 from pathlib import Path
 from typing import List, Any
 
@@ -95,7 +96,7 @@ def remove_empty_eeg_segments(df: pd.DataFrame, eeg_col: str = "eeg") -> pd.Data
 
 
 def get_ids_from_run(_run_name: str) -> list:
-    loader = LoadData()
+    pm = PathManager()
     # All run metadata are currently in a folder with this coded information
     metadata_params = {
         "merged_episodes": False,
@@ -106,8 +107,8 @@ def get_ids_from_run(_run_name: str) -> list:
         "fixed_window_size": 20,
         "overlap": 0.0
     }
-    run_folderpath = loader.return_all_parameter_fullpath(metadata_params, False, False, ["run_metadata", "svm"])
-    fullpath = Path(run_folderpath, f"{_run_name}.json")
+    run_folderpath = pm.get_complex_ml_path(metadata_params, ["run_metadata", "svm"], False, False)
+    fullpath = run_folderpath / f"{_run_name}.json"
 
     run_metadata = LoadData.load_json(fullpath)
     used_patient_ids = run_metadata["final_patient_ids"]

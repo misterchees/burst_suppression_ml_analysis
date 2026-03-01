@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from MachineLearning.IO.io_core import IOCore
+from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.Utils.file_data_utils import FileDataUtils
 from MachineLearning.Utils.path_utils import PathUtils
 
@@ -43,6 +44,7 @@ class LoadData(IOCore):
     def __init__(self):
         """Initializes the class with configs from IOCore superclass."""
         super().__init__()
+        self.pm = PathManager()
 
     def load_faw_times_as_df(self, parameters: dict) -> pd.DataFrame:
         """
@@ -52,7 +54,7 @@ class LoadData(IOCore):
         :return: A pandas DataFrame containing the episodes based on the parameters passed.
         """
         # Assemble the fullpath to the CSV file
-        faw_dir = self.return_path_info(["faw"])
+        faw_dir = self.pm.get_path("faw")
         a_b_c_d_dir = PathUtils.return_A_B_C_D_path("result", parameters)
         x_y_name = PathUtils.return_X_Y_name(parameters)
         csv_fullpath = Path(faw_dir, a_b_c_d_dir, f"{x_y_name}.csv")
@@ -153,7 +155,7 @@ class LoadData(IOCore):
         random.seed(random_state)
         anestart_csv_path = self.return_csv_path_from_basedir("awake_times")
         epoch_length_sec = int(parameters["fixed_window_size"])
-        filtered_data_dir = self.return_path_info(["filtered_data"])
+        filtered_data_dir = self.pm.get_path("filtered_data")
 
         anestart_df = pd.read_csv(anestart_csv_path)
         result = []
@@ -254,7 +256,7 @@ class LoadData(IOCore):
         :return: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a raw-EEG samples array with two channels
         """
         # Assemble Path to directory with .mat files
-        vitaldb_eeg_dir = self.return_path_info(["initial_data", "raw_eeg_mat"])
+        vitaldb_eeg_dir = self.pm.get_path("initial_data", "raw_eeg_mat")
 
         mat_file_path = Path(vitaldb_eeg_dir, f"{result_id}.mat")
         if not mat_file_path.is_file():
@@ -287,7 +289,7 @@ class LoadData(IOCore):
                                 in the expected directory.
         """
         # Assemble Path to directory with .mat files
-        vitaldb_eeg_dir = self.return_path_info(["initial_data", "raw_eeg_mat"])
+        vitaldb_eeg_dir = self.pm.get_path("initial_data", "raw_eeg_mat")
         csv_file_path = Path(vitaldb_eeg_dir, f"{result_id}.csv")
         if not csv_file_path.is_file():
             raise FileNotFoundError(f"File found: {csv_file_path}")
@@ -317,7 +319,7 @@ class LoadData(IOCore):
         :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
         """
         # Assemble Path to directory with filtered-EEG files
-        filtered_eeg_dir = self.return_path_info(["filtered_data"])
+        filtered_eeg_dir = self.pm.get_path("filtered_data")
 
         filepath = Path(filtered_eeg_dir, f"{result_id}.csv")
         if not filepath.is_file():
@@ -349,7 +351,7 @@ class LoadData(IOCore):
         :returns: Tuple of (sampling rate as int, dict of (start, end): EEG segment as ndarray)
         """
         # Assemble Path to directory with .csv files
-        eeg_dir = self.return_path_info(folder_keys)
+        eeg_dir = self.pm.get_path(*folder_keys)
 
         filepath = Path(eeg_dir, f"{result_id}.csv")
         if not filepath.is_file():
@@ -426,7 +428,9 @@ class LoadData(IOCore):
         """
 
         from joblib import load
-        full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["models", model_key])
+        full_folder_path = self.pm.get_complex_ml_path(
+            parameters, ["models", model_key], False, True
+        )
         model_file = f"{model_key}.joblib"
         model_fullpath = Path(full_folder_path, model_file)
         model = load(model_fullpath)
@@ -445,8 +449,8 @@ class LoadData(IOCore):
         :return: A dictionary containing the loaded metrics from the JSON file.
         """
         # Construct the path to the folder from where the file will be loaded
-        folder_path = self.return_all_parameter_fullpath(
-            parameters, False, True, ["results", model_key], run_name)
+        folder_path = self.pm.get_complex_ml_path(
+            parameters, ["results", model_key], False, True, run_name)
         file_name = f"folds_metrics.json"
         fullpath = Path(folder_path, file_name)
 
@@ -468,8 +472,8 @@ class LoadData(IOCore):
         :raises ValueError: If the files extension is not supported (i.e., not "json" or "csv").
         """
         # Construct the path to the folder from where the file will be loaded
-        folder_path = self.return_all_parameter_fullpath(
-            parameters, False, False, ["metadata_analysis", model_key], outlier_run_name
+        folder_path = self.pm.get_complex_ml_path(
+            parameters, ["metadata_analysis", model_key], False, False, outlier_run_name
         )
         fullpath = Path(folder_path, filename)
 
@@ -555,7 +559,7 @@ class LoadData(IOCore):
                       "No problematic epochs can be loaded.")
                 return None
 
-        # Ensure that global outliers include outliers from given run by saving them before loading global outliers
+        # Ensure that global outliers include outliers from the given run by saving them before loading global outliers
         if global_outliers:
             outliers_df = self._update_and_get_global_outliers(parameters, outliers_df, "epoch")
 
@@ -565,9 +569,30 @@ class LoadData(IOCore):
         return outliers_df
 
     def load_run_data(self, hyperparameters: dict, run_name: str, model_key: str) -> dict:
-        """Loads the run data from a run specified by name, hyperparameters, and model_key."""
-        metadata_path = self.return_run_metadata_fullpath(hyperparameters, run_name, model_key)
-        metadata = self.load_json(metadata_path)
+        """
+        Returns the metadata of a specific run based on the provided hyperparameters, run name, and model key.
+
+        :param hyperparameters: A dictionary containing the hyperparameters of the run.
+        :param run_name: The name of the specific run for which metadata is being retrieved.
+        :param model_key: The key identifying the model.
+        :return: The full file path to the metadata for the specified run.
+        :raises FileNotFoundError: If no metadata file matching the given run name is found.
+        """
+        # Get all paths
+        metadata_folderpath = self.pm.get_complex_ml_path(
+            hyperparameters, ["run_metadata", model_key], False, False
+        )
+        metadata_fullpaths, _ = PathUtils.list_files_in_folder(metadata_folderpath, ".json", fullpaths=True)
+
+        # Search for the path according to the provided run name
+        matching_metadata_path = next((path for path in metadata_fullpaths if path.name == f"{run_name}.json"), None)
+        # Error if not found
+        if not matching_metadata_path:
+            raise FileNotFoundError(
+                f"No matching file for run_name='{run_name}' found in folder='{metadata_folderpath}'.")
+
+        # Load and return metadata
+        metadata = self.load_json(matching_metadata_path)
         return metadata
 
     def load_splits(self, hyperparamers: dict, run_name: str, combined=True) -> dict|pd.DataFrame:
@@ -624,12 +649,8 @@ class LoadData(IOCore):
 
     def load_combined_features_df(self, parameters: dict, class_1: str, class_0: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Load combined features dataframes for the specified classes.
-
         This method loads data from specified file paths for two given classes and
-        returns their corresponding dataframes. It uses the provided parameters to
-        determine file paths for the data of `class_1` and `class_0`. The paths are
-        generated dynamically based on the parameters and predefined folder hierarchy.
+        returns their corresponding dataframes.
 
         :param parameters: A dict containing configuration parameters.
         :param class_1: The name or identifier of the first class whose data will be loaded.
@@ -638,10 +659,12 @@ class LoadData(IOCore):
             Valid options are: 'normal_an', 'faw' and 'awake'
         :return: A tuple of pandas DataFrames corresponding to the data of `class_1` and `class_0`.
         """
-        class_1_path = self.return_file_fullpath(parameters, True, False, class_1,
-                                                              ["test_and_train_data", "feature_sets"])
-        class_0_path = self.return_file_fullpath(parameters, True, False, class_0,
-                                                              ["test_and_train_data", "feature_sets"])
+        class_1_path = self.pm.resolve_episode_path(
+            parameters, class_1, ["test_and_train_data", "feature_sets"], True, False
+        )
+        class_0_path = self.pm.resolve_episode_path(
+            parameters, class_0, ["test_and_train_data", "feature_sets"], True, False
+        )
         print(f"Loading {class_1} data from {class_1_path}\n "
               f"Loading {class_0} data from {class_0_path}")
         class_1_df = pd.read_csv(class_1_path).copy() # Copying to avoid pd messing with the file content
@@ -661,7 +684,7 @@ class LoadData(IOCore):
         :return: Pandas DataFrame containing the data of global outliers.
         :raises ValueError: If the provided outlier_type is not "epoch" or "patient_id".
         """
-        folder_path = self.return_all_parameter_fullpath(parameters, False, False, ["global_outliers"])
+        folder_path = self.pm.get_complex_ml_path(parameters, ["global_outliers"],False, False)
 
         # Build a fullpath depending on the outlier type
         if outlier_type == "epoch":
@@ -700,8 +723,7 @@ class LoadData(IOCore):
 
         :raises ValueError: If the `result_type` is not 'dataframe' or 'json'.
         """
-        folder_path = self.return_all_parameter_fullpath(hyperparameters, False, True,
-                                                         ["further_analysis", analysis_key])
+        folder_path = self.pm.get_complex_ml_path(hyperparameters, ["further_analysis", analysis_key], False, True)
 
         if result_type == "dataframe":
             Path(folder_path, filename)

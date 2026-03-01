@@ -1,50 +1,47 @@
 from pathlib import Path
 import yaml
 
+# __file__ is the path to the current python script
+# .resolve() makes it an absolute path
+# .parent goes up one directory level
 
-def load_config(filename: str) -> dict:
+CURRENT_FILE = Path(__file__).resolve()
+DEFAULT_CONFIG_DIR = CURRENT_FILE.parent.parent / "Configs"
+
+def load_config(config_file: str) -> dict:
     """
-    Loads a YAML config from the `config/` directory, which is relative to this directory.
+    Loads a YAML config from the `config/` directory.
 
-    :param filename: Name of config file e.g. "path_config.yaml"
+    :param config_file: Name of config file e.g. "path_config.yaml"
     :return: config as dictionary
     """
-    # Searches config directory in relation to this directory
-    config_dir = Path(__file__).parent.parent / "Configs"
-    config_path = config_dir / filename
 
-    # Check if valid config path
+    config_path = DEFAULT_CONFIG_DIR / config_file
+    # Check if config exists
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     # Open config as dict
     with open(config_path, "r", encoding="utf-8") as f:
         try:
-            config = yaml.safe_load(f)
+            config = yaml.safe_load(f) or {} # Fallback to empty dict if file is empty
         except yaml.YAMLError as e:
-            raise yaml.YAMLError(f"YAML error while parsing {filename}: {e}")
+            raise yaml.YAMLError(f"YAML error while parsing {config_path}: {e}")
 
     return config
 
 
-def update_config(filename: str, updates: dict) -> dict:
+def update_config(config_file: str, updates: dict) -> dict:
     """
     Updates existing keys in a YAML config file, forbidding new or unknown keys.
 
-    :param filename: Name of the YAML file inside Configs/
+    :param config_file: Name of the config file
     :param updates: Dictionary of updated values (must match structure of existing config)
     :return: Updated config as dictionary
     """
     from collections.abc import Mapping
 
-    config_dir = Path(__file__).parent.parent / "Configs"
-    config_path = config_dir / filename
-
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f) or {}
+    config = load_config(config_file)
 
     def validate_and_update(base: dict, updates_: dict, path="") -> dict:
         for key, val in updates_.items():
@@ -60,25 +57,19 @@ def update_config(filename: str, updates: dict) -> dict:
 
     updated_config = validate_and_update(config, updates)
 
+    config_path = DEFAULT_CONFIG_DIR / config_file
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(updated_config, f, sort_keys=False, allow_unicode=True)
 
-    return load_config(filename)
+    return load_config(config_file)
 
 
-def replace_bands_in_config(filename, updates):
+def replace_bands_in_config(filename: str, updates: dict):
     """
     Updates a YAML config file by merging updates recursively,
     but replaces 'frequency_bands' dictionary completely.
     """
-    config_dir = Path(__file__).parent.parent / "Configs"
-    config_path = config_dir / filename
-
-    if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f) or {}
+    config = load_config(filename)
 
     def recursive_update(d, u, parent_key=None):
         for k, v in u.items():
@@ -92,5 +83,6 @@ def replace_bands_in_config(filename, updates):
 
     recursive_update(config, updates)
 
+    config_path = DEFAULT_CONFIG_DIR / filename
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(config, f, sort_keys=False, allow_unicode=True)

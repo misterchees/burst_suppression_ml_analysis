@@ -11,10 +11,11 @@
         - [x] io_core
         - [x] load_data
         - [x] save_result
+    - [ ] Replace IOCore with PathManager. SaveResult and LoadDate need to import from PathManager
     - [ ] Create and run tests for all functions in path handling modules
       - [x] In path_utils
-      - [ ] In IOCore
-        - [ ] io_core
+      - [ ] In PathManager
+      - [ ] In IO
         - [ ] load_data
         - [ ] save_result
   - [ ] Replace all findings of using the old base_dir logic with PathManager logic
@@ -49,11 +50,11 @@
 - [ ] Implement good coding practices
 	- [ ] Remove duplicate/unused code
       - [ ] Check EEG loading functions
+      - [ ] Move variables from functions to global scope (if sensible)
       - [ ] Check load_problematic_ids and load_problematic_epochs in IO/load_data
       - [ ] Merge the save psd functions in IO/save_result
-      - [ ] Merge return_all_paramater_fullpath and return_no_parameter_fullpath in io_core if possible 
       - [ ] return_folded_split_folder_fullpath and return_single_split_folder_fullpath only exist to reinforce 
-      name consistency ofo folders but are basically just Wrappers for return_all_parameter_fullpath. Find another way! 
+      name consistency of folders but are basically just Wrappers for return_all_parameter_fullpath. Find another way! 
       - [ ] Probably merge save_ml_result, save_metadata_analysis and save_predicted_set in IO/save_result
       - [ ] Look into functions that basically just wrap other functions and delete e.g., save_further_analysis
       in IO/save_result

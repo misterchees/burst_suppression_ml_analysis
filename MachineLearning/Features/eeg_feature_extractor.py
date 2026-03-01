@@ -15,6 +15,7 @@ from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resul
 from MachineLearning.Utils.math_utils import MathUtils
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.feature_function import FeatureFunction
+from MachineLearning.Utils.path_manager import PathManager
 
 # Registries for feature functions. One for the calculators and one for the extractors
 feature_calculators_registry = {}
@@ -55,8 +56,6 @@ class EEGFeatureExtractor(MLObject):
     It uses the information of the current parameters and based on its flags
     handles awake, fake awake and normal anesthesia epochs.
     """
-    data_loader = LoadData()
-    result_saver = SaveResult()
 
     def __init__(self, epoch_types, parameter_kwargs):
         """
@@ -65,6 +64,12 @@ class EEGFeatureExtractor(MLObject):
         :param parameter_kwargs: Dict with all parameters to change.
         """
         super().__init__(epoch_types, parameter_kwargs)
+
+        # Initialize IO handlers
+        self.pm = PathManager()
+        self.data_loader = LoadData()
+        self.result_saver = SaveResult()
+
         # initialize registries
         self.feature_calc_funcs = feature_calculators_registry
         self.feature_extract_funcs = feature_extractors_registry
@@ -497,8 +502,8 @@ class EEGFeatureExtractor(MLObject):
 
         # Load function for this feature
         func = self.feature_calc_funcs[feature_key]
-        # Get feature name
-        feature_name = self.data_loader.return_path_info(["features", feature_key], True)
+        # Get the feature name (which is the stem of the corresponding directory)
+        feature_name = self.pm.get_path("features", feature_key).stem
 
         for epoch_type in self.epoch_types:
             self.calculate_and_save_feature_from_eeg(feature_key, feature_name, func, epoch_type, **kwargs)
@@ -552,8 +557,8 @@ class EEGFeatureExtractor(MLObject):
         # Load function for this feature
         func = self.feature_calc_funcs[feature_key]
 
-        # Get feature name
-        feature_name = self.data_loader.return_path_info(["features", feature_key], True)
+        # Get the feature name (which is the stem of the corresponding directory)
+        feature_name = self.pm.get_path("features", feature_key).stem
 
         for epoch_type in self.epoch_types:
             self.calculate_and_save_feature_from_psd(feature_key, feature_name, func, epoch_type, **kwargs)
@@ -577,8 +582,8 @@ class EEGFeatureExtractor(MLObject):
         }
         if epoch_type not in message_dict.keys():
             raise ValueError(f"Epoch type '{epoch_type}' not recognized. Valid types are 'awake', 'faw' or 'normal_an'")
-        dir_path = self.data_loader.return_file_fullpath(
-            self.parameter_dict, False, True, epoch_type, ["features", "psds"]
+        dir_path = self.pm.resolve_episode_path(
+            self.parameter_dict, epoch_type, ["features", "psds"], False, True
         )
 
         output_list = self.apply_function_to_all_psds(dir_path, func, feature_name, **func_kwargs)
@@ -616,4 +621,4 @@ class EEGFeatureExtractor(MLObject):
         :param features: A list of features to be combined. Is ignored if all_features is True.
         """
         for epoch_type in self.epoch_types:
-            FeatureUtils.combine_features(self.parameter_dict, epoch_type, all_features, features)
+            FeatureUtils.combine_features(self.pm, self.parameter_dict, epoch_type, all_features, features)

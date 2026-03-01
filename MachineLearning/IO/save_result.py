@@ -7,6 +7,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 from MachineLearning.IO.io_core import IOCore, List
+from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.Utils.file_data_utils import FileDataUtils
 
 
@@ -15,6 +16,7 @@ class SaveResult(IOCore):
     def __init__(self):
         """Initializes the class with configs from IOCore superclass."""
         super().__init__()
+        self.pm = PathManager()
 
     def save_faw_psd(self, frequencies: np.ndarray, power: np.ndarray,
                      parameters: dict, start: int, end: int, result_id: int):
@@ -28,8 +30,8 @@ class SaveResult(IOCore):
         :param result_id: Patient ID
         """
 
-        # assemble path to directory
-        psd_dir_fullpath = self.return_all_parameter_fullpath(parameters, False, True, ["features", "psds"])
+        # Assemble path to directory
+        psd_dir_fullpath = self.pm.get_complex_ml_path(parameters, ["features", "psds"], True, False)
 
         # Save file in directory
         self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
@@ -47,7 +49,7 @@ class SaveResult(IOCore):
         """
 
         # Assemble path to directory
-        psd_dir_fullpath = self.return_no_parameters_fullpath(parameters, "awake", False, ["features", "psds"])
+        psd_dir_fullpath = self.pm.get_simple_episode_path(parameters, "awake", ["features", "psds"], False )
 
         # Make sure directory exists
         psd_dir_fullpath.mkdir(exist_ok=True)
@@ -67,7 +69,7 @@ class SaveResult(IOCore):
         """
 
         # Assemble path to directory
-        psd_dir_fullpath = self.return_no_parameters_fullpath(parameters, "normal_an", False, ["features", "psds"])
+        psd_dir_fullpath = self.pm.get_simple_episode_path(parameters, "normal_an", ["features", "psds"], False )
 
         # Make sure directory exists
         psd_dir_fullpath.mkdir(exist_ok=True)
@@ -114,7 +116,7 @@ class SaveResult(IOCore):
         :param result_id: Patient ID corresponding to EEG.
         """
         # Assemble the path to the directory
-        psd_dir = self.return_path_info(["features", "psds"])
+        psd_dir = self.pm.get_path("features", "psds")
 
         if filtered:
             filter_prefix = "filtered"
@@ -152,8 +154,9 @@ class SaveResult(IOCore):
         :return: None
         """
         result_df = pd.DataFrame(results)
-        fullpath = self.return_file_fullpath(parameters, True, True, episode_type,
-                                             ["features", feature_key])
+        fullpath = self.pm.resolve_episode_path(
+            parameters, episode_type, ["features", feature_key], True, True
+        )
 
         result_df.to_csv(fullpath, index=False)
 
@@ -170,7 +173,7 @@ class SaveResult(IOCore):
         # Get the number of each possible channel specified in config
         channels = self.data_names["eeg_files"]["eeg_channels"]
         df = pd.DataFrame(eeg_track, columns=channels)
-        eeg_subdir = self.return_path_info(folder_keys) # Assemble a path to the dir of the file
+        eeg_subdir = self.pm.get_path(*folder_keys) # Assemble a path to the dir of the file
         eeg_subdir.mkdir(exist_ok=True) # Make sure folders in the path exist
         fullpath = Path(eeg_subdir, f"{result_id}.csv")
 
@@ -188,7 +191,9 @@ class SaveResult(IOCore):
         :param merged_df: Dataframe of all features combined to save
         :param epoch_type: Defines the epochs from which the features are calculated
         """
-        fullpath = self.return_file_fullpath(parameters, True, True, epoch_type, ["test_and_train_data", "feature_sets"])
+        fullpath = self.pm.resolve_episode_path(
+            parameters, epoch_type, ["test_and_train_data", "feature_sets"], True, True
+        )
         merged_df.to_csv(fullpath, index=False)
         print(f"Combined feature set saved to: {fullpath}")
 
@@ -253,7 +258,7 @@ class SaveResult(IOCore):
         """
 
         from joblib import dump
-        full_folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["models", model_key])
+        full_folder_path = self.pm.get_complex_ml_path(parameters, ["models", model_key], False, True)
         model_filename = f"{model_key}.joblib"
         fullpath = Path(full_folder_path, model_filename)
         dump(model, fullpath)
@@ -284,7 +289,7 @@ class SaveResult(IOCore):
         :return: None
         """
         # Construct the path to the folder, where the file will be saved
-        folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["results", model_key])
+        folder_path = self.pm.get_complex_ml_path(parameters, ["results", model_key], False, True)
 
         # Save the file depending on the filetype
         self.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
@@ -317,8 +322,8 @@ class SaveResult(IOCore):
         :return: None
         """
         # Construct the path to the folder, where the file will be saved
-        folder_path = self.return_all_parameter_fullpath(
-            parameters, False, True, ["metadata_analysis", model_key], outlier_run_name
+        folder_path = self.pm.get_complex_ml_path(
+            parameters, ["metadata_analysis", model_key], False, True, outlier_run_name
         )
 
         # Save the file depending on the filetype
@@ -349,7 +354,7 @@ class SaveResult(IOCore):
         test_filename = test_path.stem
         self.save_ml_result(test_df_copy, model_key, parameters, "dataframe", test_filename, "full_and_pred")
 
-    def save_run_metadata_to_json(self, parameters: dict, model_key: str, run_metadata: dict, filename: str):
+    def save_run_metadata_to_json(self, parameters: dict, model_key: str, run_metadata: dict, filename: Path):
         """
         Save run metadata as a JSON file in the specified location.
 
@@ -362,8 +367,8 @@ class SaveResult(IOCore):
         :param filename: The name of the file where the metadata will be saved.
         :return: None
         """
-        folderpath = self.return_all_parameter_fullpath(parameters, False, True, ["run_metadata", model_key])
-        fullpath = Path(folderpath, filename)
+        folderpath = self.pm.get_complex_ml_path(parameters, ["run_metadata", model_key], False, True)
+        fullpath = folderpath / filename
         self._save_data_as_json(run_metadata, fullpath)
 
     def save_global_outliers(self, parameters: dict, outliers_df: pd.DataFrame, outlier_type: str):
@@ -382,7 +387,7 @@ class SaveResult(IOCore):
         :return: None
         """
         # Create the folder path
-        folder_path = self.return_all_parameter_fullpath(parameters, False, True, ["global_outliers"])
+        folder_path = self.pm.get_complex_ml_path(parameters, ["global_outliers"], False, True)
 
         # Build a fullpath depending on the outlier type
         if outlier_type == "epoch":
@@ -412,7 +417,7 @@ class SaveResult(IOCore):
         :param file_suffix: Suffix for the file name to be saved
         :return: None
         """
-        folder_path = self.return_all_parameter_fullpath(hyperparameters, False, True, ["further_analysis", analysis_key])
+        folder_path = self.pm.get_complex_ml_path(hyperparameters, ["further_analysis", analysis_key], False, True)
 
         self.save_file_depending_on_filetype(result_type, folder_path, file_prefix, file_suffix, results)
 
