@@ -4,13 +4,18 @@ import pandas as pd
 from MachineLearning.Models.svm_classifier import SVMClassifier
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Utils.config_handler import load_config
+from MachineLearning.Utils.path_manager import PathManager
 
 parameter_dict = load_config("parameters_config.yaml")["initial_params"]
 classifier = SVMClassifier()
 loader = LoadData()
+pm = PathManager()
 
-train_path = loader.return_single_split_folder_fullpath(parameter_dict, "train", False)
-test_path = loader.return_single_split_folder_fullpath(parameter_dict, "test", False)
+split_dir = pm.get_complex_ml_path(
+    parameter_dict, ["test_and_train_data", "splits"], False, False
+)
+train_path = split_dir / "train_split.csv"
+test_path = split_dir / "test_split.csv"
 
 # Prepare features/labels
 train_df = pd.read_csv(train_path)

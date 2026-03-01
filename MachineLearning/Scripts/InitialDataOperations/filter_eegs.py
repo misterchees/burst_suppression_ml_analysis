@@ -1,19 +1,21 @@
 import os
-
-from MachineLearning.Preprocessing.normalizing import Normalizing
-from MachineLearning.IO.load_data import LoadData
-from MachineLearning.IO.save_result import SaveResult
-from MachineLearning.Utils.filter_utils import FilterUtils
-from MachineLearning.Preprocessing.filtering import Filtering
 from scipy import signal
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import List
 
-loader = LoadData()
-saver = SaveResult()
-filter_instance = Filtering("butterworth")
+from MachineLearning.Utils.path_manager import PathManager
+from MachineLearning.Preprocessing.normalizing import Normalizing
+from MachineLearning.IO.load_data import LoadData
+from MachineLearning.IO.save_result import SaveResult
+from MachineLearning.Utils.filter_utils import FilterUtils
+from MachineLearning.Preprocessing.filtering import Filtering
+
+pm = PathManager()
+loader = LoadData(pm)
+saver = SaveResult(pm)
+filter_instance = Filtering(pm, "butterworth")
 normalize_instance = Normalizing("zscore")
 path_csv = r"E:\Daten\Initial_data\Cleaned_awake_EEG"
 path_mat = r"E:\Daten\Initial_data\vitalDB_mat_EEG"
@@ -24,7 +26,7 @@ def preprocess_all_eegs(lowcut, highcut, order):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    all_ids = loader.return_all_patient_ids(["initial_data", "raw_eeg_mat"])
+    all_ids = pm.get_all_patient_ids(["initial_data", "raw_eeg_mat"])
     for result_id in all_ids:
         # Load data of patient
         try:

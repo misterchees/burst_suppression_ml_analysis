@@ -7,6 +7,8 @@ import glob
 import matplotlib
 import matplotlib.pyplot as plt
 
+from MachineLearning.IO.load_data import LoadData
+from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.path_manager import PathManager
 
 matplotlib.use('TkAgg')
@@ -17,11 +19,12 @@ import seaborn as sns
 
 class MetaFoldAnalyzer:
     """Class that calculates from results and metadata analysis from single folds overall statistics and trends."""
-    def __init__(self, model_key: str, parameters: dict, run_name: str = None):
+    def __init__(self, pm: PathManager, model_key: str, parameters: dict, run_name: str = None):
         """
         Initializes the MetaFoldAnalyzer instance with model and paths to calculated results and metadata analysis
         of single folds.
 
+        :param pm: The global instance of PathManager.
         :param model_key: The key of the model to analyze.
         :param parameters: A dictionary containing the parameters of the epochs from which the results were
                            calculated.
@@ -31,10 +34,14 @@ class MetaFoldAnalyzer:
         self.parameters = parameters
         self.run_name = run_name
 
-        pm = PathManager()
+        # Initialize Path Utilities
+        self.pm = pm
+        self.loader = LoadData(self.pm)
+        self.saver = SaveResult(self.pm)
+
         # Set paths
-        self.ml_results_path = pm.get_complex_ml_path(parameters, ["results", model_key], False, False, run_name)
-        self.metadata_path = pm.get_complex_ml_path(
+        self.ml_results_path = self.pm.get_complex_ml_path(parameters, ["results", model_key], False, False, run_name)
+        self.metadata_path = self.pm.get_complex_ml_path(
             parameters, ["metadata_analysis", model_key], False, False, run_name)
 
         # Container for analysis data
@@ -179,8 +186,7 @@ class MetaFoldAnalyzer:
         """
         if df is None:
             from MachineLearning.IO.load_data import LoadData
-            loader = LoadData()
-            df = loader.load_metadata_file(
+            df = self.loader.load_metadata_file(
                 self.parameters, self.model_name, "Summary_analysis_agg_label_error_by_groups.csv", self.run_name
             )
 
@@ -200,14 +206,12 @@ class MetaFoldAnalyzer:
         outliers["error_threshold"] = threshold  # helpful context in result
 
         if save_res:
-            from MachineLearning.IO.save_result import SaveResult
-            saver = SaveResult()
-            saver.save_metadata_analysis(
+            self.saver.save_metadata_analysis(
                 outliers, self.model_name, self.parameters, "dataframe",
                 "Summary", "outliers_by_groups", self.run_name)
 
         # Add to global outliers
-        self._save_to_global_outliers(outliers, "patient_id")
+        self.saver.save_global_outliers(self.parameters, outliers, "patient_id")
 
         return outliers
 
@@ -224,9 +228,7 @@ class MetaFoldAnalyzer:
         :return: A dataframe containing the misclassified epochs.
         :rtype: pd.DataFrame
         """
-        from MachineLearning.IO.load_data import LoadData
-        loader = LoadData()
-        results_df = loader.load_results(self.parameters, self.run_name, self.model_name)
+        results_df = self.loader.load_results(self.parameters, self.run_name, self.model_name)
 
         # Get wrongly classified epochs with given label
         misclassified_df = results_df[
@@ -236,14 +238,12 @@ class MetaFoldAnalyzer:
         misclassified_df = misclassified_df.sort_values(by=["ResultID", "Start"]).reset_index(drop=True)
 
         if save_res:
-            from MachineLearning.IO.save_result import SaveResult
-            saver = SaveResult()
-            saver.save_metadata_analysis(
+            self.saver.save_metadata_analysis(
                 misclassified_df, self.model_name, self.parameters, "dataframe",
                 "Summary", f"outlier_epochs_for_label_{label}", self.run_name)
 
         # Add to global outliers
-        self._save_to_global_outliers(misclassified_df, "epoch")
+        self.saver.save_global_outliers(self.parameters, misclassified_df, "epoch")
 
         return misclassified_df
 
@@ -270,9 +270,3 @@ class MetaFoldAnalyzer:
         iqr = q3 - q1
         threshold = min(q3 + iqr_multiplier * iqr, 1.0)  # Maximum can't be higher than 100%
         return threshold
-
-    def _save_to_global_outliers(self, outlier_df: pd.DataFrame, outlier_type: str):
-        """Wrapper for saving function save_global_outliers."""
-        from MachineLearning.IO.save_result import SaveResult
-        saver = SaveResult()
-        saver.save_global_outliers(self.parameters, outlier_df, outlier_type)

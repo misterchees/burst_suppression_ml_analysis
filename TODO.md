@@ -11,7 +11,12 @@
         - [x] io_core
         - [x] load_data
         - [x] save_result
-    - [ ] Replace IOCore with PathManager. SaveResult and LoadDate need to import from PathManager
+    - [x] Replace IOCore with PathManager. SaveResult and LoadDate need to import from PathManager
+    - [x] Make PathManager a singleton
+    - [ ] Make FeatureUtils not static. It needs PathManager and Loader/Saver as attributes
+    - [ ] Check which functions are still needed and which can be deleted/replaced
+      - [ ] load_data
+      - [ ] save_result
     - [ ] Create and run tests for all functions in path handling modules
       - [x] In path_utils
       - [ ] In PathManager
@@ -46,7 +51,6 @@
 	- [ ] Test Splitting
 	- [ ] Test Analysis
 	- [ ] Test Run logging
-	- [ ] Test Skripts
 - [ ] Implement good coding practices
 	- [ ] Remove duplicate/unused code
       - [ ] Check EEG loading functions

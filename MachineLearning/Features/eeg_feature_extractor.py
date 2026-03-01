@@ -10,8 +10,7 @@ import numpy as np
 from numpy import floating
 
 from MachineLearning.Core.ml_object import MLObject
-from MachineLearning.IO.save_result import SaveResult
-from MachineLearning.IO.load_data import LoadData, load_psd_with_start_end_resultid
+from MachineLearning.IO.load_data import load_psd_with_start_end_resultid
 from MachineLearning.Utils.math_utils import MathUtils
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.Features.feature_function import FeatureFunction
@@ -57,18 +56,13 @@ class EEGFeatureExtractor(MLObject):
     handles awake, fake awake and normal anesthesia epochs.
     """
 
-    def __init__(self, epoch_types, parameter_kwargs):
+    def __init__(self,pm: PathManager, epoch_types, parameter_kwargs):
         """
         Create a FeatureExtractor object.
         :param epoch_types: Tuple, that defines which epochs will be handled by this instance.
         :param parameter_kwargs: Dict with all parameters to change.
         """
-        super().__init__(epoch_types, parameter_kwargs)
-
-        # Initialize IO handlers
-        self.pm = PathManager()
-        self.data_loader = LoadData()
-        self.result_saver = SaveResult()
+        super().__init__(pm, epoch_types, parameter_kwargs)
 
         # initialize registries
         self.feature_calc_funcs = feature_calculators_registry

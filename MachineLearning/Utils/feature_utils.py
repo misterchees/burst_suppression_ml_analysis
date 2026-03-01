@@ -1,5 +1,3 @@
-from typing import List
-
 import pandas as pd
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
@@ -28,7 +26,6 @@ class FeatureUtils:
         :param features: Specific feature keys to include (used only if all_features=False).
         :param normalize: If True, z-score normalize the features.
         """
-        saver = SaveResult()
         # Step 1: Determine which features to include
         if all_features:
             features = FeatureUtils.return_all_features(pm, "keys")
@@ -95,6 +92,7 @@ class FeatureUtils:
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
 
         # Step 4: Save to the feature_sets directory
+        saver = SaveResult(pm)
         saver.save_combined_features(parameters, merged_df, epoch_type)
 
     @staticmethod
@@ -109,9 +107,8 @@ class FeatureUtils:
         :param allowed_ids: List of patient IDs to return. If None, all IDs are returned.
         :return: List of Tuples. Every Tuple is structured -> (start(s), end(s), result_id, fs, eeg epochs (samples))
         """
-
-        data_loader = LoadData()
         output_list = []
+        data_loader = LoadData()
 
         # Return Epoch times based on current parameters and grouped by result ID
         episode_times_df = data_loader.load_grouped_epochs(parameters, epoch_type, num_an)

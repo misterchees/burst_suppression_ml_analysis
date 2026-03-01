@@ -1,7 +1,8 @@
 """Contains the SplitManager class."""
 import pandas as pd
 
-from MachineLearning.IO.load_data import LoadData, PathUtils
+from MachineLearning.IO.load_data import LoadData
+from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.split_utils import SplitUtils
 
@@ -11,11 +12,11 @@ class SplitManager:
     Handles stratified, subject-wise splitting of EEG feature datasets
     into train and test sets, ensuring no ResultID overlap.
     """
-    loader = LoadData()
 
-    def __init__(self, parameters: dict, class_0: str, class_1: str, test_size: float = 0.2, random_state: int = 42):
+    def __init__(self,pm: PathManager , parameters: dict, class_0: str, class_1: str, test_size: float = 0.2, random_state: int = 42):
         """
         Initializes the SplitManager class, setting the paths of class 0 and class 1.
+        :param pm: The global instance of PathManager.
         :param parameters: Current parameters of the Epochs, from which the feature sets were calculated.
         :param class_0: Should be different from class_1. Valid options are: 'awake', 'faw' and 'normal_an'
         :param class_1: Should be different from class_0. Valid options are: 'awake', 'faw' and 'normal_an'
@@ -23,6 +24,11 @@ class SplitManager:
         Valid options are between 0 and 1.
         :param random_state: Random state for splitting data into train and test sets (for reproducibility).
         """
+        # Initialize Path Utilities
+        self.pm = pm
+        self.loader = LoadData(self.pm)
+        self.saver = SaveResult(self.pm)
+
         self.parameters = parameters
         self.test_size = test_size
         self.random_state = random_state
@@ -253,21 +259,24 @@ class SplitManager:
 
     def save(self, split_obj):
         """Save single split or k-fold splits."""
-        saver = SaveResult()
         # Check if three values in split_obj -> X, y, splits. If not, it must be split_obj -> train_df, test_df
         try:
             _, _, _ = split_obj
         except ValueError:
-            saver.save_single_split(self.parameters, split_obj)
+            self.saver.save_single_split(self.parameters, split_obj)
             print("Single split saving successful")
             return
-        saver.save_cv_splits_to_csv(self.parameters, split_obj)
+        self.saver.save_cv_splits_to_csv(self.parameters, split_obj)
         print("CV splits saving successful")
 
     def return_split_paths(self):
         """Returns a tuple of paths to the train-test-split. Tuple -> (train_path, test_path)"""
-        train_fullpath = self.loader.return_single_split_folder_fullpath(self.parameters, "train")
-        test_fullpath = self.loader.return_single_split_folder_fullpath(self.parameters, "test")
+        split_dir = self.pm.get_complex_ml_path(
+            self.parameters,["test_and_train_data", "splits"], False, True
+        )
+        train_fullpath = split_dir / "train_split.csv"
+        test_fullpath = split_dir / "test_split.csv"
+
         return train_fullpath, test_fullpath
 
     def return_k_fold_split_paths(self) -> list:
@@ -279,13 +288,15 @@ class SplitManager:
         """
         splits_list = []
 
-        # alias function
-        get_fullpath = self.loader.return_folded_split_folder_fullpath
+        # Get the directory of the splits
+        fold_split_dir = self.pm.get_complex_ml_path(
+            self.parameters, ["test_and_train_data", "splits"], False, False
+        )
 
         for fold in range(self.k_folds):
             fold+=1  # folds start at 1 and not 0
-            train_fullpath = get_fullpath(self.parameters, "train", fold, self.k_folds, False)
-            test_fullpath = get_fullpath(self.parameters, "test", fold, self.k_folds, False)
+            train_fullpath = fold_split_dir / f"{fold}_{self.k_folds}_train_split.csv"
+            test_fullpath = fold_split_dir / f"{fold}_{self.k_folds}_test_split.csv"
 
             # Check if files exist
             if not train_fullpath.is_file() or not test_fullpath.is_file():

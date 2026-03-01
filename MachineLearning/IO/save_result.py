@@ -4,19 +4,21 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 
-from MachineLearning.IO.io_core import IOCore, List
+from matplotlib import pyplot as plt
+from typing import List
+
+from MachineLearning.Utils.config_handler import load_config
 from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.Utils.file_data_utils import FileDataUtils
 
 
-class SaveResult(IOCore):
+class SaveResult:
     """This class handles the saving of any data in this project"""
-    def __init__(self):
-        """Initializes the class with configs from IOCore superclass."""
-        super().__init__()
-        self.pm = PathManager()
+    def __init__(self, pm: PathManager):
+        """Initializes the class."""
+        self.data_names = load_config("data_names_config.yaml")
+        self.pm = pm
 
     def save_faw_psd(self, frequencies: np.ndarray, power: np.ndarray,
                      parameters: dict, start: int, end: int, result_id: int):
@@ -204,8 +206,11 @@ class SaveResult(IOCore):
         :param train_test_tuple: Tuple containing the train and test split. Order is (train, test)
         """
         # Assemble paths where splits will be saved
-        train_fullpath = self.return_single_split_folder_fullpath(parameters, "train")
-        test_fullpath = self.return_single_split_folder_fullpath(parameters, "test")
+        split_dir = self.pm.get_complex_ml_path(
+            parameters, ["test_and_train_data", "splits"], False, True
+        )
+        train_fullpath = split_dir / "train_split.csv"
+        test_fullpath = split_dir / "test_split.csv"
 
         # Extract train and test data
         train_df, test_df = train_test_tuple
@@ -234,14 +239,19 @@ class SaveResult(IOCore):
 
         total_folds = len(splits)
 
+        # Create the split directory
+        fold_split_dir = self.pm.get_complex_ml_path(
+            parameters, ["test_and_train_data", "splits"], False, True
+        )
+
         # Iterate through each fold giving it a number in the process
         for fold_idx, (train_idx, test_idx) in enumerate(splits):
             train_df = X_labeled.iloc[train_idx]
             test_df = X_labeled.iloc[test_idx]
 
             # Create a path for each train and test data instance and save data accordingly
-            train_path = self.return_folded_split_folder_fullpath(parameters, "train", fold_idx + 1, total_folds)
-            test_path = self.return_folded_split_folder_fullpath(parameters, "test", fold_idx + 1, total_folds)
+            train_path = fold_split_dir / f"{fold_idx + 1}_{total_folds}_train_split.csv"
+            test_path = fold_split_dir / f"{fold_idx + 1}_{total_folds}_test_split.csv"
             train_df.to_csv(train_path, index=False)
             test_df.to_csv(test_path, index=False)
 

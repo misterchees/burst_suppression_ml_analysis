@@ -17,10 +17,10 @@ from MachineLearning.Utils.feature_utils import FeatureUtils
 class Pipeline:
     patient_ids = []
 
-    def __init__(self, init_data_key: str, epoch_classes: dict, update_dict: dict, filter_method: str, model_key: str,
-                 normalize_method: str, transform_method: str, features_dict: dict = None, metadata_to_analyze: list = None,
-                 run_name: str = None, force_overwrite: bool = False, global_outliers: bool = True,
-                 force_transform: bool = False, force_extract: bool = False):
+    def __init__(self, pm: PathManager, init_data_key: str, epoch_classes: dict, update_dict: dict, filter_method: str,
+                 model_key: str, normalize_method: str, transform_method: str, features_dict: dict = None,
+                 metadata_to_analyze: list = None, run_name: str = None, force_overwrite: bool = False,
+                 global_outliers: bool = True, force_transform: bool = False, force_extract: bool = False):
         """
         Sets subset of Patient IDs, i.e., subdirectory of initial data
         :param init_data_key: Key for subdirectory in initial data, that contains a subset of patient IDs
@@ -39,8 +39,10 @@ class Pipeline:
         :param force_transform: If True, transforms will be calculated even if the results already exist.
         :param force_extract: If True, the features will be extracted and combined even if the results already exist.
         """
-        # Instance utils
-        self.pm = PathManager()
+        # Initialize Path Utilities
+        self.pm = pm
+        self.loader = LoadData(self.pm)
+        self.saver = SaveResult(self.pm)
 
         self.class_0 = epoch_classes[0]
         self.class_1 = epoch_classes[1]
@@ -71,8 +73,7 @@ class Pipeline:
         self._set_transforms_and_feature_extractor_instances(epoch_classes)
 
         # Get ResultIDs specified by the folder of initial_data_key
-        loader = LoadData()
-        self.patient_ids = loader.return_all_patient_ids(["initial_data", init_data_key])
+        self.patient_ids = self.pm.get_all_patient_ids(["initial_data", init_data_key])
 
         # Set run metadata class, collecting initial data
         filt_params_dict = {filter_method: updated_params["filtering_params"][filter_method]}
@@ -81,6 +82,7 @@ class Pipeline:
         epoch_list = [self.class_0, self.class_1]  # Do not change this order. Index = label
 
         self.run_metadata_collector = RunMetadata(
+            pm=self.pm,
             epoch_types=epoch_list,
             model_params=model_params_dict,
             initial_patient_ids=self.patient_ids,
@@ -148,21 +150,19 @@ class Pipeline:
         """
 
         # load faw and awake data dependent of epochtypes
-        loader = LoadData()
-        pm = PathManager()
         parameters = self.get_current_hyperparams()
 
         if epoch_type == "normal_an":
             return False
         elif epoch_type == "awake":
-            times_df = loader.load_awake_times_as_df(parameters)
+            times_df = self.loader.load_awake_times_as_df(parameters)
         elif epoch_type == "faw":
-            times_df = loader.load_faw_times_as_df(parameters)
+            times_df = self.loader.load_faw_times_as_df(parameters)
         else:
             raise ValueError("Epoch type must be 'normal_an', 'awake' or 'faw'")
 
         if calculation_type == 'transform':
-            psd_folderpath = pm.resolve_episode_path(parameters, epoch_type, ["features", "psds"], False, False)
+            psd_folderpath = self.pm.resolve_episode_path(parameters, epoch_type, ["features", "psds"], False, False)
             comparison_dict = Comparison.compare_csv_to_psd_folder(times_df, psd_folderpath)
             identical = bool(comparison_dict["a_in_b"] and comparison_dict["b_in_a"])
             return identical
@@ -175,7 +175,9 @@ class Pipeline:
 
             # Returns True if ALL features are already calculated, False otherwise
             for feature in feature_list:
-                feature_filepath = pm.resolve_episode_path(parameters, epoch_type, ["features", feature], True, False)
+                feature_filepath = self.pm.resolve_episode_path(
+                    parameters, epoch_type, ["features", feature], True, False
+                )
                 comparison_dict = Comparison.compare_two_csv(feature_filepath, times_df)
                 if not (comparison_dict["a_in_b"] and comparison_dict["b_in_a"]):
                     return False
@@ -233,7 +235,7 @@ class Pipeline:
         # Ensure the feature extractor is not None
         if self.feature_extractor is None:
             epoch_tuple = self.class_0, self.class_1
-            feature_extractor = EEGFeatureExtractor(epoch_tuple, {})
+            feature_extractor = EEGFeatureExtractor(self.pm, epoch_tuple, {})
         else:
             feature_extractor = self.feature_extractor
 
@@ -268,13 +270,13 @@ class Pipeline:
             if not feature_epochs:
                 self.feature_extractor = None
             else:
-                self.feature_extractor = EEGFeatureExtractor(tuple(feature_epochs), None)
+                self.feature_extractor = EEGFeatureExtractor(self.pm, tuple(feature_epochs), None)
 
         # Ignore everything and initialize for all epochs if force operation is activated
         if self.force_transform:
             self.transformer = Transforms(tuple(epoch_classes.values()), self.transform_method, None)
         if self.force_extract:
-            self.feature_extractor = EEGFeatureExtractor(tuple(epoch_classes.values()), None)
+            self.feature_extractor = EEGFeatureExtractor(self.pm, tuple(epoch_classes.values()), None)
 
     def _check_features(self) -> bool | None:
         """
@@ -338,14 +340,12 @@ class Pipeline:
             split_manager.normalize_data()
 
         if remove_outlier_ids:
-            loader = LoadData()
-            problematic_ids = loader.load_problematic_ids(parameters, self.model_key, outlier_run_name, self.global_outliers)
+            problematic_ids = self.loader.load_problematic_ids(parameters, self.model_key, outlier_run_name, self.global_outliers)
         else:
             problematic_ids = None
 
         if remove_epochs:
-            loader = LoadData()
-            problematic_epochs = loader.load_problematic_epochs(parameters, self.model_key, outlier_run_name, self.global_outliers)
+            problematic_epochs = self.loader.load_problematic_epochs(parameters, self.model_key, outlier_run_name, self.global_outliers)
         else:
             problematic_epochs = None
 
@@ -381,8 +381,7 @@ class Pipeline:
 
         # Setup model
         if classifier is not None:
-            loader = LoadData()
-            clf = loader.load_model(svm_key, parameters)  # load pretrained model
+            clf = self.loader.load_model(svm_key, parameters)  # load pretrained model
         else:
             from MachineLearning.Models.svm_classifier import SVMClassifier  # Lazy import
             # Prepare features/labels
@@ -403,13 +402,11 @@ class Pipeline:
 
         # Save the trained model
         if save_clf:
-            saver = SaveResult()
-            saver.save_model(clf, svm_key, parameters)
+            self.saver.save_model(clf, svm_key, parameters)
 
         # Save the original data with the prediction and error column
         if save_pred:
-            saver = SaveResult()
-            saver.save_predicted_set(test_df, test_path, y_pred, parameters, svm_key)
+            self.saver.save_predicted_set(test_df, test_path, y_pred, parameters, svm_key)
 
         return y_pred, y_test, y_proba
 
@@ -429,9 +426,8 @@ class Pipeline:
         evaluator = MetricsEvaluator(self.class_0, self.class_1, y_test, y_pred, y_proba)
         evaluation = evaluator.evaluate(print_metrics)  # evaluate and print results
         if save_metrics:
-            saver = SaveResult()
             prefix = "folds" if folds else "single"
-            saver.save_ml_result(evaluation, "svm", self.get_current_hyperparams(), "dict", prefix, "metrics")
+            self.saver.save_ml_result(evaluation, "svm", self.get_current_hyperparams(), "dict", prefix, "metrics")
 
         return evaluation
 
@@ -465,14 +461,6 @@ class Pipeline:
         else:
             y_pred, y_test, y_proba = self._collect_classification_results(self.split_paths, **self.model_params)
             self.metrics = self._evaluate_metrics(y_test, y_pred, y_proba, folds)
-
-    def set_patient_ids(self, initial_data_key: str):
-        """
-        Sets subset of Patient IDs, i.e. subdirectory of initial data
-        :param initial_data_key: Key for subdirectory in initial data, that contains subset of patient IDs
-        """
-        loader = LoadData()
-        self.patient_ids = loader.return_all_patient_ids(["initial_data", initial_data_key])
 
     @staticmethod
     def get_current_hyperparams() -> dict:
@@ -559,27 +547,26 @@ class Pipeline:
         if save_analysis:
             print(f"Saving analysis results to disk...")
             filename = result_path.stem
-            saver = SaveResult()
-            saver.save_metadata_analysis(error_correlation, "svm", self.get_current_hyperparams(),
+            self.saver.save_metadata_analysis(error_correlation, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, "error_correlation")
 
-            saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_hyperparams(),
+            self.saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, f"error_by_{metadata_col}")
 
-            saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_hyperparams(),
+            self.saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, f"error_label_{label}_by_{metadata_col}")
 
-            saver.save_metadata_analysis(class_dist_per_metadata, "svm", self.get_current_hyperparams(),
+            self.saver.save_metadata_analysis(class_dist_per_metadata, "svm", self.get_current_hyperparams(),
                                          "dataframe", filename, f"class_dist_per_{metadata_col}")
 
-            saver.save_metadata_analysis(confusion_matrices_by_metadata, "svm", self.get_current_hyperparams(),
+            self.saver.save_metadata_analysis(confusion_matrices_by_metadata, "svm", self.get_current_hyperparams(),
                                          "dict", filename, f"confusion_matrices_by_{metadata_col}")
 
             if plots:
-                saver.save_metadata_analysis(error_dist_by_metadata, "svm", self.get_current_hyperparams(),
+                self.saver.save_metadata_analysis(error_dist_by_metadata, "svm", self.get_current_hyperparams(),
                                              "plot", filename, f"error_dist_by_{metadata_col}")
 
-                saver.save_metadata_analysis(temp_error_by_metadata, "svm", self.get_current_hyperparams(),
+                self.saver.save_metadata_analysis(temp_error_by_metadata, "svm", self.get_current_hyperparams(),
                                              "plot", filename, f"temp_error_by_{metadata_col}")
 
         print("Analysis complete.")
@@ -609,7 +596,7 @@ class Pipeline:
 
         # Initialize analyzer
         parameters = self.get_current_hyperparams()
-        fold_analyzer = MetaFoldAnalyzer(model_key, parameters)
+        fold_analyzer = MetaFoldAnalyzer(self.pm, model_key, parameters)
         fold_analyzer.load_all_folds(metadata_col)
         # Carry out analysis
         agg_err_by_group = fold_analyzer.aggregate_error_by_group()
@@ -629,19 +616,18 @@ class Pipeline:
             error_heatmap = fold_analyzer.plot_foldwise_error_heatmap(metadata_col, print_analysis)
 
         if save_analysis:
-            saver = SaveResult()
-            saver.save_metadata_analysis(agg_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
+            self.saver.save_metadata_analysis(agg_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
                                          "agg_error_by_groups")
-            saver.save_metadata_analysis(agg_label_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
+            self.saver.save_metadata_analysis(agg_label_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
                                          "agg_label_error_by_groups")
-            saver.save_metadata_analysis(acc_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
+            self.saver.save_metadata_analysis(acc_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
                                          "acc_vs_class_distribution")
-            saver.save_metadata_analysis(prec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
+            self.saver.save_metadata_analysis(prec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
                                          "prec_vs_class_distribution")
-            saver.save_metadata_analysis(rec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
+            self.saver.save_metadata_analysis(rec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
                                          "rec_vs_class_distribution")
             if plots:
-                saver.save_metadata_analysis(error_heatmap, "svm", parameters, "plot", "Summary_analysis",
+                self.saver.save_metadata_analysis(error_heatmap, "svm", parameters, "plot", "Summary_analysis",
                                              "error_heatmap")
 
         print("Analysis of single analysis results complete")
@@ -649,9 +635,8 @@ class Pipeline:
     def analyze_results(self, print_analysis=True, save_analysis=True, plots=False):
 
         # Gather all results
-        pm = PathManager()
         parameter_dict = self.get_current_hyperparams()
-        result_folder = pm.get_complex_ml_path(parameter_dict, ["results", self.model_key], False, False)
+        result_folder = self.pm.get_complex_ml_path(parameter_dict, ["results", self.model_key], False, False)
         path_list, _ = PathUtils.list_files_in_folder(result_folder, ".csv", fullpaths=True)
 
         # Analyze all given metadata in all results

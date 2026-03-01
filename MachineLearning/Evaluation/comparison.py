@@ -1,4 +1,3 @@
-import os
 import re
 import pandas as pd
 from pathlib import Path
@@ -8,15 +7,16 @@ from matplotlib import pyplot as plt
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Features.transforms import Transforms
 from MachineLearning.Utils.plots import Plots
+from MachineLearning.Utils.path_manager import PathManager
 
 
 class Comparison:
 
-    def __init__(self):
-        pass
+    def __init__(self, pm:PathManager):
+        self.pm = pm
+        self.loader = LoadData(self.pm)
 
-    @staticmethod
-    def compare_filtered_and_unfiltered_eeg(result_id: int, channel=1, log_scale=True, y_scale="raw",
+    def compare_filtered_and_unfiltered_eeg(self, result_id: int, channel=1, log_scale=True, y_scale="raw",
                                             same_plot=True):
         """
         Will retrieve the raw and the filtered EEG for given Patient ID and Plot both PSDs to compare filtering.
@@ -28,11 +28,10 @@ class Comparison:
         :param same_plot: Boolean to enable/disable plotting both curves into the same plot. Ignores y_scale.
         farthest limits of both EEGs.
         """
-        loader = LoadData()
         transforms = Transforms(tuple("faw"), {}, {})
         # Load EEGs from same Patient ID to compare
-        fs_raw, raw_eegs = loader.load_eeg_data(result_id, False)
-        fs_filt, filtered_eegs = loader.load_eeg_data(result_id, True)
+        fs_raw, raw_eegs = self.loader.load_eeg_data(result_id, False)
+        fs_filt, filtered_eegs = self.loader.load_eeg_data(result_id, True)
 
         # Extract EEG of given channel
         raw_eeg = raw_eegs[:, channel - 1]
@@ -114,8 +113,8 @@ class Comparison:
 
         psd_folder = Path(psd_folder)
         if psd_folder.is_dir():  # If folder doesn't exist, there are no keys to add
-            for fname in os.listdir(psd_folder):
-                match = pattern.match(fname)
+            for fname in psd_folder.iterdir():
+                match = pattern.match(str(fname))
                 if match:
                     tup = (
                         match.group("start"),

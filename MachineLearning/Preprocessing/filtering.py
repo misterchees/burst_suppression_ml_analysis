@@ -3,11 +3,12 @@ from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.filter_utils import FilterUtils
 from MachineLearning.Utils.config_handler import load_config
+from MachineLearning.Utils.path_manager import PathManager
 
 
 class Filtering:
 
-    def __init__(self, method: str, filter_params: dict = None):
+    def __init__(self, pm: PathManager,  method: str, filter_params: dict = None):
         """
         Represents a class for initializing with a method name and its corresponding
         filter parameters in the form of a dictionary.
@@ -21,6 +22,12 @@ class Filtering:
             for the method.
         :type filter_params: dict
         """
+        # Initialize IO Utilities
+        self.pm = pm
+        self.loader = LoadData(self.pm)
+        self.saver = SaveResult(self.pm)
+
+
         self.method = method
         if filter_params is None:
             self.filter_params = load_config("parameters_config.yaml")["filtering_params"]
@@ -44,8 +51,8 @@ class Filtering:
         else:
             raise ValueError(f"Unrecognized filter method: {self.method}")
 
-    @staticmethod
-    def butterworth(result_id: int, lowcut, highcut, order):
+
+    def butterworth(self, result_id: int, lowcut, highcut, order):
         """
         Applies butterworth bandpass filtering to raw-EEG specified by the result ID and saves the result in
         the filtered subdirectory
@@ -54,17 +61,14 @@ class Filtering:
         :param highcut: Upper bound of the bandpass filter (Hz)
         :param order: Order of the bandpass filter -> How steep is the power transition to the filtered frequencies
         """
-        loader = LoadData()
-        saver = SaveResult()
-
         # Extract information from .mat file
         print(f"Filtering of EEG from Patient ID: {result_id} in progress")
-        fs, raw_eeg = loader.load_eeg_data(result_id=result_id, filtered=False)
+        fs, raw_eeg = self.loader.load_eeg_data(result_id=result_id, filtered=False)
 
         # Design Butterworth bandpass filter
         b, a = FilterUtils.design_butterworth(fs, lowcut=lowcut, highcut=highcut, order=order)
 
         # Apply filter to each channel
         filtered_eeg = signal.filtfilt(b, a, raw_eeg, axis=0)
-        saver.save_eeg_track(filtered_eeg, fs, result_id, ["filtered_data"])
+        self.saver.save_eeg_track(filtered_eeg, fs, result_id, ["filtered_data"])
         print(f"Patient ID: {result_id} succesfully filtered and saved in filtered subdirectory")

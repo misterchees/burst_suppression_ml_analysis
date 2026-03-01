@@ -3,9 +3,9 @@ import numpy as np
 from typing import Tuple
 from scipy.signal import welch
 from MachineLearning.Core.ml_object import MLObject
-from MachineLearning.IO.load_data import LoadData
-from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.config_handler import load_config
+from MachineLearning.Utils.path_manager import PathManager
+from MachineLearning.Utils.path_utils import PathUtils
 
 
 class Transforms(MLObject):
@@ -13,14 +13,14 @@ class Transforms(MLObject):
     This class provides methods to transform EEG data from time domain to frequency domain
     i.e. calculate frequency periodograms from linear EEG recordings over time.
     """
-    def __init__(self, epoch_types, transform_method, parameter_kwargs):
+    def __init__(self,pm: PathManager ,epoch_types, transform_method, parameter_kwargs):
         """
         Calls the constructor of the MLObject superclass.
         :param epoch_types: Tuple of all epoch types, that will be handled by this instance.
         :param transform_method: Name of the transform method to be used.
         :param parameter_kwargs: Dict of parameters to change.
         """
-        super().__init__(epoch_types, parameter_kwargs)
+        super().__init__(pm, epoch_types, parameter_kwargs)
         self.transform_method = transform_method
 
     def transform_eeg_episodes_to_psd(self):
@@ -28,41 +28,40 @@ class Transforms(MLObject):
         Calculates PSDs for fake awake EEG windows in specified csv from the pre and saves
         every PSD in a seperate csv file in a defined output directory.
         """
-        # instances for IO classes to load and save
-        result_saver = SaveResult()
-
         # Get channel and update epochs
         channel = load_config("parameters_config.yaml")["transform_params"][self.transform_method]["channel"]
         self.update_current_epochs(channel)
 
         # Calculate and save PSDs, depending on epoch type
         for epoch_type in self.epoch_types:
-            self.calculate_and_save_psd_for_epochs(epoch_type, result_saver)
+            self.calculate_and_save_psd_for_epochs(epoch_type)
 
-    def calculate_and_save_psd_for_epochs(self, epoch_type: str, result_saver: SaveResult):
+    def calculate_and_save_psd_for_epochs(self, epoch_type: str):
         """
         Calculates and saves PSDs for defined epochs.
         :param epoch_type: Type of epochs from which to calculate PSD.
-        :param result_saver: Result Saver instance.
         """
         # Define epochs and saving function based on epoch type
         if epoch_type == 'faw':
             epochs = self.faw_epochs.epoch_times
-            saving_func = result_saver.save_faw_psd
+            saving_func = self.saver.save_faw_psd
 
         elif epoch_type == 'awake':
             epochs = self.awake_epochs.epoch_times
-            saving_func = result_saver.save_awake_psd
+            saving_func = self.saver.save_awake_psd
 
         elif epoch_type == 'normal_an':
             epochs = self.normal_an_epochs.epoch_times
-            saving_func = result_saver.save_normal_an_psd
+            saving_func = self.saver.save_normal_an_psd
 
         else:
             raise ValueError(f'Unrecognized epoch type {epoch_type}. Valid types are "faw", "awake", "normal_an"')
 
         # Clear folder before calculating new PSDs
-        result_saver.clear_psd_folder(self.parameter_dict, epoch_type)
+        psd_path = self.pm.resolve_episode_path(
+            self.parameter_dict, epoch_type, ["features", "psds"], False, False
+        )
+        PathUtils.clear_folder(psd_path)
 
         # Calculate and save psd for each epoch
         for start_time, end_time, result_id, fs, eeg_segment in epochs:
@@ -116,13 +115,8 @@ class Transforms(MLObject):
         :param channel: EEG-Channel (options: 1, 2)
         :param nperseg_seconds: Length of window for Welch in seconds (usually: 1 or 2)
         """
-
-        # instances for IO classes to load and save
-        data_loader = LoadData()
-        result_saver = SaveResult()
-
         # get eeg data for episodes in Patients record (defined by result_id)
-        fs, raw_eeg = data_loader.load_eeg_data(result_id)
+        fs, raw_eeg = self.loader.load_eeg_data(result_id)
 
         # validate channel
         if channel not in [1, 2]:
@@ -133,4 +127,4 @@ class Transforms(MLObject):
         # calculate welch PSD
         frequencies, power = self.calculate_psd_welch(eeg_signal, fs, nperseg_seconds)
 
-        result_saver.save_complete_eeg_psd(frequencies, power, False, result_id)
+        self.saver.save_complete_eeg_psd(frequencies, power, False, result_id)

@@ -3,8 +3,11 @@ This module is to execute all pipeline commands and therefore the main point to 
 """
 from MachineLearning.Core.pipeline import Pipeline
 from MachineLearning.Utils.config_handler import replace_bands_in_config
+from MachineLearning.Utils.path_manager import PathManager
 import itertools
 
+
+pm = PathManager()
 INITIAL_DATA_SUBDIR_KEY = "raw_eeg_mat"
 channel = 1
 model_key = "svm"
@@ -89,6 +92,7 @@ def run():
                             {"frequency_bands": band_dict_for_iteration}}})
 
     pipeline = Pipeline(
+        pm=pm,
         init_data_key=INITIAL_DATA_SUBDIR_KEY,
         epoch_classes=epoch_classes,
         update_dict=all_run_params_dict,

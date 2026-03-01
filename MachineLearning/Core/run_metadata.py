@@ -30,6 +30,7 @@ class RunMetadata:
 
     def __init__(
             self,
+            pm: PathManager,
             epoch_types: list,
             model_params: dict,
             initial_patient_ids: Union[List[int], set],
@@ -56,6 +57,11 @@ class RunMetadata:
         for epoch_type in epoch_types:
             if epoch_type not in ["normal_an", "awake", "faw"]:
                 raise ValueError(f"Invalid epoch_type: {epoch_type}")
+
+        # Initialize Utils
+        self.pm = pm
+        self.loader = LoadData(self.pm)
+        self.saver = SaveResult(self.pm)
 
         # Initial params
         self.epoch_types = epoch_types
@@ -95,8 +101,7 @@ class RunMetadata:
         rel_bandpower_key = "relative_bandpower"
 
         # Assemble path and read header of combined features csv
-        pm = PathManager()
-        combined_features_path = pm.resolve_episode_path(
+        combined_features_path = self.pm.resolve_episode_path(
             self.hyperparameters, self.epoch_types[0], ["test_and_train_data", "feature_sets"], True, False
         )
         combined_features_df_header = pd.read_csv(combined_features_path, nrows=0)
@@ -193,8 +198,7 @@ class RunMetadata:
 
     def save_to_json(self):
         """Save the metadata to a JSON file."""
-        saver = SaveResult()
-        saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, self.to_dict(), Path(f"{self.run_name}.json"))
+        self.saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, self.to_dict(), Path(f"{self.run_name}.json"))
 
     def __repr__(self):
         """String representation of the RunMetadata object."""
@@ -216,8 +220,7 @@ class RunMetadata:
         base_name = run_name or default_run_name
 
         # Get folder with files and return a list of them
-        pm = PathManager()
-        metadata_dir = pm.get_complex_ml_path(
+        metadata_dir = self.pm.get_complex_ml_path(
             self.hyperparameters, ["run_metadata", self.model_key], False, False
         )
         files,_ = PathUtils.list_files_in_folder(metadata_dir, ".json")
@@ -265,8 +268,7 @@ class RunMetadata:
         """
 
         # Get folder with files and return a list of them
-        pm = PathManager()
-        metadata_dir = pm.get_complex_ml_path(
+        metadata_dir = self.pm.get_complex_ml_path(
             self.hyperparameters, ["run_metadata", self.model_key], False, False
         )
         files, _ = PathUtils.list_files_in_folder(metadata_dir, ".json")
@@ -310,8 +312,7 @@ class RunMetadata:
             classification_params=metadata_dict[self.classification_params_key]
         )
         metadata_dict["param_hash"] = other_hash
-        saver = SaveResult()
-        saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, metadata_dict,
+        self.saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, metadata_dict,
                                         file)
         return other_hash
 

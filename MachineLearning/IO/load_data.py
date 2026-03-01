@@ -5,7 +5,7 @@ from typing import Tuple, List, Dict
 import numpy as np
 import pandas as pd
 
-from MachineLearning.IO.io_core import IOCore
+from MachineLearning.Utils.config_handler import load_config
 from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.Utils.file_data_utils import FileDataUtils
 from MachineLearning.Utils.path_utils import PathUtils
@@ -38,13 +38,13 @@ def load_psd_with_start_end_resultid(folder_path: Path, filename: str) \
     return psd_dataframe, start, end, result_id
 
 
-class LoadData(IOCore):
+class LoadData:
     """This class handles the loading of the data in the project"""
 
-    def __init__(self):
-        """Initializes the class with configs from IOCore superclass."""
-        super().__init__()
-        self.pm = PathManager()
+    def __init__(self, pm: PathManager):
+        """Initializes the class."""
+        self.data_names = load_config("data_names_config.yaml")
+        self.pm = pm
 
     def load_faw_times_as_df(self, parameters: dict) -> pd.DataFrame:
         """
@@ -513,7 +513,7 @@ class LoadData(IOCore):
             print("File 'Summary_outliers_by_groups.csv' not found. Trying to create from previous results...")
             try:
                 from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
-                fold_analyzer = MetaFoldAnalyzer(model_key, parameters, outlier_run_name)
+                fold_analyzer = MetaFoldAnalyzer(self.pm, model_key, parameters, outlier_run_name)
                 outliers_df = fold_analyzer.select_outlier_groups(save_res=True)
             except FileNotFoundError:
                 print("No previous results found to create 'Summary_outliers_by_groups.csv'. "
@@ -552,7 +552,7 @@ class LoadData(IOCore):
             print("File 'Summary_outlier_epochs.csv' not found. Trying to create from previous results...")
             try:
                 from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
-                fold_analyzer = MetaFoldAnalyzer(model_key, parameters, outlier_run_name)
+                fold_analyzer = MetaFoldAnalyzer(self.pm, model_key, parameters, outlier_run_name)
                 outliers_df = fold_analyzer.select_outlier_epochs(save_res=True)
             except FileNotFoundError:
                 print("No previous results found to create 'Summary_outlier_epochs.csv'. "
@@ -607,7 +607,7 @@ class LoadData(IOCore):
         :returns: A single combined DataFrame if 'combined' is True. Otherwise, a dictionary
                   of DataFrames indexed by the file name (stem) of each split.
         """
-        splits_list = self.return_related_fullpaths(hyperparamers, run_name, ["test_and_train_data", "splits"])
+        splits_list = self.pm.get_related_paths(hyperparamers, run_name, ["test_and_train_data", "splits"])
 
         df_dict = {}
         for split_path in splits_list:
@@ -635,7 +635,7 @@ class LoadData(IOCore):
                 If combined is False, returns a dictionary where keys are file names and values
                 are the corresponding result DataFrames.
         """
-        results_list = self.return_related_fullpaths(hyperparamers, run_name, ["results", model_key])
+        results_list = self.pm.get_related_paths(hyperparamers, run_name, ["results", model_key])
 
         df_dict = {}
         for result_path in results_list:
@@ -747,7 +747,7 @@ class LoadData(IOCore):
         """
         # Create the saver instance
         from MachineLearning.IO.save_result import SaveResult
-        saver = SaveResult()
+        saver = SaveResult(self.pm)
 
         saver.save_global_outliers(parameters, outliers_df, outlier_type)  # Add given outliers to global
         global_outliers_df = self.load_global_outliers(parameters, outlier_type)  # Get updated global outliers

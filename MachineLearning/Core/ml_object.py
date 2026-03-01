@@ -1,8 +1,11 @@
 """
 Module containing MlObject class.
 """
+from MachineLearning.IO.load_data import LoadData
+from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.config_handler import load_config, update_config
 from MachineLearning.Utils.epochs import Epochs
+from MachineLearning.Utils.path_manager import PathManager
 
 
 class MLObject:
@@ -19,13 +22,20 @@ class MLObject:
     awake_epochs = Epochs("awake")
     normal_an_epochs = Epochs("normal_an")
 
-    def __init__(self, epoch_types: tuple, parameter_update: dict):
+    def __init__(self,pm: PathManager, epoch_types: tuple, parameter_update: dict):
         """
         Create an instance with global values for Epochs, flags and parameters.
         :param epoch_types: Defines which Epochs will be handled by this instance. Valid options are:
         "faw", "awake", "normal_an"
         :param parameter_update: A dict containing the parameters to be updated.
         """
+
+        # Initialize IO handlers
+        self.pm = pm
+        self.loader = LoadData(self.pm)
+        self.saver = SaveResult(self.pm)
+
+
         for element in epoch_types:
             if element not in self.VALID_EPOCH_TYPES:
                 raise ValueError(f"Invalid epoch type: {element}. Valid epoch types are {self.VALID_EPOCH_TYPES}")

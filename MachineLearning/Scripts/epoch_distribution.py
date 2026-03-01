@@ -2,15 +2,17 @@ import pandas as pd
 from collections import Counter
 from pathlib import Path
 from MachineLearning.IO.load_data import LoadData
+from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.IO.save_result import SaveResult
 
 loader = LoadData()
+pm = PathManager()
 
 
 def get_epoch_distribution_for_run(hyperparameters: dict, model_key: str, run_name: str, save_result=True):
 
     # Get splits
-    relevant_splits = loader.return_related_fullpaths(hyperparameters, run_name, ["test_and_train_data", "splits"])
+    relevant_splits = pm.get_related_paths(hyperparameters, run_name, ["test_and_train_data", "splits"])
 
     # Get label mapping
     metadata = loader.load_run_data(hyperparameters, run_name, model_key)

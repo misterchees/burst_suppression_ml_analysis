@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import Optional, List
 from dotenv import load_dotenv
+import warnings
 
 from MachineLearning.Utils.config_handler import load_config
 from MachineLearning.Utils.path_utils import PathUtils
@@ -235,8 +236,73 @@ class PathManager:
 
         raise LookupError(f"Node at path '{keys}' has no children.")
 
+    def get_related_paths(self, hyperparameters: dict, run_name: str, folder_parts: list) -> List[Path]:
+        """
+        Returns a list of file paths for related CSV files, such as train and test
+        splits, located in the specified folder for a given run name.
+
+        :param hyperparameters: A dictionary containing hyperparameters, used to construct the full path to the folder.
+        :param run_name: The name of the current run to identify the folder containing the relevant files.
+        :param folder_parts: A list of keys that define the path to the folder.
+        :return: A list of file paths.
+        :raises FileNotFoundError: If no valid files are found in the specified folder.
+        """
+        # Get folder of related files
+        files_folderpath = self.get_complex_ml_path(
+            hyperparameters, folder_parts, False, False, run_name
+        )
+        fullpaths_list, _ = PathUtils.list_files_in_folder(files_folderpath, ".csv", fullpaths=True)
+
+        # Filter out all files that are not relevant based on the folder they are in
+        if folder_parts[-1] == "splits":
+            relevant_paths = [
+                path for path in fullpaths_list
+                if path.name == "train_split.csv" or path.name == "test_split.csv"
+            ]
+        elif folder_parts[0] == "results":
+            relevant_paths = [
+                path for path in fullpaths_list
+                if path.name == "full_and_pred.csv"
+            ]
+        else:
+            raise ValueError(f"Unexpected folder to retrieve related files from: {files_folderpath}")
+        # Validation if relevant files were found
+        if not relevant_paths:
+            raise FileNotFoundError(f"No valid files found in folder {files_folderpath} for run_name='{run_name}'")
+
+        return relevant_paths
+
+    def get_all_patient_ids(self, folder_keys: List[str]) -> List[int]:
+        """
+        Returns a list of all patient IDs found in a directory.
+        Expects the directory to contain files named <patient_id>.<file_extension>.
+        :param folder_keys: Keys of the directory with the patientID files.
+        :return: List of all patient IDs in the directory.
+        """
+
+        patient_ids = []
+        directory = self.get_path(*folder_keys)
+
+        for file in directory.iterdir():
+            try:
+                # Get Patient ID from the filename
+                patient_id = int(file.name.split(".")[0])
+                # Add filename to the patient ID list
+                patient_ids.append(patient_id)
+            except TypeError as te:
+                warnings.warn(f"File: {file} has not the right format. It should be <integer>.<file extension>\n"
+                              f"Error message: {te}")
+            except Exception as ex:
+                warnings.warn(f"Something went wrong while file: {file} was parsed. Error {ex}")
+
+        return patient_ids
+
     def _resolve_base_dir(self, runtime_arg: Optional[str]) -> Path:
-        """Determines the base directory based on priority hierarchy."""
+        """
+        Determines the base directory based on priority hierarchy.
+
+        :param runtime_arg: Optional base directory argument provided at runtime.
+        """
 
         # Priority 1: Runtime argument
         if runtime_arg:
