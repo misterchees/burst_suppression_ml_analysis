@@ -94,7 +94,7 @@ class EEGFeatureExtractor(MLObject):
         :return: dict of relative power values per band
         """
 
-        loader = self.data_loader
+        loader = self.loader
         frequency_bands = self.param_config["feature_params"]["relative_bandpower"]["frequency_bands"]
         # column names
         psd_cols = loader.data_names["psd_files"]
@@ -150,7 +150,7 @@ class EEGFeatureExtractor(MLObject):
         """
 
         # columns
-        power_col = self.data_loader.data_names["psd_files"]["psd_power_col"]
+        power_col = self.loader.data_names["psd_files"]["psd_power_col"]
 
         # get all powers and calculate total power
         power = psd_df[power_col].values
@@ -271,10 +271,9 @@ class EEGFeatureExtractor(MLObject):
         :param upper_bound: Upper bound of normalization range, referred to as b
         :return: Spectral kurtosis as float (normalized if requested)
         """
-        io_stuff = self.data_loader
 
         # get frequencies and power
-        psd_cols = io_stuff.data_names["psd_files"]
+        psd_cols = self.loader.data_names["psd_files"]
         freqs = psd_df[psd_cols["psd_freq_col"]].values
         power = psd_df[psd_cols["psd_power_col"]].values
         total_power = np.sum(power)
@@ -535,7 +534,7 @@ class EEGFeatureExtractor(MLObject):
             output_list.append({"Start": start, "End": end, "ResultID": result_id, feature_name: value})
 
         # Save results and output message
-        self.result_saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
+        self.saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
         print(message)
 
     def extract_feature_from_psds(self, feature_key: str, **kwargs):
@@ -582,7 +581,7 @@ class EEGFeatureExtractor(MLObject):
 
         output_list = self.apply_function_to_all_psds(dir_path, func, feature_name, **func_kwargs)
 
-        self.result_saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
+        self.saver.save_feature_summary_episode(output_list, feature_key, self.parameter_dict, epoch_type)
         print(f"Succesfully calculated and saved {feature_name} for {message_dict[epoch_type]} PSDs")
 
     def apply_function_to_all_psds(self, psd_directory_path: Path, func, feature_name, **func_kwargs) -> list:
@@ -614,5 +613,6 @@ class EEGFeatureExtractor(MLObject):
         :param all_features: If True will combine all features in the features folder.
         :param features: A list of features to be combined. Is ignored if all_features is True.
         """
+        feature_utils = FeatureUtils(self.pm)
         for epoch_type in self.epoch_types:
-            FeatureUtils.combine_features(self.pm, self.parameter_dict, epoch_type, all_features, features)
+            feature_utils.combine_features(self.parameter_dict, epoch_type, all_features, features)

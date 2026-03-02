@@ -4,9 +4,9 @@ import pandas as pd
 from MachineLearning.Utils.feature_utils import FeatureUtils
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Utils.path_manager import PathManager
-from pathlib import Path
 from typing import List, Any
 
+pm = PathManager()
 
 def create_eeg_segment_file(epoch_type_0: str, epoch_type_1: str, parameters: dict, _run_name: str = None):
     if _run_name is not None:
@@ -14,8 +14,9 @@ def create_eeg_segment_file(epoch_type_0: str, epoch_type_1: str, parameters: di
     else:
         ids_from_run = None
 
-    type_0_eeg_tuples = FeatureUtils.return_eeg_epochs(epoch_type_0, parameters, allowed_ids=ids_from_run)
-    type_1_eeg_tuples = FeatureUtils.return_eeg_epochs(epoch_type_1, parameters, allowed_ids=ids_from_run)
+    feature_utils = FeatureUtils(pm)
+    type_0_eeg_tuples = feature_utils.return_eeg_epochs(epoch_type_0, parameters, allowed_ids=ids_from_run)
+    type_1_eeg_tuples = feature_utils.return_eeg_epochs(epoch_type_1, parameters, allowed_ids=ids_from_run)
 
     segment_df = create_epoch_dataframes(type_0_eeg_tuples, type_1_eeg_tuples)
 

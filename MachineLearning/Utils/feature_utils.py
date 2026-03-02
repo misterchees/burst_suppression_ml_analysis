@@ -6,9 +6,13 @@ from MachineLearning.Utils.path_manager import PathManager
 
 
 class FeatureUtils:
-    @staticmethod
-    def combine_features(
-            pm: PathManager,
+    def __init__(self, pm: PathManager):
+        self.pm = pm
+        self.loader = LoadData(self.pm)
+        self.saver = SaveResult(self.pm)
+
+
+    def combine_features(self,
             parameters: dict,
             epoch_type: str,
             all_features: bool,
@@ -19,7 +23,6 @@ class FeatureUtils:
         Combines multiple feature CSVs (based on ResultID, Start, End) into a single DataFrame
         and saves it to the feature_sets directory.
 
-        :param pm: PathManager instance to handle file paths.
         :param parameters: Parameters of the episodes from which the features are. Defines subfolder of features.
         :param all_features: If True, combine all available features found in the features directory.
         :param epoch_type: Defines the epochs from which the features were calculated. Defines subfolder of features.
@@ -28,7 +31,7 @@ class FeatureUtils:
         """
         # Step 1: Determine which features to include
         if all_features:
-            features = FeatureUtils.return_all_features(pm, "keys")
+            features = self.return_all_features("keys")
         else:
             if not features:
                 raise ValueError("You must provide at least one feature name or set all_features=True.")
@@ -43,9 +46,9 @@ class FeatureUtils:
         for feature in features:
             try:
                 # Message which feature is processed
-                print(f"Merging feature {pm.get_path("features", feature).stem}...")
+                print(f"Merging feature {self.pm.get_path("features", feature).stem}...")
                 # loads feature
-                feature_path = pm.resolve_episode_path(
+                feature_path = self.pm.resolve_episode_path(
                     parameters, epoch_type, ["features", feature], True, False
                 )
                 df = pd.read_csv(feature_path)
@@ -92,11 +95,10 @@ class FeatureUtils:
         merged_df = merged_df.sort_values(by=["ResultID", "Start", "End"]).reset_index(drop=True)
 
         # Step 4: Save to the feature_sets directory
-        saver = SaveResult(pm)
+        saver = SaveResult(self.pm)
         saver.save_combined_features(parameters, merged_df, epoch_type)
 
-    @staticmethod
-    def return_eeg_epochs(epoch_type: str, parameters: dict, channel=1, num_an: int = None, allowed_ids: list = None) -> list:
+    def return_eeg_epochs(self, epoch_type: str, parameters: dict, channel=1, num_an: int = None, allowed_ids: list = None) -> list:
         """
         Takes parameters and returns a list of all epochs (+ metadata) of this list
 
@@ -108,10 +110,9 @@ class FeatureUtils:
         :return: List of Tuples. Every Tuple is structured -> (start(s), end(s), result_id, fs, eeg epochs (samples))
         """
         output_list = []
-        data_loader = LoadData()
 
         # Return Epoch times based on current parameters and grouped by result ID
-        episode_times_df = data_loader.load_grouped_epochs(parameters, epoch_type, num_an)
+        episode_times_df = self.loader.load_grouped_epochs(parameters, epoch_type, num_an)
         if epoch_type != 'normal_an':
             print(f"Retrieving Epochs for {epoch_type} for Parameters: {parameters}")
         else:
@@ -122,7 +123,7 @@ class FeatureUtils:
 
         for result_id, epoch_list in episode_times_df.items():
             # get times, segments and fs from grouped times list
-            fs, eeg_segment_dict = data_loader.load_eeg_epochs_from_csv(
+            fs, eeg_segment_dict = self.loader.load_eeg_epochs_from_csv(
                 result_id, epoch_list, channel, ["normalized_data"]
             )
 
@@ -154,13 +155,11 @@ class FeatureUtils:
 
         return df_norm
 
-    @staticmethod
-    def return_all_features(pm: PathManager, return_type: str = "keys") -> list | dict:
+    def return_all_features(self, return_type: str = "keys") -> list | dict:
         """
         Returns all feature parameters from the path config.
 
-        :param pm: An initialized PathManager instance to avoid redundant file I/O.
         :param return_type: Format of the returned data ('dict', 'keys', or 'values').
         :return: Features in the requested format.
         """
-        return pm.get_node_children(["features"], return_type=return_type)
+        return self.pm.get_node_children(["features"], return_type=return_type)

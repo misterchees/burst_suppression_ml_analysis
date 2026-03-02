@@ -13,10 +13,12 @@
         - [x] save_result
     - [x] Replace IOCore with PathManager. SaveResult and LoadDate need to import from PathManager
     - [x] Make PathManager a singleton
-    - [ ] Make FeatureUtils not static. It needs PathManager and Loader/Saver as attributes
+    - [x] Make FeatureUtils not static. It needs PathManager and Loader/Saver as attributes
     - [ ] Check which functions are still needed and which can be deleted/replaced
-      - [ ] load_data
       - [ ] save_result
+        - [x] Every function above save_metadata_analysis
+        - [ ] save_metadata_analysis and below
+      - [ ] load_data
     - [ ] Create and run tests for all functions in path handling modules
       - [x] In path_utils
       - [ ] In PathManager
@@ -60,6 +62,7 @@
       - [ ] return_folded_split_folder_fullpath and return_single_split_folder_fullpath only exist to reinforce 
       name consistency of folders but are basically just Wrappers for return_all_parameter_fullpath. Find another way! 
       - [ ] Probably merge save_ml_result, save_metadata_analysis and save_predicted_set in IO/save_result
+      - [ ] Check feature_utils.py
       - [ ] Look into functions that basically just wrap other functions and delete e.g., save_further_analysis
       in IO/save_result
       - [ ] Try to remove explicit file_type arguments in saving functions and infer them from the specific files

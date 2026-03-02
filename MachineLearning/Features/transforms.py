@@ -41,32 +41,27 @@ class Transforms(MLObject):
         Calculates and saves PSDs for defined epochs.
         :param epoch_type: Type of epochs from which to calculate PSD.
         """
-        # Define epochs and saving function based on epoch type
-        if epoch_type == 'faw':
-            epochs = self.faw_epochs.epoch_times
-            saving_func = self.saver.save_faw_psd
 
-        elif epoch_type == 'awake':
-            epochs = self.awake_epochs.epoch_times
-            saving_func = self.saver.save_awake_psd
+        # Epochs dict to get the correct epoch information
+        epoch_dict ={
+            "faw": self.faw_epochs.epoch_times,
+            "awake": self.awake_epochs.epoch_times,
+            "normal_an": self.normal_an_epochs.epoch_times
+        }
 
-        elif epoch_type == 'normal_an':
-            epochs = self.normal_an_epochs.epoch_times
-            saving_func = self.saver.save_normal_an_psd
-
-        else:
+        if epoch_type not in epoch_dict.keys():
             raise ValueError(f'Unrecognized epoch type {epoch_type}. Valid types are "faw", "awake", "normal_an"')
 
         # Clear folder before calculating new PSDs
         psd_path = self.pm.resolve_episode_path(
-            self.parameter_dict, epoch_type, ["features", "psds"], False, False
+            self.parameter_dict, epoch_type, ["features", "psds"], False, True
         )
         PathUtils.clear_folder(psd_path)
 
         # Calculate and save psd for each epoch
-        for start_time, end_time, result_id, fs, eeg_segment in epochs:
+        for start_time, end_time, result_id, fs, eeg_segment in epoch_dict[epoch_type]:
             frequencies, power = self.calculate_psd(eeg_segment)
-            saving_func(frequencies, power, self.parameter_dict, start_time, end_time, result_id)
+            self.saver.save_psd_in_given_directory(frequencies, power, start_time, end_time, result_id, psd_path)
 
     def calculate_psd(self, eeg_segment: np.ndarray):
         """

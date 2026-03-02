@@ -20,66 +20,8 @@ class SaveResult:
         self.data_names = load_config("data_names_config.yaml")
         self.pm = pm
 
-    def save_faw_psd(self, frequencies: np.ndarray, power: np.ndarray,
-                     parameters: dict, start: int, end: int, result_id: int):
-        """
-        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end, and result_id.
-        :param frequencies: Frequencies from the PSD
-        :param power: Power of the Frequencies from the PSD
-        :param parameters: A dictionary with all episode parameters from the project
-        :param start: Start time of episode, from which the PSD was calculated
-        :param end: End time of episode, from which the PSD was calculated.
-        :param result_id: Patient ID
-        """
-
-        # Assemble path to directory
-        psd_dir_fullpath = self.pm.get_complex_ml_path(parameters, ["features", "psds"], True, False)
-
-        # Save file in directory
-        self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
-
-    def save_awake_psd(self, frequencies: np.ndarray, power: np.ndarray,
-                       parameters: dict, start: int, end: int, result_id: int):
-        """
-        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end, and result_id.
-        :param frequencies: Frequencies from the PSD
-        :param power: Power of the Frequencies from the PSD
-        :param parameters: A dictionary with all episode parameters from the project
-        :param start: Start time of episode, from which the PSD was calculated
-        :param end: End time of episode, from which the PSD was calculated.
-        :param result_id: Patient ID
-        """
-
-        # Assemble path to directory
-        psd_dir_fullpath = self.pm.get_simple_episode_path(parameters, "awake", ["features", "psds"], False )
-
-        # Make sure directory exists
-        psd_dir_fullpath.mkdir(exist_ok=True)
-
-        self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
-
-    def save_normal_an_psd(self, frequencies: np.ndarray, power: np.ndarray,
-                           parameters: dict, start: int, end: int, result_id: int):
-        """
-        Saves PSD data of EEG in a directory specified by parameters with a name specified by start, end, and result_id.
-        :param frequencies: Frequencies from the PSD
-        :param power: Power of the Frequencies from the PSD
-        :param parameters: A dictionary with all episode parameters from the project
-        :param start: Start time of episode, from which the PSD was calculated
-        :param end: End time of episode, from which the PSD was calculated.
-        :param result_id: Patient ID
-        """
-
-        # Assemble path to directory
-        psd_dir_fullpath = self.pm.get_simple_episode_path(parameters, "normal_an", ["features", "psds"], False )
-
-        # Make sure directory exists
-        psd_dir_fullpath.mkdir(exist_ok=True)
-
-        self.save_psd_in_given_directory(frequencies, power, start, end, result_id, psd_dir_fullpath)
-
     def save_psd_in_given_directory(self, frequencies: np.ndarray, power: np.ndarray,
-                                    start: int, end: int, result_id: int, psd_dir_fullpath: Path):
+                                    start: int, end: int, result_id: int, psd_dir_path: Path):
         """
         Saves PSD data of EEG in a given directory with a name specified by start, end, and result_id.
         :param frequencies: Frequencies from the PSD
@@ -87,7 +29,7 @@ class SaveResult:
         :param start: Start time of the episode, from which the PSD was calculated
         :param end: End time of the episode, from which the PSD was calculated.
         :param result_id: Patient ID
-        :param psd_dir_fullpath: Directory where the PSD will be saved.
+        :param psd_dir_path: Directory where the PSD will be saved.
         """
         # Validate simple values
         if start is None or end is None or result_id is None:
@@ -101,13 +43,12 @@ class SaveResult:
         })
 
         # Create a fullpath with the PSD name to save data
-        psd_filename = f"PSD_{start}_{end}_{result_id}.csv"
-        fullpath = Path(psd_dir_fullpath, psd_filename)
+        fullpath = psd_dir_path / f"PSD_{start}_{end}_{result_id}.csv"
 
         # Save psd
         psd_df.to_csv(fullpath, index=False)
 
-        print(f"Single episode PSD saved: {fullpath}")
+        print(f"Single episode PSD saved in: {fullpath}")
 
     def save_complete_eeg_psd(self, frequencies: np.ndarray, power: np.ndarray, filtered: bool, result_id: int):
         """
@@ -126,7 +67,7 @@ class SaveResult:
             filter_prefix = "raw"
 
         psd_filename = f"PSD_{filter_prefix}_whole_EEG_{result_id}.csv"
-        whole_eeg_subdir = Path(psd_dir, "whole_EEG_PSD", filter_prefix)
+        whole_eeg_subdir = psd_dir / "whole_EEG_PSD" / filter_prefix
 
         # Make sure the directory exists
         whole_eeg_subdir.mkdir(exist_ok=True)
@@ -139,7 +80,7 @@ class SaveResult:
         })
 
         # Create a fullpath with the PSD name to save data
-        fullpath = Path(whole_eeg_subdir, psd_filename)
+        fullpath = whole_eeg_subdir / psd_filename
 
         # Save psd
         psd_df.to_csv(fullpath, index=False)
@@ -155,11 +96,13 @@ class SaveResult:
         :param episode_type: Type of the episode calculated. Valid options are 'normal_an', 'faw' and 'awake'
         :return: None
         """
+        # Convert results to a dataframe
         result_df = pd.DataFrame(results)
+
+        # Resolve the path to the directory and save as .csv
         fullpath = self.pm.resolve_episode_path(
             parameters, episode_type, ["features", feature_key], True, True
         )
-
         result_df.to_csv(fullpath, index=False)
 
     def save_eeg_track(self, eeg_track: np.ndarray, fs: int, result_id: int, folder_keys: List[str]):
@@ -174,10 +117,10 @@ class SaveResult:
         """
         # Get the number of each possible channel specified in config
         channels = self.data_names["eeg_files"]["eeg_channels"]
-        df = pd.DataFrame(eeg_track, columns=channels)
+        df = pd.DataFrame(eeg_track, columns=channels) # Transform the eeg track into a dataframe
         eeg_subdir = self.pm.get_path(*folder_keys) # Assemble a path to the dir of the file
         eeg_subdir.mkdir(exist_ok=True) # Make sure folders in the path exist
-        fullpath = Path(eeg_subdir, f"{result_id}.csv")
+        fullpath = eeg_subdir / f"{result_id}.csv"
 
         # Write fs as the header line, then the rounded data
         with open(fullpath, "w", newline='') as f:
@@ -273,37 +216,6 @@ class SaveResult:
         fullpath = Path(full_folder_path, model_filename)
         dump(model, fullpath)
 
-    def save_ml_result(self, result_data, model_key: str, parameters: dict,
-                       file_type: str, file_prefix: str = "", file_suffix: str = ""):
-        """
-        Save machine learning result data to a specified file format and location.
-
-        This method processes data, constructs appropriate folder paths based on
-        provided parameters, and saves the data in the specified file format. The
-        method enforces naming conventions for the file. It supports saving in CSV or JSON formats
-        for different use cases.
-
-        :param result_data: Input data to be saved.
-        :param model_key: A unique string identifier for the model, specified in the path_config.
-        :param parameters: A dictionary containing parameters used for constructing
-                           folder hierarchy and metadata about the file.
-        :param file_type: Specifies the type of file to save. Valid options are
-                          "dataframe", "dict", and "plot". Dataframes are saved as CSV,
-                          dictionaries are saved as JSON, and plots are saved as PNG.
-        :param file_prefix: An optional prefix, added to the filename for further
-                            customization. Should contain enough information to infer
-                            the source of the result (e.g., the filename of the split set)
-                            Defaults to an empty string.
-        :param file_suffix: An optional suffix, added to the filename. Should contain information
-                            about the result type (e.g. "metrics" or "analysis_plot").
-        :return: None
-        """
-        # Construct the path to the folder, where the file will be saved
-        folder_path = self.pm.get_complex_ml_path(parameters, ["results", model_key], False, True)
-
-        # Save the file depending on the filetype
-        self.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
-
     def save_metadata_analysis(self, result_data, model_key: str, parameters: dict,
                        file_type: str, file_prefix: str = "", file_suffix: str = "", outlier_run_name: str = None):
         """
@@ -337,32 +249,31 @@ class SaveResult:
         )
 
         # Save the file depending on the filetype
-        self.save_file_depending_on_filetype(file_type, folder_path, file_prefix, file_suffix, result_data)
+        self.save_file(file_type, folder_path, file_prefix, file_suffix, result_data)
 
     def save_predicted_set(self, test_df: pd.DataFrame, test_path: Path, pred_df, parameters: dict, model_key: str):
         """
         Save the predicted dataset along with necessary modifications and persist the results.
 
         This function appends predictions to the given test dataset, calculates the prediction
-        error for each instance, and saves the modified dataset with additional metadata. It helps
-        in evaluating model performance and preserving results for subsequent analysis.
+        error for each instance, and saves the modified dataset with additional metadata.
 
-        :param test_df: Pandas DataFrame representing the test dataset. Expected to have at least
-                       columns including 'label' to compare with predictions.
+        :param test_df: Pandas DataFrame representing the test dataset. Expected to include
+                       a column named 'label'.
         :param test_path: The file path of the original test dataset. Used to derive the filename for saving results.
-        :param pred_df: Pandas Series or DataFrame representing the predicted labels generated
-                       by the machine learning model.
-        :param parameters: Parameters for the machine learning run. Saved along with results for traceability.
+        :param pred_df: Pandas Series or DataFrame representing the predicted labels.
+        :param parameters: Parameters for the machine learning run.
         :param model_key: Unique identifier of the model, which calculated the results.
-        :return: None
         """
         test_df_copy = test_df.copy()
         test_df_copy["prediction"] = pred_df  # Append predicted labels to the test set
         # Add a prediction error column (1 = false pred, 2 = correct pred)
         test_df_copy["error"] = (test_df_copy["label"] != test_df_copy["prediction"]).astype(int)
 
-        test_filename = test_path.stem
-        self.save_ml_result(test_df_copy, model_key, parameters, "dataframe", test_filename, "full_and_pred")
+        # Get prefix to construct the filename and save
+        test_filename_prefix = test_path.stem
+        folder_path = self.pm.get_complex_ml_path(parameters, ["results", model_key], False, True)
+        self.save_file("dataframe", folder_path, test_filename_prefix, "full_and_pred", test_df_copy)
 
     def save_run_metadata_to_json(self, parameters: dict, model_key: str, run_metadata: dict, filename: Path):
         """
@@ -429,9 +340,9 @@ class SaveResult:
         """
         folder_path = self.pm.get_complex_ml_path(hyperparameters, ["further_analysis", analysis_key], False, True)
 
-        self.save_file_depending_on_filetype(result_type, folder_path, file_prefix, file_suffix, results)
+        self.save_file(result_type, folder_path, file_prefix, file_suffix, results)
 
-    def save_file_depending_on_filetype(self, file_type, folder_path, file_prefix, file_suffix, result_data):
+    def save_file(self, file_type, folder_path, file_prefix, file_suffix, result_data):
         """
         Saves a file in a specified format based on the provided file type. This function supports saving
         dataframes, dictionaries, and plots. It generates the file name using the provided prefix and

@@ -1,5 +1,6 @@
 """this module contains the Epoch Class"""
 from MachineLearning.Utils.feature_utils import FeatureUtils
+from MachineLearning.Utils.path_manager import PathManager
 
 
 class Epochs:
@@ -10,13 +11,14 @@ class Epochs:
     start_time, end_time, result_id, fs, eeg_segment
     """
 
-    def __init__(self, epoch_type: str,  parameters: dict = None, channel: int = None, filtered=True,
+    def __init__(self, pm:PathManager, epoch_type: str,  parameters: dict = None, channel: int = None, filtered=True,
                  num_an: int = None):
         """
         Initializes a new Epochs object that contains the read EEG snippets based on the times of the epoch.
         Its main purpose is to load the epochs only once to perform all necessary manipulations on them
         without the need to load them multiple times. Can be updated if parameters change.
 
+        :param pm: Global PathManager instance.
         :param epoch_type: Type of the stored epochs. Valid options are 'faw','awake' and 'normal_an'.
         :param parameters: Dictionary of parameters, that determine the epochs.
         :param channel: Channel of the EEG from which the epochs are read. Valid options are 1 or 2.
@@ -25,10 +27,13 @@ class Epochs:
         since these are randomly sampled. It should be at least the same number of the epochs,
         which will be compared to these.
         """
+        self.feature_utils = FeatureUtils(pm)
         self.epoch_times = []  # Epochs of current parameters
         self.parameters = parameters  # Parameters of epochs containing metadata
         if parameters:
-            self.epoch_times = FeatureUtils.return_eeg_epochs(epoch_type, parameters, channel=channel, num_an=num_an)
+            self.epoch_times = self.feature_utils.return_eeg_epochs(
+                epoch_type, parameters, channel=channel, num_an=num_an
+            )
         self.channel = channel  # Determines the channel of the EEG, from where the epochs are
         self.filtered = filtered  # Determines if epochs are from filtered or raw EEG
         self.epoch_type = epoch_type
@@ -65,7 +70,9 @@ class Epochs:
         Number of epochs of normal anesthesia to be sampled.
         """
         if parameters:
-            self.epoch_times = FeatureUtils.return_eeg_epochs(self.epoch_type, parameters, channel=channel, num_an=num_an)
+            self.epoch_times = self.feature_utils.return_eeg_epochs(
+                self.epoch_type, parameters, channel=channel, num_an=num_an
+            )
         else:
             raise ValueError("No parameters given, no epochs will be updated!")
         self.parameters = parameters

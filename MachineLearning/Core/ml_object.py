@@ -18,9 +18,7 @@ class MLObject:
     param_config = load_config(PARAM_CONFIG_FILENAME)
 
     VALID_EPOCH_TYPES = ["faw", "awake", "normal_an"]
-    faw_epochs = Epochs("faw")
-    awake_epochs = Epochs("awake")
-    normal_an_epochs = Epochs("normal_an")
+
 
     def __init__(self,pm: PathManager, epoch_types: tuple, parameter_update: dict):
         """
@@ -34,6 +32,11 @@ class MLObject:
         self.pm = pm
         self.loader = LoadData(self.pm)
         self.saver = SaveResult(self.pm)
+
+        # Initialize Epoch Types
+        self.faw_epochs = Epochs(self.pm, "faw")
+        self.awake_epochs = Epochs(self.pm, "awake")
+        self.normal_an_epochs = Epochs(self.pm, "normal_an")
 
 
         for element in epoch_types:

@@ -189,7 +189,7 @@ class Pipeline:
         """ Applies filtering to all EEGs specified by the id-list in this class"""
         from MachineLearning.Preprocessing.filtering import Filtering
 
-        filtering = Filtering(self.filter_method)
+        filtering = Filtering(self.pm, self.filter_method)
         filtering.filter_multiple_eeg(eeg_list=self.patient_ids)
 
     def filtered_eeg_normalizing(self):
@@ -266,7 +266,9 @@ class Pipeline:
             if not transform_epochs:
                 self.transformer = None
             else:
-                self.transformer = Transforms(tuple(transform_epochs), self.transform_method, None)
+                self.transformer = Transforms(
+                    self.pm, tuple(transform_epochs), self.transform_method, None
+                )
             if not feature_epochs:
                 self.feature_extractor = None
             else:
@@ -274,7 +276,9 @@ class Pipeline:
 
         # Ignore everything and initialize for all epochs if force operation is activated
         if self.force_transform:
-            self.transformer = Transforms(tuple(epoch_classes.values()), self.transform_method, None)
+            self.transformer = Transforms(
+                self.pm, tuple(epoch_classes.values()), self.transform_method, None
+            )
         if self.force_extract:
             self.feature_extractor = EEGFeatureExtractor(self.pm, tuple(epoch_classes.values()), None)
 
@@ -296,7 +300,8 @@ class Pipeline:
         elif not isinstance(self.features, list):
             raise ValueError("Features must be either a list or a string with value 'all_features'")
         else:
-            known_features = FeatureUtils.return_all_features(self.pm, "dict")
+            feature_utils = FeatureUtils(self.pm)
+            known_features = feature_utils.return_all_features("dict")
             # validate features given in list
             feature_keys = known_features.keys()
             for key in self.features:
@@ -334,7 +339,7 @@ class Pipeline:
         from MachineLearning.Evaluation.split_manager import SplitManager
 
         parameters = self.get_current_hyperparams()
-        split_manager = SplitManager(parameters, self.class_0, self.class_1, test_size, random_state)
+        split_manager = SplitManager(self.pm, parameters, self.class_0, self.class_1, test_size, random_state)
         split_manager.load_and_validate()
         if normalize_before_split:
             split_manager.normalize_data()
@@ -427,7 +432,10 @@ class Pipeline:
         evaluation = evaluator.evaluate(print_metrics)  # evaluate and print results
         if save_metrics:
             prefix = "folds" if folds else "single"
-            self.saver.save_ml_result(evaluation, "svm", self.get_current_hyperparams(), "dict", prefix, "metrics")
+            folder_path = self.pm.get_complex_ml_path(
+                self.get_current_hyperparams(), ["results", "svm"], False, True
+            )
+            self.saver.save_file("dict", folder_path, prefix, "metrics", evaluation)
 
         return evaluation
 
