@@ -5,8 +5,9 @@ from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.IO.save_result import SaveResult
 
-loader = LoadData()
 pm = PathManager()
+loader = LoadData(pm)
+
 
 
 def get_epoch_distribution_for_run(hyperparameters: dict, model_key: str, run_name: str, save_result=True):
@@ -52,8 +53,12 @@ def get_epoch_distribution_for_run(hyperparameters: dict, model_key: str, run_na
     result_df = pd.DataFrame(rows).sort_values(by="ResultID").reset_index(drop=True)
 
     if save_result:
-        saver = SaveResult()
-        saver.save_metadata_analysis(result_df, model_key, hyperparameters, "dataframe", "Summary","epoch_distribution", run_name)
+        saver = SaveResult(pm)
+
+        folder_path = pm.get_complex_ml_path(
+            hyperparameters, ["metadata_analysis", model_key], False, True, run_name
+        )
+        saver.save_file("dataframe", folder_path, "Summary", "epoch_distribution", result_df)
 
     return result_df
 

@@ -198,7 +198,11 @@ class RunMetadata:
 
     def save_to_json(self):
         """Save the metadata to a JSON file."""
-        self.saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, self.to_dict(), Path(f"{self.run_name}.json"))
+        folderpath = self.pm.get_complex_ml_path(
+            self.hyperparameters, ["run_metadata", self.model_key], False, True
+        )
+        fullpath = folderpath / f"{self.run_name}.json"
+        self.saver.save_data_as_json(self.to_dict(), fullpath)
 
     def __repr__(self):
         """String representation of the RunMetadata object."""
@@ -302,6 +306,7 @@ class RunMetadata:
         :param file: File path where the metadata, along with the generated hash, will be saved.
         :return: The hash string generated from the provided metadata.
         """
+        # Calculate and add hash to metadata
         other_hash = self._calculate_dict_hash(
             epoch_types=metadata_dict[self.epoch_types_key],
             model_params=metadata_dict[self.model_params_key],
@@ -312,8 +317,13 @@ class RunMetadata:
             classification_params=metadata_dict[self.classification_params_key]
         )
         metadata_dict["param_hash"] = other_hash
-        self.saver.save_run_metadata_to_json(self.hyperparameters, self.model_key, metadata_dict,
-                                        file)
+
+        # Save updated metadata
+        folderpath = self.pm.get_complex_ml_path(
+            self.hyperparameters, ["run_metadata", self.model_key], False, True
+        )
+        fullpath = folderpath / file
+        self.saver.save_data_as_json(metadata_dict, fullpath)
         return other_hash
 
     def _calculate_dict_hash(

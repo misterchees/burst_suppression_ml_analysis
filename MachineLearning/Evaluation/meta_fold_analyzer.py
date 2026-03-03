@@ -206,9 +206,11 @@ class MetaFoldAnalyzer:
         outliers["error_threshold"] = threshold  # helpful context in result
 
         if save_res:
-            self.saver.save_metadata_analysis(
-                outliers, self.model_name, self.parameters, "dataframe",
-                "Summary", "outliers_by_groups", self.run_name)
+            folder_path = self.pm.get_complex_ml_path(
+                self.parameters, ["metadata_analysis", self.model_name], False, True, self.run_name
+            )
+
+            self.saver.save_file("dataframe", folder_path, "Summary", "outliers_by_groups", outliers)
 
         # Add to global outliers
         self.saver.save_global_outliers(self.parameters, outliers, "patient_id")
@@ -238,9 +240,11 @@ class MetaFoldAnalyzer:
         misclassified_df = misclassified_df.sort_values(by=["ResultID", "Start"]).reset_index(drop=True)
 
         if save_res:
-            self.saver.save_metadata_analysis(
-                misclassified_df, self.model_name, self.parameters, "dataframe",
-                "Summary", f"outlier_epochs_for_label_{label}", self.run_name)
+            folder_path = self.pm.get_complex_ml_path(
+                self.parameters, ["metadata_analysis", self.model_name], False, True, self.run_name
+            )
+
+            self.saver.save_file("dataframe", folder_path, "Summary", f"outlier_epochs_for_label_{label}", misclassified_df)
 
         # Add to global outliers
         self.saver.save_global_outliers(self.parameters, misclassified_df, "epoch")

@@ -3,12 +3,14 @@ from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Scripts.ResultAnalyses.cluster_analysis import return_outliers, split_by_outliers
 import pandas as pd
 
+from MachineLearning.Utils.path_manager import PathManager
 
+pm = PathManager()
+loader = LoadData(pm)
 
 def analyze_data(hyperparameters: dict, n_cluster: int, _random_state: int = 42, class_1: str = "awake",
                  class_0: str = "faw", plot: str = "2D", _data_subset: str = "all"):
     # Load combined feature dfs to get all epochs from this set
-    loader = LoadData()
     class_1_df, class_0_df = loader.load_combined_features_df(hyperparameters, class_1, class_0)
 
     if _data_subset == "all":
@@ -19,7 +21,7 @@ def analyze_data(hyperparameters: dict, n_cluster: int, _random_state: int = 42,
         df_to_analyze = class_1_df
     elif _data_subset == "correct_awake" or _data_subset == "wrong_awake":
         # Load global outlier epochs and split awake data accordingly
-        outlier_df = return_outliers("global", loader, hyperparameters, outlier_run="", model_name="")
+        outlier_df = return_outliers("global", hyperparameters, outlier_run="", model_name="")
         class_1_outlier_df, class_1_non_outlier_df = split_by_outliers(class_1_df, outlier_df)
         df_to_analyze = class_1_outlier_df if _data_subset == "wrong_awake" else class_1_non_outlier_df
     else:
@@ -34,7 +36,7 @@ def analyze_data(hyperparameters: dict, n_cluster: int, _random_state: int = 42,
 def _run_analysis(data, n_cluster: int, _random_state: int, plot: str, hyperparameters:dict, _data_subset:str):
     data = pd.DataFrame(data)
 
-    model = KMeans(hyperparameters, n_clusters=n_cluster, random_state=_random_state)
+    model = KMeans(pm, hyperparameters, n_clusters=n_cluster, random_state=_random_state)
     labels = model.fit_predict(data)
 
     if plot == "2D" or plot == "3D":

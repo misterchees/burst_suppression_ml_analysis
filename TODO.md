@@ -15,9 +15,9 @@
     - [x] Make PathManager a singleton
     - [x] Make FeatureUtils not static. It needs PathManager and Loader/Saver as attributes
     - [ ] Check which functions are still needed and which can be deleted/replaced
-      - [ ] save_result
+      - [x] save_result
         - [x] Every function above save_metadata_analysis
-        - [ ] save_metadata_analysis and below
+        - [x] save_metadata_analysis and below
       - [ ] load_data
     - [ ] Create and run tests for all functions in path handling modules
       - [x] In path_utils

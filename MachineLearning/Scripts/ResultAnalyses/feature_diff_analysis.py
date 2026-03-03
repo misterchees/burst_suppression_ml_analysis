@@ -3,11 +3,14 @@ import numpy as np
 from scipy.stats import ttest_ind, mannwhitneyu
 from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
+from MachineLearning.Utils.path_manager import PathManager
 
+pm = PathManager()
+saver = SaveResult(pm)
+loader = LoadData(pm)
 
 def analyze_center_of_mass_sets(hyperparameters: dict, confidence: float, class_a: int, class_b: int, test="t-test"):
-    saver = SaveResult()
-    loader = LoadData()
+
     confidence_str = str(confidence).replace(".", "")
     a_file_name = f"PCA_clusterlabel_{class_a}_region_with_confidence_{confidence_str}_dims_2.csv"
     b_file_name = f"PCA_clusterlabel_{class_b}_region_with_confidence_{confidence_str}_dims_2.csv"
@@ -19,8 +22,13 @@ def analyze_center_of_mass_sets(hyperparameters: dict, confidence: float, class_
     a_name = class_dict[class_a]
     b_name = class_dict[class_b]
 
-    saver.save_further_analysis(hyperparameters, diff_df, "dataframe", "stat_diff",
-                                f"center_of_mass_sets_{a_name}_vs_{b_name}", f"statistical_differences_confidence_{confidence_str}")
+    # Save results
+    folder_path = pm.get_complex_ml_path(
+        hyperparameters, ["further_analysis", "stat_diff"], False, True
+    )
+    prefix = f"center_of_mass_sets_{a_name}_vs_{b_name}"
+    suffix = f"statistical_differences_confidence_{confidence_str}"
+    saver.save_file("dataframe", folder_path, prefix, suffix, diff_df)
 
 
 

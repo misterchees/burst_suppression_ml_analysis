@@ -216,41 +216,6 @@ class SaveResult:
         fullpath = Path(full_folder_path, model_filename)
         dump(model, fullpath)
 
-    def save_metadata_analysis(self, result_data, model_key: str, parameters: dict,
-                       file_type: str, file_prefix: str = "", file_suffix: str = "", outlier_run_name: str = None):
-        """
-        Save metadata analysis data to a specified file format and location.
-
-        This method processes data, constructs appropriate folder paths based on
-        provided parameters, and saves the data in the specified file format. The
-        method enforces naming conventions for the file. It supports saving in CSV or JSON formats
-        for different use cases. File name will be constructed as <prefix>_<suffix>.<extension>
-
-        :param result_data: Input data to be saved.
-        :param model_key: A unique string identifier for the model, used for constructing
-                          folder paths.
-        :param parameters: A dictionary containing parameters used for constructing
-                           folder hierarchy and metadata about the file.
-        :param file_type: Specifies the type of file to save. Valid options are
-                          "dataframe", "dict", and "plot". Dataframes are saved as CSV,
-                          dictionaries are saved as JSON, and plots are saved as PNG.
-        :param file_prefix: An optional prefix added to the filename for further
-                            customization. Should contain enough information to infer
-                            the source of the result (e.g. the filename of the split set)
-                            Defaults to an empty string.
-        :param file_suffix: An optional suffix added to the filename. Should contain information
-                            about the result type (e.g. "metrics" or "analysis_plot").
-        :param outlier_run_name: The run name of the metadata analysis run.
-        :return: None
-        """
-        # Construct the path to the folder, where the file will be saved
-        folder_path = self.pm.get_complex_ml_path(
-            parameters, ["metadata_analysis", model_key], False, True, outlier_run_name
-        )
-
-        # Save the file depending on the filetype
-        self.save_file(file_type, folder_path, file_prefix, file_suffix, result_data)
-
     def save_predicted_set(self, test_df: pd.DataFrame, test_path: Path, pred_df, parameters: dict, model_key: str):
         """
         Save the predicted dataset along with necessary modifications and persist the results.
@@ -274,23 +239,6 @@ class SaveResult:
         test_filename_prefix = test_path.stem
         folder_path = self.pm.get_complex_ml_path(parameters, ["results", model_key], False, True)
         self.save_file("dataframe", folder_path, test_filename_prefix, "full_and_pred", test_df_copy)
-
-    def save_run_metadata_to_json(self, parameters: dict, model_key: str, run_metadata: dict, filename: Path):
-        """
-        Save run metadata as a JSON file in the specified location.
-
-        This method generates a file path by combining the provided folder structure with the given filename.
-        The metadata is saved as a JSON file in the constructed path.
-
-        :param parameters: Dict containing parameters used to generate the path.
-        :param model_key: A string representing the specific model key associated with this run.
-        :param run_metadata: The metadata of the run that needs to be saved.
-        :param filename: The name of the file where the metadata will be saved.
-        :return: None
-        """
-        folderpath = self.pm.get_complex_ml_path(parameters, ["run_metadata", model_key], False, True)
-        fullpath = folderpath / filename
-        self._save_data_as_json(run_metadata, fullpath)
 
     def save_global_outliers(self, parameters: dict, outliers_df: pd.DataFrame, outlier_type: str):
         """
@@ -318,29 +266,11 @@ class SaveResult:
         else:
             raise ValueError("Invalid outlier type. Expected 'epoch' or 'patient_id'.")
 
-        fullpath = Path(folder_path, filename)
+        fullpath = folder_path / filename
         # Save outliers or append to an already existing file
         new_rows, new_rows_number = FileDataUtils.append_unique_rows_to_csv(outliers_df, fullpath)
 
         print(f"Saved outliers to {fullpath} with {new_rows_number} new rows")
-
-    def save_further_analysis(self, hyperparameters: dict, results, result_type: str, analysis_key: str,
-                              file_prefix: str, file_suffix: str):
-        """
-        Saves additional analysis data to the appropriate file and path based on the input parameters.
-
-        :param hyperparameters: Dictionary of parameters that define the configuration for saving.
-        :param results: The analysis data to be saved.
-        :param result_type: File type of the result. Valid options are "dataframe", "dict", and "plot".
-        :param analysis_key: A string key that determines the analysis that produced given results.
-                            Valid options are "pca", "psd" and "k_means"
-        :param file_prefix: Prefix for the file name to be saved
-        :param file_suffix: Suffix for the file name to be saved
-        :return: None
-        """
-        folder_path = self.pm.get_complex_ml_path(hyperparameters, ["further_analysis", analysis_key], False, True)
-
-        self.save_file(result_type, folder_path, file_prefix, file_suffix, results)
 
     def save_file(self, file_type, folder_path, file_prefix, file_suffix, result_data):
         """
@@ -357,26 +287,60 @@ class SaveResult:
         :return: None
         :raises ValueError: If the provided file type is not supported.
         """
-        # Choose the saving function based on the provided file_type
-        if file_type == "dataframe":
-            file_name = f"{file_prefix}_{file_suffix}.csv"
-            saving_func = self._save_file_as_csv
+        # Map file types to their respective saving functions and extensions
+        save_dict = {
+            "dataframe": {
+                "func" : self._save_file_as_csv,
+                "ext" : ".csv"
+            },
+            "dict": {
+                "func" : self.save_data_as_json,
+                "ext" : ".json"
+            },
+            "plot": {
+                "func" : self._save_single_plot,
+                "ext" : ".png"
+            }
+        }
 
-        elif file_type == "dict":
-            file_name = f"{file_prefix}_{file_suffix}.json"
-            saving_func = self._save_data_as_json
-
-        elif file_type == "plot":
-            file_name = f"{file_prefix}_{file_suffix}.png"
-            saving_func = self._save_plot
-
-        else:
+        if file_type not in save_dict.keys():
             raise ValueError(f"Unknown file type: {file_type}. Valid options are: dataframe, dict, plot")
 
         # Assemble the path and save the file
-        fullpath = Path(folder_path, file_name)
+        extension = save_dict[file_type]['ext']
+        saving_func = save_dict[file_type]['func']
+
+        fullpath = folder_path / f"{file_prefix}_{file_suffix}{extension}"
         saving_func(result_data, fullpath)
         print(f"Successfully saved {file_type} to {fullpath}")
+
+    def save_multiple_plots(self, parameters: dict, analysis_key: str, figs_and_axes: list, separate: bool, title: str):
+        """
+        Saves multiple plots based on the provided parameters and configurations.
+
+        This method is responsible for saving multiple plots either as separate plot files or as one
+        combined file to the specified folder path.
+
+        Parameters:
+        parameters (dict): Parameters that determine the saving folder path.
+        figs_and_axes (list): A list of tuples containing figure and axis objects to be saved. Each tuple
+            has (figure, axis).
+        separate_plots (bool): A flag indicating whether to save each plot separately or to group all
+            plots into a single file.
+        title (str): The base title of the plot(s) used in naming the saved files.
+        """
+        folder_path = self.pm.get_complex_ml_path(
+            parameters, ["further_analysis", analysis_key], False, True
+        )
+        if separate:
+            counter = 0
+            for fig_and_ax in figs_and_axes:
+                fig, ax = fig_and_ax
+                self.save_file("plot", folder_path, title, f"part_{counter}", fig)
+                counter += 1
+        else:
+            fig, ax = figs_and_axes
+            self.save_file("plot", folder_path, title, "all_labels", fig)
 
     @staticmethod
     def _save_file_as_csv(data, fullpath, index=True):
@@ -384,7 +348,7 @@ class SaveResult:
         data.to_csv(fullpath, index=index)
 
     @staticmethod
-    def _save_plot(fig, fullpath: str):
+    def _save_single_plot(fig, fullpath: str):
         """
         Saves a matplotlib Figure to file.
 
@@ -398,7 +362,13 @@ class SaveResult:
             print(f"Nothing to save at {fullpath}.")
 
     @staticmethod
-    def _save_data_as_json(data, fullpath):
+    def save_data_as_json(data, fullpath):
+        """
+        Converts data to JSON format and saves it to a file.
+
+        :param data: The data to be saved.
+        :param fullpath: The full path of the file where the data will be saved.
+        """
         serial_result_data = FileDataUtils.serialize_for_json(data)
         with open(fullpath, "w") as f:
             json.dump(serial_result_data, f, indent=4)

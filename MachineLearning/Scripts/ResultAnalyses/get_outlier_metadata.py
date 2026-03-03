@@ -6,8 +6,11 @@ import pandas as pd
 from scipy.stats import ttest_ind, fisher_exact
 import numpy as np
 
-loader = LoadData()
-saver = SaveResult()
+from MachineLearning.Utils.path_manager import PathManager
+
+pm = PathManager()
+loader = LoadData(pm)
+saver = SaveResult(pm)
 
 
 def select_and_calculate_outliers(new_params, model_key, metadata_to_check, outlier_run_name, map_dict, save_result=True):
@@ -56,15 +59,15 @@ def select_and_calculate_outliers(new_params, model_key, metadata_to_check, outl
 
     if save_result:
         hyperparams = load_config("parameters_config.yaml")["current_params"]
-        saver.save_metadata_analysis(
-            outlier_metadata_df, model_key, hyperparams, "dataframe", "outliers_metadata", "slice", outlier_run_name
+        file_type = "dataframe"
+        file_prefix = "outliers_metadata"
+        folder_path = saver.pm.get_complex_ml_path(
+            hyperparams, ["metadata_analysis", model_key], False, True, outlier_run_name
         )
-        saver.save_metadata_analysis(
-            analysis_df, model_key, hyperparams, "dataframe", "outliers_metadata", "analysis", outlier_run_name
-        )
-        saver.save_metadata_analysis(
-            statistics_df, model_key, hyperparams, "dataframe", "outliers_metadata", "statistics", outlier_run_name
-        )
+
+        saver.save_file(file_type, folder_path, file_prefix, "slice", outlier_metadata_df)
+        saver.save_file(file_type, folder_path, file_prefix, "analysis", analysis_df)
+        saver.save_file(file_type, folder_path, file_prefix, "statistics", statistics_df)
 
     return outlier_metadata_df, analysis_df, statistics_df
 

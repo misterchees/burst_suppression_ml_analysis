@@ -508,14 +508,14 @@ class Pipeline:
 
         return predictions, true_labels, probabilities
 
-    def _analyze_single_result(self, result_path: Path, metadata_col: str, label: int, print_analysis=True, save_analysis=True,
+    def _analyze_single_result(self, result_path: Path, meta_col: str, label: int, print_analysis=True, save_analysis=True,
                                plots=True):
         """
         Analyzes a single result file to evaluate the correlation between metadata and error rates, categorize errors by
         metadata groups, and assess the distribution of classes and confusion matrices for specified metadata.
 
         :param result_path: The file path to the CSV containing the results to be analyzed.
-        :param metadata_col: The name of the metadata column in the results CSV to be analyzed.
+        :param meta_col: The name of the metadata column in the results CSV to be analyzed.
         :param label: The label of the metadata column to be analyzed.
         :param print_analysis: A flag indicating whether the analysis results should be printed to the console.
         :param save_analysis: A flag indicating whether the analysis results should be saved to disk.
@@ -528,58 +528,65 @@ class Pipeline:
 
         # Read results from path and verify if metadata is a valid column name
         result_df = pd.read_csv(result_path)
-        if metadata_col not in result_df.columns:
-            raise ValueError(f"Metadata column '{metadata_col}' not found in result file.")
+        if meta_col not in result_df.columns:
+            raise ValueError(f"Metadata column '{meta_col}' not found in result file.")
 
         analyzer = MetadataAnalyzer(result_df)
 
         # Calculate analysis
         error_correlation = analyzer.correlation_with_error()
-        error_by_metadata = analyzer.error_by_group(metadata_col)
-        label_error_by_metadata = analyzer.error_for_label_by_group(metadata_col, label)
-        class_dist_per_metadata = analyzer.class_distribution_by_group(metadata_col)
-        confusion_matrices_by_metadata = analyzer.confusion_matrix_by_group(metadata_col)
+        error_metrics = analyzer.error_by_group(meta_col)
+        label_error = analyzer.error_for_label_by_group(meta_col, label)
+        class_distribution = analyzer.class_distribution_by_group(meta_col)
+        cf_matrix = analyzer.confusion_matrix_by_group(meta_col)
 
         if print_analysis:
             print(f"Correlation with error: {error_correlation}")
-            print(f"Error by {metadata_col}: {error_by_metadata}")
-            print(f"Error for label {label} by {metadata_col}: {label_error_by_metadata}")
-            print(f"Class distribution by {metadata_col}: {class_dist_per_metadata}")
-            print(f"Confusion matrices by {metadata_col}: {confusion_matrices_by_metadata}")
+            print(f"Error by {meta_col}: {error_metrics}")
+            print(f"Error for label {label} by {meta_col}: {label_error}")
+            print(f"Class distribution by {meta_col}: {class_distribution}")
+            print(f"Confusion matrices by {meta_col}: {cf_matrix}")
 
         # create plots if needed
         if plots:
-            error_dist_by_metadata = analyzer.plot_error_distribution(metadata_col, print_analysis)
-            temp_error_by_metadata = analyzer.plot_temporal_error(metadata_col, print_analysis)
+            error_dist_plot = analyzer.plot_error_distribution(meta_col, print_analysis)
+            temp_error_plot = analyzer.plot_temporal_error(meta_col, print_analysis)
 
         if save_analysis:
             print(f"Saving analysis results to disk...")
-            filename = result_path.stem
-            self.saver.save_metadata_analysis(error_correlation, "svm", self.get_current_hyperparams(),
-                                         "dataframe", filename, "error_correlation")
+            file_prefix = result_path.stem
+            # Construct the path to the folder, where the files will be saved
+            folder_path = self.pm.get_complex_ml_path(
+                self.get_current_hyperparams(), ["metadata_analysis", "svm"], False, True
+            )
 
-            self.saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_hyperparams(),
-                                         "dataframe", filename, f"error_by_{metadata_col}")
-
-            self.saver.save_metadata_analysis(error_by_metadata, "svm", self.get_current_hyperparams(),
-                                         "dataframe", filename, f"error_label_{label}_by_{metadata_col}")
-
-            self.saver.save_metadata_analysis(class_dist_per_metadata, "svm", self.get_current_hyperparams(),
-                                         "dataframe", filename, f"class_dist_per_{metadata_col}")
-
-            self.saver.save_metadata_analysis(confusion_matrices_by_metadata, "svm", self.get_current_hyperparams(),
-                                         "dict", filename, f"confusion_matrices_by_{metadata_col}")
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, "error_correlation", error_correlation
+            )
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, f"error_by_{meta_col}", error_metrics
+            )
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, f"error_label_{label}_by_{meta_col}", label_error
+            )
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, f"class_dist_per_{meta_col}", class_distribution
+            )
+            self.saver.save_file(
+                "dict", folder_path, file_prefix, f"confusion_matrices_by_{meta_col}", cf_matrix
+            )
 
             if plots:
-                self.saver.save_metadata_analysis(error_dist_by_metadata, "svm", self.get_current_hyperparams(),
-                                             "plot", filename, f"error_dist_by_{metadata_col}")
-
-                self.saver.save_metadata_analysis(temp_error_by_metadata, "svm", self.get_current_hyperparams(),
-                                             "plot", filename, f"temp_error_by_{metadata_col}")
+                self.saver.save_file(
+                    "plot", folder_path, file_prefix, f"error_dist_by_{meta_col}", error_dist_plot
+                )
+                self.saver.save_file(
+                    "plot", folder_path, file_prefix, f"temp_error_by_{meta_col}", temp_error_plot
+                )
 
         print("Analysis complete.")
 
-    def _analyze_meta_analyses(self, model_key: str, metadata_col, print_analysis=True, save_analysis=True, plots=True):
+    def _analyze_meta_analyses(self, model_key: str, meta_col, print_analysis=True, save_analysis=True, plots=True):
         """
         Analyzes the metadata results from multi-fold analysis and generates
         aggregated errors, balances, and plots. Optionally, the results can be
@@ -587,8 +594,8 @@ class Pipeline:
 
         :param model_key: The key identifier for the model being analyzed.
         :type model_key: str
-        :param metadata_col: Column from metadata used for aggregation or plotting.
-        :type metadata_col: Any
+        :param meta_col: Column from metadata used for aggregation or plotting.
+        :type meta_col: Any
         :param print_analysis: Flag indicating whether to print analysis results, defaults to True.
         :type print_analysis: bool, optional
         :param save_analysis: Flag indicating whether to save the analysis results, defaults to True.
@@ -605,7 +612,7 @@ class Pipeline:
         # Initialize analyzer
         parameters = self.get_current_hyperparams()
         fold_analyzer = MetaFoldAnalyzer(self.pm, model_key, parameters)
-        fold_analyzer.load_all_folds(metadata_col)
+        fold_analyzer.load_all_folds(meta_col)
         # Carry out analysis
         agg_err_by_group = fold_analyzer.aggregate_error_by_group()
         agg_label_err_by_group = fold_analyzer.aggregate_error_by_group(True)
@@ -614,29 +621,41 @@ class Pipeline:
         rec_vs_class_dist = fold_analyzer.analyze_class_imbalance_vs_metric("recall")
 
         if print_analysis:
-            print(f"Aggregated Error by {metadata_col}: {agg_err_by_group}")
-            print(f"Aggregated Error for one label by {metadata_col}: {agg_label_err_by_group}")
+            print(f"Aggregated Error by {meta_col}: {agg_err_by_group}")
+            print(f"Aggregated Error for one label by {meta_col}: {agg_label_err_by_group}")
             print(f"Accuracy vs class distribution: {acc_vs_class_dist}")
             print(f"Precision vs class distribution: {prec_vs_class_dist}")
             print(f"Recall vs class distribution: {rec_vs_class_dist}")
 
         if plots:
-            error_heatmap = fold_analyzer.plot_foldwise_error_heatmap(metadata_col, print_analysis)
+            error_heatmap = fold_analyzer.plot_foldwise_error_heatmap(meta_col, print_analysis)
 
         if save_analysis:
-            self.saver.save_metadata_analysis(agg_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
-                                         "agg_error_by_groups")
-            self.saver.save_metadata_analysis(agg_label_err_by_group, "svm", parameters, "dataframe", "Summary_analysis",
-                                         "agg_label_error_by_groups")
-            self.saver.save_metadata_analysis(acc_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
-                                         "acc_vs_class_distribution")
-            self.saver.save_metadata_analysis(prec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
-                                         "prec_vs_class_distribution")
-            self.saver.save_metadata_analysis(rec_vs_class_dist, "svm", parameters, "dataframe", "Summary_analysis",
-                                         "rec_vs_class_distribution")
+            folder_path = self.pm.get_complex_ml_path(
+                self.get_current_hyperparams(), ["metadata_analysis", "svm"], False, True
+            )
+            file_prefix = "Summary_analysis"
+
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, "agg_error_by_groups", agg_err_by_group
+            )
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, "agg_label_error_by_groups", agg_label_err_by_group
+            )
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, "acc_vs_class_distribution", acc_vs_class_dist
+            )
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, "prec_vs_class_distribution", prec_vs_class_dist
+            )
+            self.saver.save_file(
+                "dataframe", folder_path, file_prefix, "rec_vs_class_distribution", rec_vs_class_dist
+            )
+
             if plots:
-                self.saver.save_metadata_analysis(error_heatmap, "svm", parameters, "plot", "Summary_analysis",
-                                             "error_heatmap")
+                self.saver.save_file(
+                    "plot", folder_path, file_prefix, "error_heatmap", error_heatmap
+                )
 
         print("Analysis of single analysis results complete")
 

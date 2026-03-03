@@ -9,16 +9,18 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 
+pm = PathManager()
+loader = LoadData(pm)
+saver = SaveResult(pm)
 
 def calculate_mean_psds(hyperparameters: dict, class_1: str, class_0: str, plot: bool = True, save_results: bool = True, outliers: bool = False):
     # Load combined feature dfs to get all epochs from this set
-    loader = LoadData()
-    pm = PathManager()
+
     class_1_df, class_0_df = loader.load_combined_features_df(hyperparameters, class_1, class_0)
 
     if outliers:
         # Load global outlier epochs and split awake data accordingly
-        outlier_df = return_outliers("global", loader, hyperparameters, outlier_run="", model_name="")
+        outlier_df = return_outliers("global", hyperparameters, outlier_run="", model_name="")
         class_1_outlier_df, class_1_non_outlier_df = split_by_outliers(class_1_df, outlier_df)
 
     psd_faw_folderpath = pm.resolve_episode_path(
@@ -39,17 +41,24 @@ def calculate_mean_psds(hyperparameters: dict, class_1: str, class_0: str, plot:
 
     metric_name = "standarderror" if spread_metric == "sem" else "standarddeviation"
     if save_results:
-        saver = SaveResult()
-        saver.save_further_analysis(hyperparameters, av_class_0_df, "dataframe", "psd",
-                                    "PSDs_faw_average", f"uncertainty_metric_{metric_name}")
+        folder_path = pm.get_complex_ml_path(hyperparameters, ["further_analysis", "psd"], False, True)
+        # Save class 0 df
+        file_suffix = f"uncertainty_metric_{metric_name}"
+        saver.save_file("dataframe", folder_path, "PSDs_faw_average", file_suffix, av_class_0_df)
         if outliers:
-            saver.save_further_analysis(hyperparameters, av_class_1_outlier_df, "dataframe", "psd",
-                                        "PSDs_wrong_awake_average", f"uncertainty_metric_{metric_name}")
-            saver.save_further_analysis(hyperparameters, av_class_1_non_outlier_df, "dataframe", "psd",
-                                        "PSDs_correct_awake_average", f"uncertainty_metric_{metric_name}")
+            # Save class 1 outlier df
+            saver.save_file(
+                "dataframe", folder_path, "PSDs_wrong_awake_average", file_suffix, av_class_1_outlier_df
+            )
+            # Save class 1 non outlier df
+            saver.save_file(
+                "dataframe", folder_path, "PSDs_correct_awake_average", file_suffix, av_class_1_non_outlier_df
+            )
         else:
-            saver.save_further_analysis(hyperparameters, av_class_1_df, "dataframe", "psd",
-                                        "PSDs_awake_average", f"uncertainty_metric_{metric_name}")
+            # Save class 1 df
+            saver.save_file(
+                "dataframe", folder_path, "PSDs_awake_average", file_suffix, av_class_1_df
+            )
 
     if plot:
         if outliers:
@@ -69,12 +78,13 @@ def calculate_center_of_mass_psds(hyperparameters: dict, confidence: float, clas
 
     metric_name = "standarderror" if spread_metric == "sem" else "standarddeviation"
     if save_results:
-        saver = SaveResult()
-        saver.save_further_analysis(hyperparameters, av_faw_df, "dataframe", "psd",
-                                    "PSDs_faw_com_average", f"uncertainty_metric_{metric_name}")
+        folder_path = pm.get_complex_ml_path(hyperparameters, ["further_analysis", "psd"], False, True)
+        file_suffix = f"uncertainty_metric_{metric_name}"
+        saver.save_file("dataframe", folder_path, "PSDs_faw_com_average", file_suffix, av_faw_df)
+
+
         pref_str = "correct" if class_b == 1 else "wrong"
-        saver.save_further_analysis(hyperparameters, av_awake_df, "dataframe", "psd",
-                                    f"PSDs_{pref_str}_awake_com_average", f"uncertainty_metric_{metric_name}")
+        saver.save_file("dataframe", folder_path, f"PSDs_{pref_str}_awake_com_average", file_suffix, av_awake_df)
 
     if plot:
         _plot_2_center_of_mass_psds(av_faw_df, av_awake_df, hyperparameters, save=False,
@@ -84,8 +94,6 @@ def calculate_center_of_mass_psds(hyperparameters: dict, confidence: float, clas
                                         title_suffix=f"uncertainty_metric_{metric_name}", class_a=class_a, class_b=class_b)
 
 def load_pca_cluster_center_results(hyperparameters: dict, confidence: float, class_a: int, class_b: int, spread_metric="std"):
-    loader = LoadData()
-    pm = PathManager()
     confidence_str = str(confidence).replace(".", "")
     a_file_name = f"PCA_clusterlabel_{class_a}_region_with_confidence_{confidence_str}_dims_2.csv"
     b_file_name = f"PCA_clusterlabel_{class_b}_region_with_confidence_{confidence_str}_dims_2.csv"
@@ -161,8 +169,7 @@ def plot_single_psd(patient_id: int, filtered: bool):
 
     # Import and initialize classes
     from MachineLearning.Features.transforms import Transforms
-    psd_transforms = Transforms(("faw","awake"), "welch", None)
-    loader = LoadData()
+    psd_transforms = Transforms(pm, ("faw","awake"), "welch", None)
     plotter = Plots()
 
     # Get EEG -> calculate PSD from channel 1 -> plot PSD
@@ -185,8 +192,9 @@ def _plot_3_psds(av_class_0_df: pd.DataFrame, av_class_1_outlier_df: pd.DataFram
                              title=f"Mean PSD Comparison (epoch-wise Normalization) {title_suffix}" , max_freq=max_freq, min_power=min_power)
 
     if save:
-        saver = SaveResult()
-        saver.save_further_analysis(hyperparameters, fig, "plot", "psd", "PSDs",f"averages_comparison_{title_suffix}")
+        folder_path = pm.get_complex_ml_path(hyperparameters, ["further_analysis", "psd"], False, True)
+        file_suffix = f"averages_comparison_{title_suffix}"
+        saver.save_file("plot", folder_path, "PSDs", file_suffix, fig)
     else:
         plt.show()
 
@@ -201,8 +209,9 @@ def _plot_2_psds(av_class_0_df: pd.DataFrame, av_class_1_df: pd.DataFrame,
                              title=f"Mean PSD Comparison {title_suffix}", max_freq=max_freq, min_power=min_power)
 
     if save:
-        saver = SaveResult()
-        saver.save_further_analysis(hyperparameters, fig, "plot", "psd", "PSDs",f"averages_comparison_{title_suffix}")
+        folder_path = pm.get_complex_ml_path(hyperparameters, ["further_analysis", "psd"], False, True)
+        file_suffix = f"averages_comparison_{title_suffix}"
+        saver.save_file("plot", folder_path, "PSDs", file_suffix, fig)
     else:
         plt.show()
 
@@ -222,9 +231,9 @@ def _plot_2_center_of_mass_psds(av_class_a_df: pd.DataFrame, av_class_b_df: pd.D
                              max_freq=max_freq, min_power=min_power)
 
     if save:
-        saver = SaveResult()
-        saver.save_further_analysis(hyperparameters, fig, "plot", "psd", "PSDs",
-                                    f"com_{a_name}_vs_{b_name}_averages_comparison_{title_suffix}")
+        folder_path = pm.get_complex_ml_path(hyperparameters, ["further_analysis", "psd"], False, True)
+        file_suffix = f"com_{a_name}_vs_{b_name}_averages_comparison_{title_suffix}"
+        saver.save_file("plot", folder_path, "PSDs", file_suffix, fig)
     else:
         plt.show()
 

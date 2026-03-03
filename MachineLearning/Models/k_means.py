@@ -1,5 +1,6 @@
 from sklearn.cluster import KMeans as SKKMeans
 from MachineLearning.IO.save_result import SaveResult
+from MachineLearning.Utils.path_manager import PathManager
 
 
 class KMeans:
@@ -11,7 +12,7 @@ class KMeans:
     :param tol: Convergence tolerance.
     :param random_state: Random seed for reproducibility.
     """
-    def __init__(self, hyperparams:dict, n_clusters=3, max_iter=300, tol=1e-4, random_state=None):
+    def __init__(self, pm: PathManager, hyperparams: dict, n_clusters=3, max_iter=300, tol=1e-4, random_state=None):
         self.model = SKKMeans(
             n_clusters=n_clusters,
             max_iter=max_iter,
@@ -22,6 +23,10 @@ class KMeans:
         self.hyperparams = hyperparams
         self.labels_ = None
         self.centroids = None
+
+        # Initialize IO Utilities
+        self.pm = pm
+        self.saver = SaveResult(self.pm)
 
     def fit(self, X):
         """
@@ -62,7 +67,7 @@ class KMeans:
         """
         from MachineLearning.Models.pca_analyzer import PCAAnalyzer
         from MachineLearning.Utils.plots import Plots
-        analyzer = PCAAnalyzer(self.hyperparams, n_components=2)
+        analyzer = PCAAnalyzer(self.pm, self.hyperparams, n_components=2)
         # reduce data - result is stored internally of this class
         pca_result = analyzer.fit_transform(data)
 
@@ -79,18 +84,7 @@ class KMeans:
         )
         # Save figure after plotting it
         if save_plot:
-            saver = SaveResult()
-            if separate_plots:
-                counter = 0
-                for fig_and_ax in figs_and_axes:
-                    fig, ax = fig_and_ax
-                    saver.save_further_analysis(self.hyperparams, fig, "plot", "k_means",
-                                                title, f"part_{counter}")
-                    counter += 1
-            else:
-                fig, ax = figs_and_axes
-                saver.save_further_analysis(self.hyperparams, fig, "plot", "k_means",
-                                            title, "all_labels")
+            self.saver.save_multiple_plots(self.hyperparams, "k_means", figs_and_axes, separate_plots, title)
 
 
 
@@ -102,7 +96,7 @@ class KMeans:
         """
         from MachineLearning.Models.pca_analyzer import PCAAnalyzer
         from MachineLearning.Utils.plots import Plots
-        analyzer = PCAAnalyzer(self.hyperparams, n_components=3)
+        analyzer = PCAAnalyzer(self.pm, self.hyperparams, n_components=3)
         # reduce data - result is stored internally of this class
         pca_result = analyzer.fit_transform(data)
 
@@ -118,17 +112,4 @@ class KMeans:
         )
         # Save figure after plotting it
         if save_plot:
-            # Save figure after plotting it
-            if save_plot:
-                saver = SaveResult()
-                if separate_plots:
-                    counter = 0
-                    for fig_and_ax in figs_and_axes:
-                        fig, ax = fig_and_ax
-                        saver.save_further_analysis(self.hyperparams, fig, "plot", "k_means",
-                                                    title, f"part_{counter}")
-                        counter += 1
-                else:
-                    fig, ax = figs_and_axes
-                    saver.save_further_analysis(self.hyperparams, fig, "plot", "k_means",
-                                                title, "all_labels")
+            self.saver.save_multiple_plots(self.hyperparams, "k_means", figs_and_axes, separate_plots, title)

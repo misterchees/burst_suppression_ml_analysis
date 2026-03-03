@@ -2,17 +2,23 @@ import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+
+from MachineLearning.Utils.path_manager import PathManager
 from MachineLearning.Utils.plots import Plots
 from MachineLearning.IO.save_result import SaveResult
 
 
 class PCAAnalyzer:
-    def __init__(self, hyperparams:dict, n_components=2):
+    def __init__(self,pm: PathManager, hyperparams:dict, n_components=2):
         """
         Initializes PCA analyzer.
 
         :param n_components: Number of PCA components to keep.
         """
+        # Initialize IO Utilities
+        self.pm = pm
+        self.saver = SaveResult(self.pm)
+
         self.n_components = n_components
         self.pca = PCA(n_components=n_components)
         self.scaler = StandardScaler()
@@ -61,18 +67,7 @@ class PCAAnalyzer:
         )
         # Save figure after plotting it
         if save_plot:
-            saver = SaveResult()
-            if separate_plots:
-                counter = 0
-                for fig_and_ax in figs_and_axes:
-                    fig, ax = fig_and_ax
-                    saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
-                                                title, f"part_{counter}")
-                    counter += 1
-            else:
-                fig, ax = figs_and_axes
-                saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
-                                            title, "all_labels")
+            self.saver.save_multiple_plots(self.hyperparams, "pca", figs_and_axes, separate_plots, title)
 
 
 
@@ -97,20 +92,7 @@ class PCAAnalyzer:
         )
         # Save figure after plotting it
         if save_plot:
-            # Save figure after plotting it
-            if save_plot:
-                saver = SaveResult()
-                if separate_plots:
-                    counter = 0
-                    for fig_and_ax in figs_and_axes:
-                        fig, ax = fig_and_ax
-                        saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
-                                                    title, f"part_{counter}")
-                        counter += 1
-                else:
-                    fig, ax = figs_and_axes
-                    saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
-                                                title, "all_labels")
+            self.saver.save_multiple_plots(self.hyperparams, "pca", figs_and_axes, separate_plots, title)
 
     def plot_scree(self, save_plot=False):
         """
@@ -121,8 +103,10 @@ class PCAAnalyzer:
 
         fig, ax = Plots.plot_scree(self.variance_ratio, "Explained Variance per Principal Component")
         if save_plot:
-            saver = SaveResult()
-            saver.save_further_analysis(self.hyperparams, fig, "plot", "pca", "PCA_scree", "plot")
+            folder_path = self.pm.get_complex_ml_path(
+                self.hyperparams, ["further_analysis", "pca"], False, True
+            )
+            self.saver.save_file("plot", folder_path, "PCA_scree", "plot", fig)
 
     def get_feature_contributions(self, pc_index=0, top_n=10, save_results=False, decimals=2):
         """
@@ -150,10 +134,14 @@ class PCAAnalyzer:
         contributions = contributions.sort_values(ascending=False).round(decimals).head(top_n)
 
         if save_results:
-            from MachineLearning.IO.save_result import SaveResult
-            saver = SaveResult()
-            saver.save_further_analysis(self.hyperparams, pd.DataFrame(contributions),"dataframe",
-                "pca",f"PCA_top_{top_n}",f"feature_contributions_PC_{pc_index}")
+            folder_path = self.pm.get_complex_ml_path(
+                self.hyperparams, ["further_analysis", "pca"], False, True
+            )
+            prefix = f"PCA_top_{top_n}"
+            suffix = f"feature_contributions_PC_{pc_index}"
+            self.saver.save_file(
+                "dataframe", folder_path, prefix, suffix, pd.DataFrame(contributions)
+            )
 
         return contributions
 
@@ -190,17 +178,22 @@ class PCAAnalyzer:
 
         inside_part_of_df = self.df_to_analyze.iloc[inside_indices]
         if save_result:
-            saver = SaveResult()
             confidence_dot_removed = str(confidence).replace(".", "")
-            saver.save_further_analysis(self.hyperparams, inside_part_of_df, "dataframe", "pca",
-                                        f"PCA_clusterlabel_{cluster_label}",
-                                        f"region_with_confidence_{confidence_dot_removed}_dims_{dims}")
+            folder_path = self.pm.get_complex_ml_path(
+                self.hyperparams, ["further_analysis", "pca"], False, True
+            )
+
+            prefix = f"PCA_clusterlabel_{cluster_label}"
+            suffix = f"region_with_confidence_{confidence_dot_removed}_dims_{dims}"
+            self.saver.save_file("dataframe", folder_path, prefix, suffix, inside_part_of_df)
 
         if plot:
             fig, ax = Plots.plot_pca_with_regions(self.pca_result, labels, cluster_label, dims, confidence)
             if save_result:
-                saver.save_further_analysis(self.hyperparams, fig, "plot", "pca",
-                                            f"PCA_clusterlabel_{cluster_label}",
-                                            f"region_with_confidence_{confidence_dot_removed}_dims_{dims}")
-
+                folder_path = self.pm.get_complex_ml_path(
+                    self.hyperparams, ["further_analysis", "pca"], False, True
+                )
+                prefix = f"PCA_clusterlabel_{cluster_label}"
+                suffix = f"region_with_confidence_{confidence_dot_removed}_dims_{dims}"
+                self.saver.save_file("plot", folder_path, prefix, suffix, fig)
         return inside_part_of_df

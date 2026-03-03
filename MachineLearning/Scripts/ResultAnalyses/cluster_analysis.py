@@ -2,6 +2,11 @@ from MachineLearning.Models.pca_analyzer import PCAAnalyzer
 from MachineLearning.IO.load_data import LoadData
 import pandas as pd
 
+from MachineLearning.Utils.path_manager import PathManager
+
+pm = PathManager()
+loader = LoadData(pm)
+
 
 def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
                  outliers: str = None, outlier_run: str = None, model_name: str = None, save_results: bool = True):
@@ -30,7 +35,7 @@ def pca_analysis(hyperparameters, class_1, class_0, pca_components=5,
     """
     all_epochs_df, labels = load_labeled_data(hyperparameters, class_1, class_0, outliers, outlier_run, model_name)
 
-    analyzer = PCAAnalyzer(hyperparameters, n_components=pca_components)
+    analyzer = PCAAnalyzer(pm, hyperparameters, n_components=pca_components)
     pca_result = analyzer.fit_transform(all_epochs_df)
     print(f"PCA Results:\n {pca_result} \n")
 
@@ -57,7 +62,7 @@ def pca_center_of_cluster_analysis(hyperparameters, class_1, class_0, confidence
 
     all_epochs_df, labels = load_labeled_data(hyperparameters, class_1, class_0, outliers, outlier_run, model_name)
 
-    analyzer = PCAAnalyzer(hyperparameters, n_components=pca_components)
+    analyzer = PCAAnalyzer(pm, hyperparameters, n_components=pca_components)
     pca_result = analyzer.fit_transform(all_epochs_df)
     print(f"PCA Results:\n {pca_result} \n")
 
@@ -65,7 +70,7 @@ def pca_center_of_cluster_analysis(hyperparameters, class_1, class_0, confidence
     analyzer.get_points_in_region(labels, cluster_label, dims, confidence_intervall, True, save_results)
 
 
-def return_outliers(outliers: str, loader: LoadData, hyperparameters: dict,
+def return_outliers(outliers: str, hyperparameters: dict,
                     outlier_run: str, model_name: str) -> pd.DataFrame:
     """
     This function extracts outlier data based on the specified type (either 'global' or 'local').
@@ -74,8 +79,6 @@ def return_outliers(outliers: str, loader: LoadData, hyperparameters: dict,
 
     :param outliers: Specifies the type of outliers to retrieve. Must be either 'global' or 'local'.
     :type outliers: str
-    :param loader: Instance of a loader class responsible for loading outlier or result data.
-    :type loader: LoadData
     :param hyperparameters: Configuration details required for processing the data.
     :type hyperparameters: dict
     :param outlier_run: Identifier for the specific run from which local outliers are to be fetched.
@@ -151,13 +154,12 @@ def load_labeled_data(hyperparameters, class_1, class_0, outliers: str = None, o
     :rtype: tuple[pd.DataFrame, pd.Series or None]
     """
     # Load features and assign labels
-    loader = LoadData()
     class_1_df, class_0_df = loader.load_combined_features_df(hyperparameters, class_1, class_0)
 
     class_0_df["label"] = 0
     # Label outliers if present, else normal labeling of given classes
     if outliers is not None:
-        outlier_df = return_outliers(outliers, loader, hyperparameters, outlier_run, model_name)
+        outlier_df = return_outliers(outliers, hyperparameters, outlier_run, model_name)
         class_1_outlier_df, class_1_non_outlier_df = split_by_outliers(class_1_df, outlier_df)
         class_1_non_outlier_df["label"] = 1
         class_1_outlier_df["label"] = 2
