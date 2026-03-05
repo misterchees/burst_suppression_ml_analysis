@@ -19,7 +19,7 @@ def load_psd_with_start_end_resultid(folder_path: Path, filename: str) \
     :param folder_path: The path to the folder of filename
     :return: A tuple structured in the following way (dataframe, start, end, result_id)
     """
-    psd_fullpath = Path(folder_path, filename)
+    psd_fullpath = folder_path / filename
     print(f"Processing {psd_fullpath}")
 
     # Validation of single episode PSD name structure
@@ -57,7 +57,7 @@ class LoadData:
         faw_dir = self.pm.get_path("faw")
         a_b_c_d_dir = PathUtils.return_A_B_C_D_path("result", parameters)
         x_y_name = PathUtils.return_X_Y_name(parameters)
-        csv_fullpath = Path(faw_dir, a_b_c_d_dir, f"{x_y_name}.csv")
+        csv_fullpath = faw_dir / a_b_c_d_dir / f"{x_y_name}.csv"
         # Validate fullpath
         if not csv_fullpath.is_file():
             raise FileNotFoundError(f"CSV not found: {csv_fullpath}")
@@ -75,52 +75,24 @@ class LoadData:
         :param transition_time: The transition time for the patient to respond to anesthesia beginning.
         :returns: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
         """
-        if awake_cleaned:
-            return self.load_cleaned_awake_times_as_df(parameters)
+        file_key = "cleaned_aw_times" if awake_cleaned else "awake_times"
 
-        csv_path = self.return_csv_path_from_basedir("awake_times")
-        input_df = pd.read_csv(csv_path)
+        csv_path = self.pm.get_path(file_key)
         epoch_length = int(parameters["fixed_window_size"])
+        input_df = pd.read_csv(csv_path)
 
         all_epochs = []
 
         for _, row in input_df.iterrows():
-            caseid = row['caseid']
-            anestart = int(row['anestart'])
+            caseid = int(row['case_id']) if awake_cleaned else row['caseid']
+
+            # Calculate number of epochs accordingly to file information (normal ane always starts at 0)
+
+            epoch_end = float(row['end_time']) if awake_cleaned else int(row['anestart'])
+            epoch_start = float(row['start_time']) if awake_cleaned else 0
+            transition_time = 0 if awake_cleaned else transition_time
             num_epochs = int(
-                (anestart - transition_time) // epoch_length)  # segment into epochs based on episode length
-
-            for i in range(num_epochs):
-                start = i * epoch_length
-                end = start + epoch_length
-                all_epochs.append({
-                    'Start': start,
-                    'End': end,
-                    'ResultID': caseid
-                })
-
-        return pd.DataFrame(all_epochs)
-
-    @staticmethod
-    def load_cleaned_awake_times_as_df(parameters: dict) -> pd.DataFrame:
-        """
-        Basically does the same as load_awake_times_as_df. The difference is the start of AW epochs is not zero
-        and the input file path is hardcoded.
-        :param parameters: Parameters for epochs. Contains the length of each epoch.
-        :return: A DataFrame with columns ['Start', 'End', 'ResultID'] representing the epochs.
-        """
-        csv_path = r"E:\Daten\awake_cleaned.txt"
-        input_df = pd.read_csv(csv_path)
-        epoch_length = int(parameters["fixed_window_size"])
-
-        all_epochs = []
-
-        for _, row in input_df.iterrows():
-            caseid = int(row['case_id'])
-            epoch_start = float(row['start_time'])
-            epoch_end = float(row['end_time'])
-            num_epochs = int(
-                (epoch_end - epoch_start) // epoch_length)  # segment into epochs based on episode length
+                (epoch_end - epoch_start - transition_time) // epoch_length)
 
             for i in range(num_epochs):
                 start = epoch_start + (i * epoch_length)

@@ -42,8 +42,9 @@ class PathManager:
 
     def get_path(self, *keys: str) -> Path:
         """
-        Recursively traverses the YAML structure to build the absolute path that will be outputted.
-        Expects uniform YAML structure: {name: "...", children: {...}}
+        Recursively traverses the config_path.yaml to build the absolute path that will be outputted.
+
+        :param keys: Keys of the directories in config_path.yaml.
         """
         current_node = self.path_config["root"]
         path_components = []

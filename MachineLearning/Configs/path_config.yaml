@@ -113,9 +113,11 @@ root: # Root of the relative structure of Files
                 name: "Subset_runs"
 
     global_outliers: # "Outliers" from the expected outcome gathered over multiple runs
-        name: "Global_outliers"
+        name: "Global_outliers.csv"
 
     metadata:
-        name: "metadata_vitaldb" # File with metadata for all patients
+        name: "metadata_vitaldb.csv" # File with metadata for all patients
     awake_times:
-        name: "anestart_analysis_results" # File with timeframes of awakeness for all patients
+        name: "anestart_analysis_results.csv" # File with timeframes of awakeness for all patients
+    cleaned_aw_times:
+        name: "awake_cleaned.txt" # File with selected awakeness times because vitalDBs EEG tracks aren't accurate
