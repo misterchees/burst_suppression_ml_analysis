@@ -1,18 +1,25 @@
 from MachineLearning.Evaluation.metrics_evaluator import MetricsEvaluator
-from MachineLearning.IO.load_data import LoadData, PathUtils
+from MachineLearning.IO.load_data import LoadData
 from MachineLearning.Utils.config_handler import load_config
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
 
+from MachineLearning.Utils.path_manager import PathManager
+
+pm = PathManager()
 
 def print_metrics(_run_name=None):
-    loader = LoadData()
+    loader = LoadData(pm)
     evaluator = MetricsEvaluator(None, None, None, None, None)
     curent_params = load_config("parameters_config.yaml")["current_params"]
     print(f"Testing Parameters: {curent_params}\n")
-    current_metrics = loader.load_metrics(curent_params, "svm", _run_name)
+
+    # Load metrics
+    folder_path = pm.get_complex_ml_path(
+        curent_params, ["results", "svm"], False, True, _run_name)
+    current_metrics = loader.load_json(folder_path / "folds_metrics.json")
     evaluator.print_result(current_metrics["summary"], True)
     return current_metrics
 

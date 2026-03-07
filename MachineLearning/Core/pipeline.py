@@ -345,12 +345,16 @@ class Pipeline:
             split_manager.normalize_data()
 
         if remove_outlier_ids:
-            problematic_ids = self.loader.load_problematic_ids(parameters, self.model_key, outlier_run_name, self.global_outliers)
+            problematic_ids = self.loader.load_outliers(
+                parameters, self.model_key, outlier_run_name, self.global_outliers, True
+            )
         else:
             problematic_ids = None
 
         if remove_epochs:
-            problematic_epochs = self.loader.load_problematic_epochs(parameters, self.model_key, outlier_run_name, self.global_outliers)
+            problematic_epochs = self.loader.load_outliers(
+                parameters, self.model_key, outlier_run_name, self.global_outliers, False
+            )
         else:
             problematic_epochs = None
 

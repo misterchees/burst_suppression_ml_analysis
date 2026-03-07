@@ -185,10 +185,10 @@ class MetaFoldAnalyzer:
                   ``error_threshold`` is added for reference.
         """
         if df is None:
-            from MachineLearning.IO.load_data import LoadData
-            df = self.loader.load_metadata_file(
-                self.parameters, self.model_name, "Summary_analysis_agg_label_error_by_groups.csv", self.run_name
+            folder_path = self.pm.get_complex_ml_path(
+                self.parameters, ["metadata_analysis", self.model_name], False, False, self.run_name
             )
+            df = pd.read_csv(folder_path / "Summary_analysis_agg_label_error_by_groups.csv")
 
         df = df.copy()  # Copy to prevent unwanted effects
 

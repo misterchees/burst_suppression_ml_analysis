@@ -1,5 +1,4 @@
 from MachineLearning.Scripts.ResultAnalyses.outlier_selection import select_multiple_outliers
-from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.config_handler import load_config
 import pandas as pd
@@ -9,7 +8,6 @@ import numpy as np
 from MachineLearning.Utils.path_manager import PathManager
 
 pm = PathManager()
-loader = LoadData(pm)
 saver = SaveResult(pm)
 
 
@@ -46,7 +44,7 @@ def select_and_calculate_outliers(new_params, model_key, metadata_to_check, outl
     outlier_df = select_multiple_outliers(new_params, model_key, print_outliers=False,
                                           outlier_run_name=outlier_run_name)
     outlier_ids = outlier_df["group"].tolist()
-    metadata_path = loader.return_csv_path_from_basedir("metadata")
+    metadata_path = pm.get_path("metadata")
     metadata_df = pd.read_csv(metadata_path).copy()
     metadata_df = convert_categorical_to_number(map_dict, metadata_df)
 

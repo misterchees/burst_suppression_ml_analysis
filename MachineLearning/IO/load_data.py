@@ -65,7 +65,7 @@ class LoadData:
         df = pd.read_csv(csv_fullpath)
         return df
 
-    def load_awake_times_as_df(self, parameters: dict, awake_cleaned: bool = True, transition_time=10) -> pd.DataFrame:
+    def load_awake_times_as_df(self, parameters: dict, awake_cleaned: bool = False, transition_time=10) -> pd.DataFrame:
         """
         Reads a CSV file with 'caseid' and 'anestart' columns and generates epochs
         based on a fixed epoch length.
@@ -105,7 +105,6 @@ class LoadData:
 
         return pd.DataFrame(all_epochs)
 
-
     def sample_anesthesia_epochs(self, parameters: dict, num_epochs: int, transition_sec: int = 10,
                                  safety_margin_min: int = 10, random_state: int = 42,
                                  epochs_per_eeg: int = 30) -> pd.DataFrame:
@@ -125,7 +124,7 @@ class LoadData:
 
         # set initial data
         random.seed(random_state)
-        anestart_csv_path = self.return_csv_path_from_basedir("awake_times")
+        anestart_csv_path = self.pm.get_path("awake_times")
         epoch_length_sec = int(parameters["fixed_window_size"])
         filtered_data_dir = self.pm.get_path("filtered_data")
 
@@ -139,7 +138,7 @@ class LoadData:
         # Look into EEG files and sample anesthesia episodes with the specified parameters
         for eeg_file in eeg_files:
             result_id = eeg_file.stem  # 1.csv -> ['1', '.csv'] -> 1
-            eeg_path = Path(filtered_data_dir, eeg_file)
+            eeg_path = filtered_data_dir / eeg_file
             # Look up anestart for patient ID
             match = anestart_df.loc[anestart_df['caseid'].astype(str) == result_id, 'anestart']
             if not match.empty:
@@ -151,7 +150,7 @@ class LoadData:
             # Get duration of the EEG file
             with open(eeg_path) as f:
                 num_lines = sum(1 for _ in f) - 1  # minus header
-            eeg_duration = num_lines // 128  # assuming 128 Hz sampling rate
+            eeg_duration = num_lines // 128  # Time in seconds assuming 128 Hz sampling rate
 
             # Compute valid range for sampling
             start_limit = anestart + transition_sec
@@ -201,7 +200,7 @@ class LoadData:
             raise ValueError(f'Epoch type "{epoch_type}" not recognized. Valid options: "awake", "faw", "normal_an"')
 
         # Group and return epochs
-        grouped_epoch_times = self.group_epochs_by_result_id(epoch_times_df)
+        grouped_epoch_times = self._group_epochs_by_result_id(epoch_times_df)
         return grouped_epoch_times
 
     def load_eeg_data(self, result_id: int, filtered=True) -> Tuple[int, np.ndarray]:
@@ -245,14 +244,39 @@ class LoadData:
 
         return fs, raw_eeg
 
+    def _load_filtered_eeg_data(self, result_id: int) -> Tuple[int, np.ndarray]:
+        """
+        Loads a filtered EEG from a CSV file with a comment line containing the sampling rate (fs).
+        :param result_id: The patient ID
+        :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
+        """
+        # Assemble Path to directory with filtered-EEG files
+        filtered_eeg_dir = self.pm.get_path("filtered_data")
+
+        filepath = filtered_eeg_dir / f"{result_id}.csv"
+        if not filepath.is_file():
+            raise FileNotFoundError(f"File not found: {filepath}")
+
+        with open(filepath, 'r') as f:
+            first_line = f.readline().strip()
+            if not first_line.startswith("# fs = "):
+                raise ValueError("First line does not contain sampling rate in expected format: '# fs = <int>'")
+            fs = int(first_line.replace("# fs = ", "").strip())
+
+        # Load EEG data, skipping the first line (comment line)
+        df = pd.read_csv(filepath, skiprows=1)
+        eeg_cols = self.data_names["eeg_files"]
+        raw_eeg = df[eeg_cols["eeg_channels"]].to_numpy()
+
+        return fs, raw_eeg
+
     def _load_eeg_vitaldb_csv(self, result_id: int) -> Tuple[int, np.ndarray]:
         """
-        Loads EEG data from a CSV file and performs basic pre-processing operations such as handling missing values.
-        The EEG data is extracted from specified columns, interpolated to handle NaN values, and returned as a clean
-        NumPy array along with the sampling frequency.
+        Loads EEG data from a CSV file and performs basic pre-processing operations.
+        The EEG data is extracted from specified columns, interpolated to handle NaN values, and returned as a
+        NumPy array along with the sampling frequency (Which is always 128 Hz for VitalDB EEG data).
 
-        :param result_id: Identifier of the specific EEG result whose data needs to be loaded. The file name is
-                          derived from this ID in the format `{result_id}.csv`.
+        :param result_id: Identifier of the EEG track. It is derived from the file name `{result_id}.csv`.
 
         :return: A tuple containing the sampling frequency as an integer and the pre-processed EEG
                 data as a NumPy array.
@@ -262,7 +286,7 @@ class LoadData:
         """
         # Assemble Path to directory with .mat files
         vitaldb_eeg_dir = self.pm.get_path("initial_data", "raw_eeg_mat")
-        csv_file_path = Path(vitaldb_eeg_dir, f"{result_id}.csv")
+        csv_file_path = vitaldb_eeg_dir / f"{result_id}.csv"
         if not csv_file_path.is_file():
             raise FileNotFoundError(f"File found: {csv_file_path}")
 
@@ -282,33 +306,6 @@ class LoadData:
         clean_eeg = df_interpolated.to_numpy()
 
         return fs, clean_eeg
-
-
-    def _load_filtered_eeg_data(self, result_id: int) -> Tuple[int, np.ndarray]:
-        """
-        Loads a filtered EEG from a CSV file with a comment line containing the sampling rate (fs).
-        :param result_id: The patient ID
-        :returns: a tuple (fs, eeg). fs -> sampling frequency; eeg -> a filtered-EEG samples array with two channels
-        """
-        # Assemble Path to directory with filtered-EEG files
-        filtered_eeg_dir = self.pm.get_path("filtered_data")
-
-        filepath = Path(filtered_eeg_dir, f"{result_id}.csv")
-        if not filepath.is_file():
-            raise FileNotFoundError(f"File not found: {filepath}")
-
-        with open(filepath, 'r') as f:
-            first_line = f.readline().strip()
-            if not first_line.startswith("# fs = "):
-                raise ValueError("First line does not contain sampling rate in expected format: '# fs = <int>'")
-            fs = int(first_line.replace("# fs = ", "").strip())
-
-        # Load EEG data, skipping the first line (comment line)
-        df = pd.read_csv(filepath, skiprows=1)
-        eeg_cols = self.data_names["eeg_files"]
-        raw_eeg = df[eeg_cols["eeg_channels"]].to_numpy()
-
-        return fs, raw_eeg
 
     def load_eeg_epochs_from_csv(self, result_id: int, epochs: list, channel: int, folder_keys: List[str])\
             -> Tuple[int, Dict[Tuple[int, int], np.ndarray]]:
@@ -347,7 +344,7 @@ class LoadData:
             sample_ranges.append((start_row, end_row))
             required_rows.update(range(start_row, end_row))
 
-        # Build row-skipping function for pandas (for efficiency)
+        # Build a row-skipping function for pandas (for efficiency)
         def skiprows(i):
             return i != 1 and i not in required_rows  # only keeps header line and required rows
 
@@ -370,7 +367,7 @@ class LoadData:
         return fs, segments
 
     @staticmethod
-    def group_epochs_by_result_id(all_epochs_df: pd.DataFrame) -> Dict[int, List[Tuple[int, int]]]:
+    def _group_epochs_by_result_id(all_epochs_df: pd.DataFrame) -> Dict[int, List[Tuple[int, int]]]:
         """
         Groups epoch start/end times by ResultID into a dictionary.
 
@@ -385,18 +382,13 @@ class LoadData:
         )
         return grouped
 
-    def return_csv_path_from_basedir(self, file_key: str) -> Path:
-        """Takes the path_config key of a file in the base directory and returns a path to that file."""
-        base_dir = self.path_config["base_dir"]["path_name"]
-        file_name = self.path_config["base_dir"]["files"][file_key]
-        file_path = Path(base_dir, f"{file_name}.csv")
-        return file_path
-
     def load_model(self, model_key: str, parameters: dict):
         """
         Loads a model from a specified path, defined by model_key and parameters.
         :param model_key: Key of the model (folder)
         :param parameters: Parameters for the model -> define the subfolder names.
+
+        :return: The loaded model
         """
 
         from joblib import load
@@ -404,141 +396,58 @@ class LoadData:
             parameters, ["models", model_key], False, True
         )
         model_file = f"{model_key}.joblib"
-        model_fullpath = Path(full_folder_path, model_file)
+        model_fullpath = full_folder_path / model_file
         model = load(model_fullpath)
         return model
 
-    def load_metrics(self, parameters: dict, model_key: str, run_name: str = None ) -> dict:
+    def load_outliers(self, parameters: dict, model_key: str, outlier_run_name: str | None,
+                             global_outliers: bool, grouped_by_id: bool) -> list | None:
         """
-        Loads the metrics from a JSON file located in a specified directory, which path is
-        computed dynamically based on provided parameters, model key, and an optional run name.
+                Loads the IDs of outlier groups related to a specific model, from a metadata file.
+                If the specified file does not exist, attempts to create it from previous analysis results.
 
+                :param parameters: A dictionary containing parameter configurations for the model.
+                :param model_key: The key or identifier of the model for which problematic IDs are being loaded.
+                :param outlier_run_name: The name of the outlier run to load IDs for.
+                                            If None, loads IDs for the current run_name.
+                :param global_outliers: Flag indicating whether to include outliers from all runs.
+                :param grouped_by_id: Flag indicating whether to load grouped outliers by patient ID.
+                :return: A list of outlier groups extracted from the metadata file.
 
-        :param parameters: Dictionary containing configuration details required to construct the file path.
-        :param model_key: The specific model identifier, used to locate corresponding result directories.
-        :param run_name: The specific run name to further narrow down the folder path, if provided.
+                :raises FileNotFoundError: If the metadata file does not exist and cannot be created from
+                                            previous analysis results.
+                """
 
-        :return: A dictionary containing the loaded metrics from the JSON file.
-        """
-        # Construct the path to the folder from where the file will be loaded
-        folder_path = self.pm.get_complex_ml_path(
-            parameters, ["results", model_key], False, True, run_name)
-        file_name = f"folds_metrics.json"
-        fullpath = Path(folder_path, file_name)
-
-        return self.load_json(fullpath)
-
-    def load_metadata_file(self, parameters: dict, model_key: str, filename: str, outlier_run_name: str | None):
-        """
-        Loads a metadata file based on the given parameters, model key, and filename.
-
-        :param parameters: A dictionary containing the hyperparameters used to
-                            construct the file path.
-        :param model_key: The key associated with a specific model, used as an identifier while
-                            forming the directory path for the metadata file.
-        :param filename: The name of the metadata file to be loaded, including its extension.
-        :param outlier_run_name: The name of the outlier run to load metadata for.
-                                If None, loads metadata for the current run_name.
-        :return: Parsed data from the metadata file. The return type depends on the file
-                format: a JSON object for `.json` files or a pandas DataFrame for `.csv` files.
-        :raises ValueError: If the files extension is not supported (i.e., not "json" or "csv").
-        """
-        # Construct the path to the folder from where the file will be loaded
+        print("Loading IDs of outlier groups...")
         folder_path = self.pm.get_complex_ml_path(
             parameters, ["metadata_analysis", model_key], False, False, outlier_run_name
         )
-        fullpath = Path(folder_path, filename)
-
-        # Load file based on extension
-        extension = filename.split(".")[-1]
-        if extension == "json":
-            return self.load_json(fullpath)
-        elif extension == "csv":
-            return pd.read_csv(fullpath)
-        else:
-            raise ValueError(f"Unsupported file extension: {extension}")
-
-
-    def load_problematic_ids(self, parameters: dict, model_key: str, outlier_run_name: str | None,
-                             global_outliers: bool) -> list | None:
-        """
-        Loads the IDs of outlier groups related to a specific model, from a metadata file.
-        If the specified file does not exist, attempts to create it from previous analysis results.
-
-        :param parameters: A dictionary containing parameter configurations for the model.
-        :param model_key: The key or identifier of the model for which problematic IDs are being loaded.
-        :param outlier_run_name: The name of the outlier run to load IDs for.
-                                    If None, loads IDs for the current run_name.
-        :param global_outliers: Flag indicating whether to include outliers from all runs.
-        :return: A list of outlier groups extracted from the metadata file.
-
-        :raises FileNotFoundError: If the metadata file does not exist and cannot be created from
-                                    previous analysis results.
-        """
-
-        print("Loading IDs of outlier groups...")
+        file_name = "Summary_outliers_by_groups.csv" if grouped_by_id else "Summary_outlier_epochs.csv"
+        fullpath = folder_path / file_name
         try:
-            outliers_df = self.load_metadata_file(
-                parameters, model_key, "Summary_outliers_by_groups.csv", outlier_run_name
-            )
+            outliers_df = pd.read_csv(fullpath)
         except FileNotFoundError:
-            print("File 'Summary_outliers_by_groups.csv' not found. Trying to create from previous results...")
+            print(f"File '{fullpath}' not found. Trying to create from previous results...")
             try:
                 from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
                 fold_analyzer = MetaFoldAnalyzer(self.pm, model_key, parameters, outlier_run_name)
-                outliers_df = fold_analyzer.select_outlier_groups(save_res=True)
+                outliers_df = fold_analyzer.select_outlier_groups(save_res=True) if grouped_by_id \
+                    else fold_analyzer.select_outlier_epochs(save_res=True)
             except FileNotFoundError:
-                print("No previous results found to create 'Summary_outliers_by_groups.csv'. "
-                      "No problematic IDs can be loaded.")
+                print(f"No previous results found to create '{file_name}'. "
+                      "No outlier IDs can be loaded.")
                 return None
 
         # Ensure that global outliers include outliers from the given run by saving them before loading global outliers
         if global_outliers:
-            outliers_df = self._update_and_get_global_outliers(parameters, outliers_df, "patient_id")
+            outlier_type = "patient_id" if grouped_by_id else "epoch"
+            outliers_df = self._update_and_get_global_outliers(parameters, outliers_df, outlier_type)
 
         outlier_list = outliers_df["group"].values.tolist()
-        print(f"Outlier groups that will be removed from analysis: {outlier_list}")
+        f_print_val = "groups" if grouped_by_id else "epochs"
+        print(f"Outlier {f_print_val} that will be removed from analysis: {outlier_list}")
 
         return outlier_list
-
-    def load_problematic_epochs(self, parameters: dict, model_key: str, outlier_run_name: str | None,
-                                global_outliers: bool) -> pd.DataFrame | None:
-        """
-        Loads problematic epochs based on metadata or by analyzing previous results. If global outliers are
-        requested, they will include the identified outliers from the current run before global outliers are loaded.
-        The function returns the outlier epochs in the form of a DataFrame or None if no problematic epochs are found.
-
-        :param parameters: Configuration parameters used in the operation.
-        :param model_key: Unique identifier for the model being used.
-        :param outlier_run_name: Optional identifier for the run to load outlier metadata for.
-        :param global_outliers: Flag indicating whether to include global outliers in the analysis.
-        :return: A DataFrame containing the problematic outlier epochs or None if no problematic epochs are found.
-        """
-
-        print("Loading outlier epochs...")
-        try:
-            outliers_df = self.load_metadata_file(
-                parameters, model_key, "Summary_outlier_epochs.csv", outlier_run_name
-            )
-        except FileNotFoundError:
-            print("File 'Summary_outlier_epochs.csv' not found. Trying to create from previous results...")
-            try:
-                from MachineLearning.Evaluation.meta_fold_analyzer import MetaFoldAnalyzer
-                fold_analyzer = MetaFoldAnalyzer(self.pm, model_key, parameters, outlier_run_name)
-                outliers_df = fold_analyzer.select_outlier_epochs(save_res=True)
-            except FileNotFoundError:
-                print("No previous results found to create 'Summary_outlier_epochs.csv'. "
-                      "No problematic epochs can be loaded.")
-                return None
-
-        # Ensure that global outliers include outliers from the given run by saving them before loading global outliers
-        if global_outliers:
-            outliers_df = self._update_and_get_global_outliers(parameters, outliers_df, "epoch")
-
-        outlier_list = outliers_df.values.tolist()
-        print(f"Outlier epochs that will be removed from analysis: {outlier_list}")
-
-        return outliers_df
 
     def load_run_data(self, hyperparameters: dict, run_name: str, model_key: str) -> dict:
         """
@@ -567,11 +476,11 @@ class LoadData:
         metadata = self.load_json(matching_metadata_path)
         return metadata
 
-    def load_splits(self, hyperparamers: dict, run_name: str, combined=True) -> dict|pd.DataFrame:
+    def load_splits(self, hyperparameters: dict, run_name: str, combined=True) -> dict | pd.DataFrame:
         """
         Loads dataset splits from specified file paths into a dictionary of DataFrames or a combined DataFrame.
 
-        :param hyperparamers: Configuration dictionary specifying parameters
+        :param hyperparameters: Configuration dictionary specifying parameters
                               required to determine dataset split file paths.
         :param run_name: Name of the run used to access associated split file paths.
         :param combined: Flag to determine whether all splits should be combined
@@ -579,7 +488,7 @@ class LoadData:
         :returns: A single combined DataFrame if 'combined' is True. Otherwise, a dictionary
                   of DataFrames indexed by the file name (stem) of each split.
         """
-        splits_list = self.pm.get_related_paths(hyperparamers, run_name, ["test_and_train_data", "splits"])
+        splits_list = self.pm.get_related_paths(hyperparameters, run_name, ["test_and_train_data", "splits"])
 
         df_dict = {}
         for split_path in splits_list:
