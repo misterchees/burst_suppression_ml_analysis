@@ -97,8 +97,8 @@ def load_pca_cluster_center_results(hyperparameters: dict, confidence: float, cl
     confidence_str = str(confidence).replace(".", "")
     a_file_name = f"PCA_clusterlabel_{class_a}_region_with_confidence_{confidence_str}_dims_2.csv"
     b_file_name = f"PCA_clusterlabel_{class_b}_region_with_confidence_{confidence_str}_dims_2.csv"
-    a_df = loader.load_further_results(hyperparameters, "pca", "dataframe",a_file_name)
-    b_df = loader.load_further_results(hyperparameters, "pca", "dataframe",b_file_name)
+    a_df = loader.load_further_results(hyperparameters, "pca", a_file_name)
+    b_df = loader.load_further_results(hyperparameters, "pca", b_file_name)
 
     psd_faw_folderpath = pm.resolve_episode_path(
         hyperparameters, "faw", ["features", "psds"], False, False

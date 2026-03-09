@@ -14,8 +14,8 @@ def analyze_center_of_mass_sets(hyperparameters: dict, confidence: float, class_
     confidence_str = str(confidence).replace(".", "")
     a_file_name = f"PCA_clusterlabel_{class_a}_region_with_confidence_{confidence_str}_dims_2.csv"
     b_file_name = f"PCA_clusterlabel_{class_b}_region_with_confidence_{confidence_str}_dims_2.csv"
-    a_df = loader.load_further_results(hyperparameters, "pca", "dataframe", a_file_name)
-    b_df = loader.load_further_results(hyperparameters, "pca", "dataframe", b_file_name)
+    a_df = loader.load_further_results(hyperparameters, "pca", a_file_name)
+    b_df = loader.load_further_results(hyperparameters, "pca", b_file_name)
     diff_df = analyze_feature_differences(a_df, b_df, test=test)
     print(f"###############\n {diff_df}")
     class_dict = {0: "faw", 1: "correct_awake", 2: "wrong_awake"}

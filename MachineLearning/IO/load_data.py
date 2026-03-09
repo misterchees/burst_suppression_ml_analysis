@@ -440,8 +440,13 @@ class LoadData:
 
         # Ensure that global outliers include outliers from the given run by saving them before loading global outliers
         if global_outliers:
+            # Create a saver instance
+            from MachineLearning.IO.save_result import SaveResult
+            saver = SaveResult(self.pm)
+
             outlier_type = "patient_id" if grouped_by_id else "epoch"
-            outliers_df = self._update_and_get_global_outliers(parameters, outliers_df, outlier_type)
+            saver.save_global_outliers(parameters, outliers_df, outlier_type)  # Add given outliers to global
+            outliers_df = self.load_global_outliers(parameters, outlier_type)  # Get updated global outliers
 
         outlier_list = outliers_df["group"].values.tolist()
         f_print_val = "groups" if grouped_by_id else "epochs"
@@ -476,30 +481,6 @@ class LoadData:
         metadata = self.load_json(matching_metadata_path)
         return metadata
 
-    def load_splits(self, hyperparameters: dict, run_name: str, combined=True) -> dict | pd.DataFrame:
-        """
-        Loads dataset splits from specified file paths into a dictionary of DataFrames or a combined DataFrame.
-
-        :param hyperparameters: Configuration dictionary specifying parameters
-                              required to determine dataset split file paths.
-        :param run_name: Name of the run used to access associated split file paths.
-        :param combined: Flag to determine whether all splits should be combined
-                         into a single DataFrame. Defaults to True.
-        :returns: A single combined DataFrame if 'combined' is True. Otherwise, a dictionary
-                  of DataFrames indexed by the file name (stem) of each split.
-        """
-        splits_list = self.pm.get_related_paths(hyperparameters, run_name, ["test_and_train_data", "splits"])
-
-        df_dict = {}
-        for split_path in splits_list:
-            df_dict[split_path.stem] = pd.read_csv(split_path)
-
-        if combined:
-            df_combined = pd.concat(df_dict.values(), axis=0)
-            return df_combined
-        else:
-            return df_dict
-
     def load_results(self, hyperparamers: dict, run_name: str, model_key: str, combined=True) -> dict|pd.DataFrame:
         """
         Loads experiment results based on specified hyperparameters, run name, and model key
@@ -528,7 +509,8 @@ class LoadData:
         else:
             return df_dict
 
-    def load_combined_features_df(self, parameters: dict, class_1: str, class_0: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def load_combined_features_df(self, parameters: dict, class_1: str, class_0: str)\
+            -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         This method loads data from specified file paths for two given classes and
         returns their corresponding dataframes.
@@ -557,82 +539,59 @@ class LoadData:
         """
         Loads a dataframe of global outliers based on the specified outlier type and parameters.
         The method determines the target file name based on the `outlier_type` and retrieves
-        the file location using the provided parameters. It reads and returns the data from
-        the corresponding CSV file.
+        the file location using the provided parameters. It returns the data from the corresponding CSV file.
 
         :param parameters: List of parameters used to determine the folder path for outliers files.
         :param outlier_type: Specifies the type of outliers to fetch, either "epoch" or "patient_id".
         :return: Pandas DataFrame containing the data of global outliers.
         :raises ValueError: If the provided outlier_type is not "epoch" or "patient_id".
         """
-        folder_path = self.pm.get_complex_ml_path(parameters, ["global_outliers"],False, False)
-
-        # Build a fullpath depending on the outlier type
-        if outlier_type == "epoch":
-            filename = "global_epoch_outliers.csv"
-        elif outlier_type == "patient_id":
-            filename = "global_patient_outliers.csv"
-        else:
+        if outlier_type not in ["epoch", "patient_id"]:
             raise ValueError("Invalid outlier type. Expected 'epoch' or 'patient_id'.")
 
-        fullpath = Path(folder_path, filename)
+        # Build a fullpath depending on the outlier type
+        folder_path = self.pm.get_complex_ml_path(parameters, ["global_outliers"],False, False)
+        name_discriminator = "epoch" if outlier_type == "epoch" else "patient"
+        filename = f"global_{name_discriminator}_outliers.csv"
+        fullpath = folder_path / filename
+
         # Load and return outlier df
         outliers_df = pd.read_csv(fullpath)
         return outliers_df
 
-    def load_further_results(self, hyperparameters: dict, analysis_key: str, result_type: str, filename: str)\
-            -> pd.DataFrame|dict:
+    def load_further_results(self, hyperparameters: dict, analysis_key: str, filename: str)\
+            -> pd.DataFrame | dict:
         """
-        Loads additional results specified by the analysis key, result type, and filename from
+        Loads additional results specified by the analysis key and filename from
         the corresponding path derived using the given hyperparameters.
 
         This method determines the full path to the results based on the hyperparameters
-        and loads the data in either a DataFrame or JSON structure, as specified by the result
-        type. It raises an exception if the result type is invalid.
+        and loads the data in either a DataFrame or JSON structure, depending on the file extension.
 
 
         :param hyperparameters: Dictionary containing the hyperparameters which are used
             to generate the full path to the results.
         :param analysis_key: The Key, used to identify the specific analysis folder within the
             hyperparameters structure.
-        :param result_type: The type of results to load. Must be either 'dataframe' (loads
-            using pandas) or 'json' (loads using the custom JSON loader).
         :param filename: The name of the file to be loaded from the derived folder path.
 
-        :returns: The loaded results as a pandas DataFrame if the type is
-            'dataframe', or as a dictionary if the type is 'json'.
+        :returns: The loaded results as a pandas DataFrame if the extension is
+            '.csv', or as a dictionary if the type is '.json'.
 
         :raises ValueError: If the `result_type` is not 'dataframe' or 'json'.
         """
-        folder_path = self.pm.get_complex_ml_path(hyperparameters, ["further_analysis", analysis_key], False, True)
+        # Get extension of file to load properly
+        ext = Path(filename).suffix
+        if ext not in [".csv", ".json"]:
+            raise ValueError(f"Invalid result_file extension. Expected '.csv' or '.json', got {ext}")
 
-        if result_type == "dataframe":
-            Path(folder_path, filename)
-            return pd.read_csv(Path(folder_path, filename))
-        elif result_type == "json":
-            return self.load_json(Path(folder_path, filename))
-        else:
-            raise ValueError(f"Invalid result type. Expected 'dataframe' or 'json', got {result_type}")
+        folder_path = self.pm.get_complex_ml_path(
+            hyperparameters, ["further_analysis", analysis_key], False, True
+        )
+        fullpath = folder_path / filename
 
-    def _update_and_get_global_outliers(self, parameters, outliers_df: pd.DataFrame, outlier_type: str) -> pd.DataFrame:
-        """
-        Updates the global outliers with new outliers and retrieves the updated global outliers.
-        This function saves the new outliers to the global outliers using an external saver instance
-        and then fetches the updated global outliers dataset.
-
-        :param parameters: The parameters required for saving and loading global outliers.
-        :param outliers_df: A pandas DataFrame containing the new outliers to be added to the global outliers.
-        :param outlier_type: A string representing the specific type of outlier
-            valid options are: "patient_id", "epoch".
-        :return: A pandas DataFrame containing the updated global outliers after the addition of the new outliers.
-        """
-        # Create the saver instance
-        from MachineLearning.IO.save_result import SaveResult
-        saver = SaveResult(self.pm)
-
-        saver.save_global_outliers(parameters, outliers_df, outlier_type)  # Add given outliers to global
-        global_outliers_df = self.load_global_outliers(parameters, outlier_type)  # Get updated global outliers
-        return global_outliers_df
+        result = pd.read_csv(fullpath) if ext == ".csv" else self.load_json(fullpath)
+        return result
     
     @staticmethod
     def load_json(path: Path) -> dict:

@@ -14,23 +14,23 @@
     - [x] Replace IOCore with PathManager. SaveResult and LoadDate need to import from PathManager
     - [x] Make PathManager a singleton
     - [x] Make FeatureUtils not static. It needs PathManager and Loader/Saver as attributes
-    - [ ] Check which functions are still needed and which can be deleted/replaced
+    - [x] Check which functions are still needed and which can be deleted/replaced
       - [x] save_result
         - [x] Every function above save_metadata_analysis
         - [x] save_metadata_analysis and below
-      - [ ] load_data
+      - [x] load_data
+    - [x] Replace all findings of using the old base_dir logic with PathManager logic
+    - [x] Delete all deprecated functions
     - [ ] Create and run tests for all functions in path handling modules
       - [x] In path_utils
       - [ ] In PathManager
       - [ ] In IO
         - [ ] load_data
         - [ ] save_result
-  - [ ] Replace all findings of using the old base_dir logic with PathManager logic
-  - [ ] Delete all deprecated functions
-  - [ ] Fix Bugs
-    - [ ] Remove/refactor deprecated functions/calls like pd.loc
-    - [ ] Not all parameters are toggable from Runner
-    - [ ] cluster analysis plots skript overwrite data instead of creating new if you use outliers
+- [ ] Fix Bugs
+  - [ ] Remove/refactor deprecated functions/calls like pd.loc
+  - [ ] Not all parameters are toggable from Runner
+  - [ ] cluster analysis plots skript overwrite data instead of creating new if you use outliers
 - [ ] Needed functionality → efficiency, robustness and reusability
 	- [ ] Make it possible to work with different data types like .parquet and .mat 
 		- [ ] Add/rework functions to read, write, load and save functions accordingly
