@@ -22,7 +22,7 @@ class PathManager:
     ENV_VAR_NAME = "EEG_BASE_DIR"
     USER_CONFIG_PATH = Path.home() / ".config" / "eeg_project" / "config.json"
 
-    def __init__(self, config_yaml_file: Optional[str] = "path_config.yaml", base_dir: Optional[str] = None):
+    def __init__(self, config_yaml_ref: str | Path = "path_config.yaml", base_dir: Optional[str] = None):
         # Load configs
 
         self.data_names = load_config("data_names_config.yaml")
@@ -34,11 +34,11 @@ class PathManager:
         self.base_dir = self._resolve_base_dir(base_dir)
 
         # 3. Load Structure from path_config.yaml
-        self.path_config = load_config(config_yaml_file)
+        self.path_config = load_config(config_yaml_ref)
 
         # 4. Ensure the base dir exists
         if not self.base_dir.exists():
-            raise f"Warning: Base directory {self.base_dir} does not exist yet."
+            warnings.warn(f"Base directory {self.base_dir} does not exist yet.")
 
     def get_path(self, *keys: str) -> Path:
         """
@@ -136,7 +136,7 @@ class PathManager:
         :param create_dirs: If True, physically creates the parent directories on disk.
         :return: The assembled filepath as a Path object.
         """
-        # Get the base folder using the robust get_path method
+        # Get the base folder using get_path
         folder_dir = self.get_path(*folder_keys)
 
         # Get the file/node name
@@ -163,13 +163,11 @@ class PathManager:
         :param parameters: Dictionary defining A, B, C, D, X, and Y parameters.
         :param folder_parts: Keys to traverse the path_config.
         :param is_file: If True, the final node is a .csv file.
+                        Note: No run injection possible for paths ending in .csv.
         :param create_dirs: If True, physically creates the parent directories on disk.
         :param run_name: Optional specific run name to append.
         :return: The assembled filepath.
         """
-        # Keys of stages that are stored in individual runs
-        individual_run_keys = ["splits", "models", "results", "metadata_analysis"]
-
         # 1. Base Directory
         base_dir = self.get_path(*folder_parts)
         prefix_name = base_dir.stem
@@ -178,24 +176,25 @@ class PathManager:
         dir_abcd_part = PathUtils.return_A_B_C_D_path(prefix_name, parameters)
         xy_part = PathUtils.return_X_Y_name(parameters)
 
-        # 3. Assemble Core Path
-        if is_file:
-            core_path = base_dir / dir_abcd_part / f"{xy_part}.csv"
+        # 3. Assemble Path
+        if is_file: # No run injection possible for paths ending in .csv
+            final_path = (base_dir / dir_abcd_part / xy_part).with_suffix(".csv")
         else:
-            core_path = base_dir / dir_abcd_part / xy_part
+            # Determine if we need to inject a run name
+            actual_run_name = run_name
+            # Keys of stages that are stored in individual runs
+            individual_run_keys = ["splits", "models", "results", "metadata_analysis"]
+            if actual_run_name is None and any(key in folder_parts for key in individual_run_keys):
+                actual_run_name = load_config("parameters_config.yaml").get("run_name")
+                if not actual_run_name:
+                    raise ValueError("Expected 'run_name' in parameters_config but got None.")
 
-        # 4. Handle Run Name Injection
-        final_path = core_path
-        if run_name is not None:
-            final_path = core_path / run_name
-        # Retrieve run_name from parameters_config.yaml if not given explicitly
-        elif any(key in folder_parts for key in individual_run_keys):
-            current_run = load_config("parameters_config.yaml").get("run_name")
-            if not current_run:
-                raise ValueError("Expected 'run_name' in parameters_config but got None.")
-            final_path = core_path / current_run
+            # Build final path for non-file targets
+            final_path = base_dir / dir_abcd_part / xy_part
+            if actual_run_name:
+                final_path = final_path / actual_run_name
 
-        # 5. Directory Creation Logic
+        # 4. Directory Creation Logic
         if create_dirs:
             # If the target is a file, create its parent directories. Otherwise, create the directory itself.
             target_dir = final_path.parent if is_file else final_path
@@ -209,7 +208,7 @@ class PathManager:
         Based on the specified return_type, it returns a list of keys, values or a dictionary of children.
 
         :param keys: Path to the target node (e.g., "features").
-        :param return_type: Type of return value. Options: "dict", "keys" or values.
+        :param return_type: Type of return value. Options: "dict", "keys" or "values".
         :return: A list of keys for the child nodes.
         """
         current_node = self.path_config["root"]
@@ -258,12 +257,12 @@ class PathManager:
         if folder_parts[-1] == "splits":
             relevant_paths = [
                 path for path in fullpaths_list
-                if path.name == "train_split.csv" or path.name == "test_split.csv"
+                if path.name.endswith("_split.csv") # e.g 1_6_test_split.csv
             ]
         elif folder_parts[0] == "results":
             relevant_paths = [
                 path for path in fullpaths_list
-                if path.name == "full_and_pred.csv"
+                if path.name.endswith("full_and_pred.csv") # e.g 1_6_test_split_full_and_pred.csv
             ]
         else:
             raise ValueError(f"Unexpected folder to retrieve related files from: {files_folderpath}")
@@ -327,14 +326,13 @@ class PathManager:
                 pass  # Ignore corrupt config
         print(f"User config file {self.USER_CONFIG_PATH} not found. Trying fallback data directory.")
 
-        # Priority 4: Fallback (inside the project folder)
-        # Assuming this script is running from src/ or similar, go up to project root
+        # Priority 4: Fallback -> inside the project folder go up to project root
         fallback_path = Path(__file__).resolve().parent.parent / "data"
         if fallback_path.exists():
             return fallback_path
         else:
-            raise (f"No base directory found. Provide path, set environment variable, "
-                   f"or create fallback Path: {fallback_path}")
+            raise RuntimeError(f"No base directory found. Provide path, set environment variable, "
+                               f"or create fallback Path: {fallback_path}")
 
     @staticmethod
     def _return_node_name(parameters: dict, node_type: str) -> str:

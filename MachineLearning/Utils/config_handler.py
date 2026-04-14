@@ -8,18 +8,21 @@ import yaml
 CURRENT_FILE = Path(__file__).resolve()
 DEFAULT_CONFIG_DIR = CURRENT_FILE.parent.parent / "Configs"
 
-def load_config(config_file: str) -> dict:
+def load_config(config_ref: str | Path) -> dict:
     """
     Loads a YAML config from the `config/` directory.
 
-    :param config_file: Name of config file e.g. "path_config.yaml"
+    :param config_ref: Name of a config file in Configs/ or complete path of the config file
     :return: config as dictionary
     """
 
-    config_path = DEFAULT_CONFIG_DIR / config_file
-    # Check if config exists
+    config_path = DEFAULT_CONFIG_DIR / config_ref
+    # Check if config exists in Configs\, try absolute path if not
     if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
+        print(f"Config file not found: {config_path}, \n trying {config_ref} as absolute path.")
+        config_path = Path(config_ref)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Config file not found: {config_path}")
 
     # Open config as dict
     with open(config_path, "r", encoding="utf-8") as f:
@@ -31,7 +34,7 @@ def load_config(config_file: str) -> dict:
     return config
 
 
-def update_config(config_file: str, updates: dict) -> dict:
+def update_config(config_file: str | Path, updates: dict) -> dict:
     """
     Updates existing keys in a YAML config file, forbidding new or unknown keys.
 
@@ -64,7 +67,7 @@ def update_config(config_file: str, updates: dict) -> dict:
     return load_config(config_file)
 
 
-def replace_bands_in_config(filename: str, updates: dict):
+def replace_bands_in_config(filename: str | Path, updates: dict):
     """
     Updates a YAML config file by merging updates recursively,
     but replaces 'frequency_bands' dictionary completely.

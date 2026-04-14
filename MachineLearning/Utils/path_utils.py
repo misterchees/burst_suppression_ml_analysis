@@ -70,7 +70,7 @@ class PathUtils:
             all_files = [f for f in all_files if f.suffix.lower() == extension_filter.lower()]
 
         if not fullpaths:
-            all_files = [f.name for f in all_files]
+            all_files = [Path(f.name) for f in all_files]
 
         if print_to_console:
             for file in all_files:
