@@ -21,6 +21,11 @@ unusually high, with high MAC Values present. These episodes show a contradictio
 BIS values are typical for being awake but high MAC values are typical for being anesthesized.
 
 # Data Preprocessing
+## Loading into the Pipeline
+**Awake Episodes**: The main source of the Awake Episodes comes from the anestart annotations from the metadata which are
+aggregated in _anestart_analysis_results.csv_. 
+After inspecting the tracks visually, it turned out the annotations are not always correct, so another file was created 
+named _awake_cleaned.txt_. That's the reason for the _awake_cleaned_ flag in the _load_awake_times_as_df_ function.
 
 # Feature Extraction
 

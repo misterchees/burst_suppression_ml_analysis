@@ -23,7 +23,7 @@
     - [x] Delete all deprecated functions
     - [ ] Create and run tests for all functions in path handling modules
       - [x] In path_utils
-      - [ ] In PathManager
+      - [x] In PathManager
       - [ ] In IO
         - [ ] load_data
         - [ ] save_result

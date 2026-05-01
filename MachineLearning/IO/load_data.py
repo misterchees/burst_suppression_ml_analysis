@@ -87,7 +87,6 @@ class LoadData:
             caseid = int(row['case_id']) if awake_cleaned else row['caseid']
 
             # Calculate number of epochs accordingly to file information (normal ane always starts at 0)
-
             epoch_end = float(row['end_time']) if awake_cleaned else int(row['anestart'])
             epoch_start = float(row['start_time']) if awake_cleaned else 0
             transition_time = 0 if awake_cleaned else transition_time
@@ -288,7 +287,7 @@ class LoadData:
         vitaldb_eeg_dir = self.pm.get_path("initial_data", "raw_eeg_mat")
         csv_file_path = vitaldb_eeg_dir / f"{result_id}.csv"
         if not csv_file_path.is_file():
-            raise FileNotFoundError(f"File found: {csv_file_path}")
+            raise FileNotFoundError(f"File not found: {csv_file_path}")
 
         fs = 128
         csv_file = pd.read_csv(csv_file_path)
