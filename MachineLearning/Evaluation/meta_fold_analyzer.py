@@ -11,7 +11,12 @@ from MachineLearning.IO.load_data import LoadData
 from MachineLearning.IO.save_result import SaveResult
 from MachineLearning.Utils.path_manager import PathManager
 
-matplotlib.use('TkAgg')
+# Agg as fallback for Headless-Environments (e.g. Test-Environments)
+try:
+    matplotlib.use('TkAgg')
+except ImportError:
+    matplotlib.use('Agg')
+
 import seaborn as sns
 
 

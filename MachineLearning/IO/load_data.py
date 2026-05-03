@@ -24,7 +24,7 @@ def load_psd_with_start_end_resultid(folder_path: Path, filename: str) \
 
     # Validation of single episode PSD name structure
     name_parts = filename.split(".")[0].split("_")
-    if len(name_parts) != 4 and name_parts[0] != "PSD":
+    if len(name_parts) != 4 or name_parts[0] != "PSD":
         raise ValueError(f"Name of file {filename} has no typical structure for single episode PSD."
                          "Typical structure example for reference: PSD_0_1_2.csv")
 
@@ -432,7 +432,7 @@ class LoadData:
                 fold_analyzer = MetaFoldAnalyzer(self.pm, model_key, parameters, outlier_run_name)
                 outliers_df = fold_analyzer.select_outlier_groups(save_res=True) if grouped_by_id \
                     else fold_analyzer.select_outlier_epochs(save_res=True)
-            except FileNotFoundError:
+            except (FileNotFoundError, ImportError, ModuleNotFoundError):
                 print(f"No previous results found to create '{file_name}'. "
                       "No outlier IDs can be loaded.")
                 return None
@@ -440,12 +440,15 @@ class LoadData:
         # Ensure that global outliers include outliers from the given run by saving them before loading global outliers
         if global_outliers:
             # Create a saver instance
-            from MachineLearning.IO.save_result import SaveResult
-            saver = SaveResult(self.pm)
+            try:
+                from MachineLearning.IO.save_result import SaveResult
+                saver = SaveResult(self.pm)
 
-            outlier_type = "patient_id" if grouped_by_id else "epoch"
-            saver.save_global_outliers(parameters, outliers_df, outlier_type)  # Add given outliers to global
-            outliers_df = self.load_global_outliers(parameters, outlier_type)  # Get updated global outliers
+                outlier_type = "patient_id" if grouped_by_id else "epoch"
+                saver.save_global_outliers(parameters, outliers_df, outlier_type)  # Add given outliers to global
+                outliers_df = self.load_global_outliers(parameters, outlier_type)  # Get updated global outliers
+            except (ImportError, ModuleNotFoundError):
+                print("SaveResult could not be loaded. Skipping global outliers integration.")
 
         outlier_list = outliers_df["group"].values.tolist()
         f_print_val = "groups" if grouped_by_id else "epochs"
@@ -492,7 +495,7 @@ class LoadData:
         :param combined: Flag indicating whether to return a single concatenated
                         DataFrame (True) or a dictionary of individual DataFrames
                         (False). Defaults to True.
-        :return: If combined is True, returns a pandas DataFrame combining all individual result DataFrames.
+        :return: If combined is True, returns a Pandas DataFrame combining all individual result DataFrames.
                 If combined is False, returns a dictionary where keys are file names and values
                 are the corresponding result DataFrames.
         """

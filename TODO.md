@@ -25,7 +25,7 @@
       - [x] In path_utils
       - [x] In PathManager
       - [ ] In IO
-        - [ ] load_data
+        - [x] load_data
         - [ ] save_result
 - [ ] Fix Bugs
   - [ ] Remove/refactor deprecated functions/calls like pd.loc
@@ -53,6 +53,7 @@
 	- [ ] Test Splitting
 	- [ ] Test Analysis
 	- [ ] Test Run logging
+    - [ ] Add CI/CD to always run tests on push
 - [ ] Implement good coding practices
 	- [ ] Remove duplicate/unused code
       - [ ] Check EEG loading functions
