@@ -26,7 +26,7 @@
       - [x] In PathManager
       - [ ] In IO
         - [x] load_data
-        - [ ] save_result
+        - [x] save_result
 - [ ] Fix Bugs
   - [ ] Remove/refactor deprecated functions/calls like pd.loc
   - [ ] Not all parameters are toggable from Runner

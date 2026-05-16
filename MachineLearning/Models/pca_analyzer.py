@@ -67,7 +67,7 @@ class PCAAnalyzer:
         )
         # Save figure after plotting it
         if save_plot:
-            self.saver.save_multiple_plots(self.hyperparams, "pca", figs_and_axes, separate_plots, title)
+            self.saver.save_plots(self.hyperparams, "pca", figs_and_axes, title)
 
 
 
@@ -92,7 +92,7 @@ class PCAAnalyzer:
         )
         # Save figure after plotting it
         if save_plot:
-            self.saver.save_multiple_plots(self.hyperparams, "pca", figs_and_axes, separate_plots, title)
+            self.saver.save_plots(self.hyperparams, "pca", figs_and_axes, title)
 
     def plot_scree(self, save_plot=False):
         """

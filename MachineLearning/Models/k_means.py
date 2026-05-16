@@ -84,7 +84,7 @@ class KMeans:
         )
         # Save figure after plotting it
         if save_plot:
-            self.saver.save_multiple_plots(self.hyperparams, "k_means", figs_and_axes, separate_plots, title)
+            self.saver.save_plots(self.hyperparams, "k_means", figs_and_axes, title)
 
 
 
@@ -112,4 +112,4 @@ class KMeans:
         )
         # Save figure after plotting it
         if save_plot:
-            self.saver.save_multiple_plots(self.hyperparams, "k_means", figs_and_axes, separate_plots, title)
+            self.saver.save_plots(self.hyperparams, "k_means", figs_and_axes, title)

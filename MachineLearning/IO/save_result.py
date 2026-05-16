@@ -146,7 +146,7 @@ class SaveResult:
         """
         Saves a created train and test split to a folder defined by current parameters.
         :param parameters: Determines saving folder.
-        :param train_test_tuple: Tuple containing the train and test split. Order is (train, test)
+        :param train_test_tuple: Tuple containing the train and test split (Dataframes). Order is (train, test)
         """
         # Assemble paths where splits will be saved
         split_dir = self.pm.get_complex_ml_path(
@@ -314,38 +314,39 @@ class SaveResult:
         saving_func(result_data, fullpath)
         print(f"Successfully saved {file_type} to {fullpath}")
 
-    def save_multiple_plots(self, parameters: dict, analysis_key: str, figs_and_axes: list, separate: bool, title: str):
+    def save_plots(self, parameters: dict, analysis_key: str, figs_and_axes: list | tuple, title: str):
         """
-        Saves multiple plots based on the provided parameters and configurations.
+        Saves plots based on the provided parameters and configurations.
 
-        This method is responsible for saving multiple plots either as separate plot files or as one
-        combined file to the specified folder path.
+        Depending on the value of the 'multiple' parameter, this function knows whether to save multiple
+        plots or a single plot.
 
         Parameters:
-        parameters (dict): Parameters that determine the saving folder path.
-        figs_and_axes (list): A list of tuples containing figure and axis objects to be saved. Each tuple
-            has (figure, axis).
-        separate_plots (bool): A flag indicating whether to save each plot separately or to group all
-            plots into a single file.
-        title (str): The base title of the plot(s) used in naming the saved files.
+        parameters: Parameters that determine the saving folder path.
+        figs_and_axes: A single tuple containing figure and axis objects (for single plots)
+            or a list of such tuples (multiple plots). Each tuple has (figure, axis).
+        multiple: A flag indicating whether to save multiple or single plots. If True, multiple plots will be saved.
+        title: The base title of the plot(s) used in naming the saved files.
         """
         folder_path = self.pm.get_complex_ml_path(
             parameters, ["further_analysis", analysis_key], False, True
         )
-        if separate:
+        if isinstance(figs_and_axes, list):
             counter = 0
             for fig_and_ax in figs_and_axes:
                 fig, ax = fig_and_ax
                 self.save_file("plot", folder_path, title, f"part_{counter}", fig)
                 counter += 1
-        else:
+        elif isinstance(figs_and_axes, tuple):
             fig, ax = figs_and_axes
             self.save_file("plot", folder_path, title, "all_labels", fig)
+        else:
+            raise ValueError("figs_and_axes must be a tuple or a list of tuples.")
 
     @staticmethod
-    def _save_file_as_csv(data, fullpath, index=True):
+    def _save_file_as_csv(data, fullpath):
         """Saves data as a csv file in given fullpath."""
-        data.to_csv(fullpath, index=index)
+        data.to_csv(fullpath, index=True)
 
     @staticmethod
     def _save_single_plot(fig, fullpath: str):
